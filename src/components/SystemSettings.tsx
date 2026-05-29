@@ -1459,7 +1459,7 @@ export default function SystemSettings({
 
                   {/* Cloud vault config Section */}
                   <div className="p-5 border bg-sky-50/20 rounded-2xl space-y-3.5 border-sky-100">
-                    <span className="font-extrabold text-indigo-950 block text-xs underline">ASH POINT Cloud-based Backup Vault</span>
+                    <span className="font-extrabold text-indigo-950 block text-xs underline">{config.hospitalName || 'CeylonPets'} Secure Cloud Vault</span>
 
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-750">Enable Cloud vaults backups sync:</span>
@@ -1468,18 +1468,6 @@ export default function SystemSettings({
                         checked={config.cloudBackupEnabled}
                         onChange={(e) => setConfigValue('cloudBackupEnabled', e.target.checked)}
                         className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                      />
-                    </div>
-
-                    <div className="space-y-1 text-xs">
-                      <label className="font-bold text-slate-700 block text-[10px]">Cloud Repository SECURE API Target endpoint URL</label>
-                      <input
-                        type="url"
-                        placeholder="e.g. https://cloud.ashpointsolutions.com/v1/backups/client1"
-                        value={config.cloudEndpoint}
-                        onChange={(e) => setConfigValue('cloudEndpoint', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-[10px]"
-                        disabled={!config.cloudBackupEnabled}
                       />
                     </div>
 
