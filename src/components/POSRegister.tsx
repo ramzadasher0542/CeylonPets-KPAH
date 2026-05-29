@@ -1,0 +1,857 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState } from 'react';
+import { 
+  ShoppingBag, 
+  Search, 
+  Tag, 
+  Trash2, 
+  Plus, 
+  Minus, 
+  UserPlus, 
+  CreditCard, 
+  Coins, 
+  QrCode, 
+  FileText, 
+  Check, 
+  AlertTriangle,
+  User,
+  Flame,
+  FileCheck2,
+  ChevronDown,
+  Sparkles,
+  HeartPulse,
+  Printer
+} from 'lucide-react';
+import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod } from '../types';
+
+interface POSProps {
+  inventory: InventoryItem[];
+  appointments: Appointment[];
+  isOnline: boolean;
+  currentUser: string;
+  onUpdateStock: (itemId: string, qtyDelta: number) => void;
+  onAddInvoice: (invoice: Invoice) => void;
+  systemConfig?: any;
+}
+
+export default function POSRegister({ 
+  inventory, 
+  appointments, 
+  isOnline, 
+  currentUser,
+  onUpdateStock,
+  onAddInvoice,
+  systemConfig
+}: POSProps) {
+  // POS States
+  const [activeTab, setActiveTab] = useState<'service' | 'medication' | 'retail'>('service');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [barcodeInput, setBarcodeInput] = useState('');
+  const [barcodeFeedback, setBarcodeFeedback] = useState<{ text: string; error: boolean } | null>(null);
+  const [cart, setCart] = useState<Array<{ item: InventoryItem; quantity: number }>>([]);
+  const [selectedPetId, setSelectedPetId] = useState<string>('walkin'); // Walk-in or appointment selected
+  const [discountVal, setDiscountVal] = useState<number>(0);
+  const [customItemName, setCustomItemName] = useState('');
+  const [customItemPrice, setCustomItemPrice] = useState('');
+  const [customItemCategory, setCustomItemCategory] = useState<'service' | 'retail'>('service');
+
+  // Checkout modal
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [amountReceived, setAmountReceived] = useState('');
+  const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
+
+  // Tabs style config matching the pastel sky blue interior
+  const tabStyles = {
+    service: { bg: 'bg-sky-50 text-sky-800 border-sky-300', active: 'bg-sky-500 text-white border-sky-500 shadow-sm' },
+    medication: { bg: 'bg-emerald-50 text-emerald-800 border-emerald-300', active: 'bg-emerald-600 text-white border-emerald-600 shadow-sm' },
+    retail: { bg: 'bg-amber-50 text-amber-800 border-amber-300', active: 'bg-amber-500 text-white border-amber-500 shadow-sm' }
+  };
+
+  // Filter items based on active tab and search query
+  const filteredProducts = inventory.filter(item => {
+    const matchesTab = item.category === activeTab;
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          item.sku.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesTab && matchesSearch;
+  });
+
+  // Barcode scanner helper
+  const handleBarcodeSubmit = (skuText: string) => {
+    const trimmedSku = skuText.trim();
+    if (!trimmedSku) return;
+
+    // Search for a perfect match in inventory by SKU (case-insensitive) or by ID
+    const found = inventory.find(
+      item => item.sku.toLowerCase() === trimmedSku.toLowerCase() || item.id.toLowerCase() === trimmedSku.toLowerCase()
+    );
+
+    if (found) {
+      if (found.stock <= 0 && found.category !== 'service') {
+        setBarcodeFeedback({ text: `Failed: ${found.name} is currently out of stock.`, error: true });
+      } else {
+        const existing = cart.find(i => i.item.id === found.id);
+        if (existing && existing.quantity >= found.stock && found.category !== 'service') {
+          setBarcodeFeedback({ text: `Failed: Limit of ${found.stock} reached for ${found.name}.`, error: true });
+        } else {
+          if (existing) {
+            setCart(cart.map(i => i.item.id === found.id ? { ...i, quantity: i.quantity + 1 } : i));
+          } else {
+            setCart([...cart, { item: found, quantity: 1 }]);
+          }
+          setBarcodeFeedback({ text: `Instantly added: ${found.name} to cart!`, error: false });
+          setBarcodeInput('');
+        }
+      }
+    } else {
+      setBarcodeFeedback({ text: `SKU / ID "${trimmedSku}" not found in inventory.`, error: true });
+    }
+
+    // Auto-clear feedback after 4 seconds
+    setTimeout(() => {
+      setBarcodeFeedback(prev => prev && prev.text.includes(trimmedSku) ? null : prev);
+    }, 4000);
+  };
+
+  const handleBarcodeKeydown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleBarcodeSubmit(barcodeInput);
+    }
+  };
+
+  // Cart operations
+  const addToCart = (product: InventoryItem) => {
+    if (product.stock <= 0 && product.category !== 'service') {
+      alert(`Critical: ${product.name} is currently out of stock. Please adjust inventory parameters.`);
+      return;
+    }
+    const existing = cart.find(i => i.item.id === product.id);
+    if (existing) {
+      if (existing.quantity >= product.stock && product.category !== 'service') {
+        alert(`Cannot add more. Limit of ${product.stock} reached.`);
+        return;
+      }
+      setCart(cart.map(i => i.item.id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
+    } else {
+      setCart([...cart, { item: product, quantity: 1 }]);
+    }
+  };
+
+  const updateCartQty = (productId: string, val: number) => {
+    const existing = cart.find(i => i.item.id === productId);
+    if (!existing) return;
+    const itemStock = existing.item.stock;
+    const newQty = existing.quantity + val;
+
+    if (newQty <= 0) {
+      setCart(cart.filter(i => i.item.id !== productId));
+    } else {
+      if (newQty > itemStock && existing.item.category !== 'service') {
+        alert(`Cannot add more. Retail cap is ${itemStock} units.`);
+        return;
+      }
+      setCart(cart.map(i => i.item.id === productId ? { ...i, quantity: newQty } : i));
+    }
+  };
+
+  const removeFromCart = (productId: string) => {
+    setCart(cart.filter(i => i.item.id !== productId));
+  };
+
+  // Quick custom charge (User easily customization request)
+  const addCustomCharge = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customItemName || !customItemPrice) return;
+    const priceNum = parseFloat(customItemPrice);
+    if (isNaN(priceNum) || priceNum < 0) return;
+
+    const customId = `cst-${Date.now()}`;
+    const customProd: InventoryItem = {
+      id: customId,
+      sku: `QUICK-${Math.floor(Math.random() * 900 + 100)}`,
+      name: customItemName,
+      category: customItemCategory,
+      price: priceNum,
+      cost: 0,
+      stock: 9999,
+      minStock: 0,
+      unit: 'item'
+    };
+
+    setCart([...cart, { item: customProd, quantity: 1 }]);
+    setCustomItemName('');
+    setCustomItemPrice('');
+  };
+
+  // Calculations
+  const subtotal = cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0);
+  const taxRate = systemConfig ? systemConfig.taxRate : 0.0825;
+  const currencySign = systemConfig ? systemConfig.currencySymbol : '$';
+  const tax = subtotal * taxRate;
+  const discount = discountVal;
+  const total = Math.max(0, subtotal + tax - discount);
+
+  // Active appointment / patient details
+  const selectedApt = appointments.find(a => a.id === selectedPetId);
+
+  // Trigger Checkout
+  const handleCheckoutSubmit = () => {
+    if (cart.length === 0) return;
+
+    // Create a new invoice
+    const newInvItems: InvoiceItem[] = cart.map(c => ({
+      itemId: c.item.id,
+      sku: c.item.sku,
+      name: c.item.name,
+      category: c.item.category,
+      quantity: c.quantity,
+      unitPrice: c.item.price,
+      totalPrice: c.item.price * c.quantity
+    }));
+
+    const invoiceObj: Invoice = {
+      id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
+      appointmentId: selectedPetId !== 'walkin' ? selectedPetId : undefined,
+      patientId: selectedApt ? `${selectedApt.petName}_${selectedApt.ownerPhone.replace(/\D/g,'')}` : 'anonymous_walkin',
+      petName: selectedApt ? selectedApt.petName : 'Walk-in Pet / Guest',
+      ownerName: selectedApt ? selectedApt.ownerName : 'General Guest',
+      ownerPhone: selectedApt ? selectedApt.ownerPhone : 'N/A',
+      date: new Date().toISOString().split('T')[0],
+      items: newInvItems,
+      subtotal: parseFloat(subtotal.toFixed(2)),
+      tax: parseFloat(tax.toFixed(2)),
+      discount: parseFloat(discount.toFixed(2)),
+      total: parseFloat(total.toFixed(2)),
+      paymentMethod: paymentMethod,
+      paymentStatus: 'paid',
+      createdBy: currentUser,
+      notes: selectedPetId !== 'walkin' ? `Check out from scheduled visit reason: ${selectedApt?.reason}` : 'Quick shop checkout'
+    };
+
+    // Apply stock deduction to state
+    cart.forEach(c => {
+      if (c.item.category !== 'service') {
+        onUpdateStock(c.item.id, -c.quantity);
+      }
+    });
+
+    onAddInvoice(invoiceObj);
+    setCheckoutSuccess(invoiceObj);
+    setCart([]);
+    setDiscountVal(0);
+    setSelectedPetId('walkin');
+  };
+
+  const handlePrintReceipt = (inv: Invoice) => {
+    const printWindow = window.open('', '_blank', 'width=350,height=600');
+    if (!printWindow) {
+      alert('Pop-up blocked! Please allow pop-ups to print receipts.');
+      return;
+    }
+
+    const hospitalName = systemConfig?.hospitalName || 'Ceylon Pets Animal Hospital';
+    const hospitalAddress = systemConfig?.hospitalAddress || 'No. 34 Palace Road, Petaluma CA';
+    const hospitalPhone = systemConfig?.hospitalPhone || '+1 (555) 781-4200';
+    const hospitalEmail = systemConfig?.hospitalEmail || 'contact@ceylonpets.lk';
+    const logoEmoji = systemConfig?.invoiceLogo || '🐾';
+    const footerMessage = systemConfig?.invoiceFooterMessage || 'Please pay upon discharge. Thank you for choosing CeylonPets!';
+
+    const printHtml = `
+      <html>
+        <head>
+          <title>Receipt ${inv.id}</title>
+          <style>
+            @media print {
+              body { margin: 0; padding: 10px; }
+            }
+            body {
+              font-family: 'Courier New', Courier, monospace;
+              font-size: 11px;
+              line-height: 1.4;
+              color: #000;
+              max-width: 280px;
+              margin: 0 auto;
+              padding: 15px;
+            }
+            .center { text-align: center; }
+            .right { text-align: right; }
+            .bold { font-weight: bold; }
+            .divider { border-top: 1px dashed #000; margin: 8px 0; }
+            .header-title { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+            .item-table { width: 100%; border-collapse: collapse; }
+            .item-table td { padding: 2px 0; vertical-align: top; }
+            .footer { font-size: 9px; margin-top: 15px; text-align: center; }
+          </style>
+        </head>
+        <body>
+          <div class="center">
+            <span style="font-size: 24px;">${logoEmoji}</span>
+            <div class="header-title">${hospitalName}</div>
+            <div>${hospitalAddress}</div>
+            <div>PH: ${hospitalPhone}</div>
+            <div>Email: ${hospitalEmail}</div>
+          </div>
+          
+          <div class="divider"></div>
+          
+          <div><span class="bold">Receipt ID:</span> ${inv.id}</div>
+          <div><span class="bold">Date:</span> ${inv.date}</div>
+          <div><span class="bold">Cashier:</span> ${inv.createdBy}</div>
+          <div><span class="bold">Owner:</span> ${inv.ownerName}</div>
+          <div><span class="bold">Patient:</span> ${inv.petName}</div>
+          
+          <div class="divider"></div>
+          
+          <table class="item-table">
+            <thead>
+              <tr class="bold">
+                <td style="width: 60%">Item Description</td>
+                <td style="width: 15%" class="center">Qty</td>
+                <td style="width: 25%" class="right">Total</td>
+              </tr>
+            </thead>
+            <tbody>
+              ${inv.items.map(item => `
+                <tr>
+                  <td>${item.name}</td>
+                  <td class="center">${item.quantity}</td>
+                  <td class="right">${currencySign}${item.totalPrice.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          
+          <div class="divider"></div>
+          
+          <table class="item-table">
+            <tr>
+              <td style="width: 60%"><span class="bold">Subtotal:</span></td>
+              <td style="width: 40%" class="right">${currencySign}${inv.subtotal.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td><span class="bold">Discount:</span></td>
+              <td class="right">-${currencySign}${inv.discount.toFixed(2)}</td>
+            </tr>
+            <tr>
+              <td><span class="bold">Tax:</span></td>
+              <td class="right">${currencySign}${inv.tax.toFixed(2)}</td>
+            </tr>
+            <tr class="bold" style="font-size: 12px;">
+              <td>TOTAL DUE:</td>
+              <td class="right">${currencySign}${inv.total.toFixed(2)}</td>
+            </tr>
+          </table>
+          
+          <div class="divider"></div>
+          <div><span class="bold">Payment Method:</span> ${inv.paymentMethod?.toUpperCase() || 'CARD'}</div>
+          <div><span class="bold">Payment Status:</span> ${inv.paymentStatus.toUpperCase()}</div>
+          
+          <div class="divider"></div>
+          
+          <div class="footer">
+            ${footerMessage}
+            <div style="margin-top: 8px; letter-spacing: 2px;">* POWERED BY ASH POINT SOLUTIONS *</div>
+          </div>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printHtml);
+    printWindow.document.close();
+  };
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="pos-register-view">
+      
+      {/* Left Columns - Inventory selection (7 Cols) */}
+      <div className="lg:col-span-7 space-y-4">
+        {/* Search and Tabs Controller */}
+        <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search services, prescription meds, or toy inventory by SKU / name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              />
+            </div>
+
+            {/* Barcode scanner input */}
+            <div className="relative w-full sm:w-64">
+              <QrCode className="absolute left-3.5 top-3 h-4 w-4 text-indigo-500" />
+              <input
+                type="text"
+                placeholder="Scan Barcode (SKU)..."
+                value={barcodeInput}
+                onChange={(e) => setBarcodeInput(e.target.value)}
+                onKeyDown={handleBarcodeKeydown}
+                className="w-full pl-10 pr-10 py-2.5 bg-indigo-50/40 border border-indigo-200 text-xs font-bold rounded-xl text-slate-800 placeholder-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+              {barcodeInput && (
+                <button
+                  type="button"
+                  onClick={() => setBarcodeInput('')}
+                  className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Barcode validation feedback message strip */}
+          {barcodeFeedback && (
+            <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11px] font-bold animate-fade-in ${
+              barcodeFeedback.error 
+                ? 'bg-rose-50 border-rose-200 text-rose-800' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="text-md">{barcodeFeedback.error ? '⚠️' : '✅'}</span>
+                <span>{barcodeFeedback.text}</span>
+              </div>
+              <button 
+                onClick={() => setBarcodeFeedback(null)} 
+                className="text-slate-400 hover:text-slate-600 font-bold ml-2 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setActiveTab('service')}
+              className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'service' ? tabStyles.service.active : tabStyles.service.bg
+              }`}
+            >
+              <HeartPulse className="h-4 w-4" /> Medicine & Services
+            </button>
+            <button
+              onClick={() => setActiveTab('medication')}
+              className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'medication' ? tabStyles.medication.active : tabStyles.medication.bg
+              }`}
+            >
+              <FileText className="h-4 w-4" /> Rx Pharmacy
+            </button>
+            <button
+              onClick={() => setActiveTab('retail')}
+              className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'retail' ? tabStyles.retail.active : tabStyles.retail.bg
+              }`}
+            >
+              <ShoppingBag className="h-4 w-4" /> Pet Retail Shop
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Catalog Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[38rem] overflow-y-auto pr-1">
+          {filteredProducts.map(product => {
+            const isLowStock = product.stock <= product.minStock && product.category !== 'service';
+            return (
+              <div
+                key={product.id}
+                onClick={() => addToCart(product)}
+                className="bg-white p-3.5 rounded-2xl border border-sky-50 hover:border-sky-300 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between group relative overflow-hidden active:scale-95"
+              >
+                <div className="space-y-1">
+                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                    product.category === 'service' ? 'bg-sky-100 text-sky-800' :
+                    product.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
+                    'bg-amber-100 text-amber-800'
+                  }`}>
+                    {product.sku}
+                  </span>
+                  <h5 className="text-xs font-bold text-slate-800 tracking-tight leading-snug mt-1 group-hover:text-sky-600 line-clamp-2">
+                    {product.name}
+                  </h5>
+                  {product.category !== 'service' && (
+                    <span className={`text-[10px] font-mono block ${isLowStock ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
+                      Stock: {product.stock} {product.unit}s
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-3 flex justify-between items-center pt-2 border-t border-slate-50">
+                  <span className="text-sm font-black text-slate-800">{currencySign}{product.price.toFixed(2)}</span>
+                  <span className="p-1 bg-slate-50 group-hover:bg-sky-50 text-slate-400 group-hover:text-sky-600 rounded-lg transition-colors">
+                    <Plus className="h-4 w-4" />
+                  </span>
+                </div>
+
+                {isLowStock && (
+                  <div className="absolute top-0 right-0 p-1 bg-rose-500 rounded-bl-xl text-white">
+                    <AlertTriangle className="h-3 w-3 animate-bounce" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {filteredProducts.length === 0 && (
+            <div className="col-span-full bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center text-slate-400 text-xs">
+              No clinical or retail items matching search tags.
+            </div>
+          )}
+        </div>
+
+        {/* Custom Quick Item Form */}
+        <form onSubmit={addCustomCharge} className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
+          <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            Quick Service / Custom Retail Addition
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+            <div className="sm:col-span-5">
+              <input
+                type="text"
+                placeholder="Product/Service description"
+                value={customItemName}
+                onChange={(e) => setCustomItemName(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+              />
+            </div>
+            <div className="sm:col-span-3">
+              <input
+                type="number"
+                step="0.01"
+                placeholder={`Price (${currencySign})`}
+                value={customItemPrice}
+                onChange={(e) => setCustomItemPrice(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono"
+              />
+            </div>
+            <div className="sm:col-span-2">
+              <select
+                value={customItemCategory}
+                onChange={(e) => setCustomItemCategory(e.target.value as 'service' | 'retail')}
+                className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+              >
+                <option value="service">Clinical</option>
+                <option value="retail">Pet Shop</option>
+              </select>
+            </div>
+            <div className="sm:col-span-2">
+              <button
+                type="submit"
+                className="w-full h-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer"
+              >
+                Charge item
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Right Column - Active Invoice Cart System (5 Cols) */}
+      <div className="lg:col-span-5 flex flex-col justify-between">
+        
+        <div className="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 h-full flex flex-col justify-between space-y-4">
+          
+          {/* Patient checkout linking */}
+          <div className="pb-3 border-b border-sky-50">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 block">Link Pet Patient Care Check-in</span>
+              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isOnline ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}`}>
+                {isOnline ? 'Direct Hospital Sync' : 'Offline Buffer Mode'}
+              </span>
+            </div>
+            <div className="mt-2 text-xs">
+              <select
+                value={selectedPetId}
+                onChange={(e) => setSelectedPetId(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
+              >
+                <option value="walkin">Walk-in Pet Shop Customer (No Clinical EHR link)</option>
+                {appointments
+                  .filter(apt => apt.status !== 'cancelled')
+                  .map(apt => (
+                    <option key={apt.id} value={apt.id}>
+                      {apt.petName} ({apt.petType}) - Owner: {apt.ownerName} [{apt.reason.slice(0, 24)}...]
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Cart Contents list */}
+          <div className="flex-1 max-h-[18rem] overflow-y-auto space-y-2">
+            {cart.map(cartItem => (
+              <div 
+                key={cartItem.item.id}
+                className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl hover:bg-slate-100 transition-all text-xs"
+              >
+                <div className="space-y-0.5 max-w-[60%]">
+                  <span className="text-[9px] font-mono text-slate-400 block">{cartItem.item.sku}</span>
+                  <div className="font-bold text-slate-800 truncate">{cartItem.item.name}</div>
+                  <div className="font-semibold text-slate-500 font-mono">{currencySign}{cartItem.item.price.toFixed(2)} / {cartItem.item.unit}</div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {/* Quantity adjusts */}
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-md p-1">
+                    <button 
+                      onClick={() => updateCartQty(cartItem.item.id, -1)}
+                      className="p-0.5 hover:bg-slate-100 text-slate-500 rounded cursor-pointer"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <span className="font-bold text-slate-800 px-1.5 font-mono text-xs">{cartItem.quantity}</span>
+                    <button 
+                      onClick={() => updateCartQty(cartItem.item.id, 1)}
+                      className="p-0.5 hover:bg-slate-100 text-slate-500 rounded cursor-pointer"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => removeFromCart(cartItem.item.id)}
+                    className="p-1 hover:text-rose-600 text-slate-300 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {cart.length === 0 && (
+              <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-xs text-center border border-dashed border-sky-100 rounded-xl bg-slate-50/50">
+                <ShoppingBag className="h-8 w-8 text-slate-300 mb-2 stroke-1" />
+                <p className="font-bold text-slate-500">Cart is empty</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Select clinical check-ups or pet items to begin billing.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Pricing Summary Ledger */}
+          <div className="space-y-2 pt-3 border-t border-sky-50 text-xs">
+            <div className="flex justify-between items-center text-slate-500 font-medium">
+              <span>Treatment Subtotal:</span>
+              <span className="font-mono text-slate-700 font-bold">{currencySign}{subtotal.toFixed(2)}</span>
+            </div>
+            
+            <div className="flex justify-between items-center text-slate-500 font-medium">
+              <span className="flex items-center gap-1 text-[11px]">
+                <Tag className="h-3.5 w-3.5 text-indigo-500" /> Adjust Discount ({currencySign}):
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="5"
+                value={discountVal || ''}
+                onChange={(e) => setDiscountVal(Math.max(0, parseFloat(e.target.value) || 0))}
+                className="w-20 px-1 py-0.5 bg-slate-50 border border-slate-200 rounded text-right font-mono text-[11px] font-bold text-slate-700"
+              />
+            </div>
+
+            <div className="flex justify-between items-center text-slate-500 font-medium">
+              <span>{(taxRate * 100).toFixed(1)}% State Vet Tax:</span>
+              <span className="font-mono text-slate-700 font-bold">{currencySign}{tax.toFixed(2)}</span>
+            </div>
+
+            <div className="flex justify-between items-center pt-2 text-base font-bold text-slate-800 border-t border-dashed border-slate-200">
+              <span>Estimated Total Due:</span>
+              <span className="font-mono text-lg text-emerald-600 font-black">{currencySign}{total.toFixed(2)}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={() => cart.length > 0 && setShowCheckoutModal(true)}
+            disabled={cart.length === 0}
+            className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs  ${
+              cart.length > 0 
+                ? 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95' 
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            <CreditCard className="h-4.5 w-4.5" />
+            Proceed to Payment & Discharge
+          </button>
+        </div>
+      </div>
+
+      {/* Checkout Modal Overlay */}
+      {showCheckoutModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 space-y-6 shadow-xl animate-fade-in text-xs">
+            
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-base font-extrabold text-slate-800 leading-none">Complete Payment Transaction</h4>
+                <p className="text-[11px] text-slate-400 mt-1">Select customer billing type and collect funds</p>
+              </div>
+              <button 
+                onClick={() => setShowCheckoutModal(false)}
+                className="p-1 hover:bg-slate-100 text-slate-400 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+              <div>
+                <span className="text-slate-400 block font-medium">Owner / Billing For</span>
+                <span className="font-bold text-slate-800 text-sm">{selectedApt ? selectedApt.ownerName : 'Anonymous / Walk-in'}</span>
+                {selectedApt && <span className="text-[10px] text-indigo-600 font-semibold block">Pet Patient: {selectedApt.petName}</span>}
+              </div>
+              <div className="text-right">
+                <span className="text-slate-400 block font-medium">Grand Total</span>
+                <span className="text-xl font-black text-emerald-600 font-mono">{currencySign}{total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {/* Payment Method Picker */}
+            <div className="space-y-2">
+              <span className="font-bold text-slate-700 block">Collection System</span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('card')}
+                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
+                    paymentMethod === 'card' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <CreditCard className="h-4 w-4" /> Credit Card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('cash')}
+                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
+                    paymentMethod === 'cash' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <Coins className="h-4 w-4" /> Cash Ledger
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('e_wallet')}
+                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
+                    paymentMethod === 'e_wallet' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <QrCode className="h-4 w-4" /> Quick QR Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('bank_transfer')}
+                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
+                    paymentMethod === 'bank_transfer' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  <FileText className="h-4 w-4" /> Bank Transfer
+                </button>
+              </div>
+            </div>
+
+            {/* Cash details math */}
+            {paymentMethod === 'cash' && (
+              <div className="space-y-2 p-3 bg-teal-50/50 rounded-xl border border-teal-100">
+                <span className="font-semibold text-teal-800 block">Cash Received calculator</span>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder={`Enter cash amount (${currencySign})`}
+                    value={amountReceived}
+                    onChange={(e) => setAmountReceived(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs font-bold"
+                  />
+                </div>
+                {amountReceived && parseFloat(amountReceived) >= total && (
+                  <div className="text-xs font-bold text-teal-800 flex justify-between pt-1 font-mono">
+                    <span>Change to Return:</span>
+                    <span>{currencySign}{(parseFloat(amountReceived) - total).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowCheckoutModal(false)}
+                className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  handleCheckoutSubmit();
+                  setShowCheckoutModal(false);
+                }}
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer shadow-xs"
+              >
+                {!isOnline ? 'Save Offline (Queue)' : 'Confirm & Print Receipt'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback banner of successful billing */}
+      {checkoutSuccess && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-center space-y-4 animate-scale-up text-xs">
+            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl">
+              ✓
+            </div>
+            <div>
+              <h4 className="text-sm font-black text-slate-800">Transaction Complete!</h4>
+              <p className="text-xs text-slate-500 mt-0.5">Invoice {checkoutSuccess.id} created successfully</p>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-2xl text-left font-mono space-y-1 divide-y divide-slate-100">
+              <div className="pb-1.5 flex justify-between">
+                <span className="text-slate-400">Owner:</span>
+                <span className="font-bold text-slate-800">{checkoutSuccess.ownerName}</span>
+              </div>
+              <div className="py-1.5 flex justify-between">
+                <span className="text-slate-400">Total Charged:</span>
+                <span className="font-bold text-emerald-600 font-black">{currencySign}{checkoutSuccess.total.toFixed(2)}</span>
+              </div>
+              <div className="pt-1.5 flex justify-between text-[10px]">
+                <span className="text-slate-400">Sync Status:</span>
+                <span className={`font-bold ${isOnline ? 'text-indigo-600' : 'text-amber-600 animate-pulse'}`}>
+                  {isOnline ? 'Synced to Cloud EHR' : 'Cached Local (Pending)'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5">
+              <button
+                onClick={() => handlePrintReceipt(checkoutSuccess)}
+                className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Printer className="h-4 w-4" /> Print Receipt
+              </button>
+              <button
+                onClick={() => setCheckoutSuccess(null)}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl cursor-pointer"
+              >
+                Close Panel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
