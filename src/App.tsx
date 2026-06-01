@@ -189,33 +189,30 @@ export default function App() {
     if (!saved) return defaultConfig;
     try {
       const parsed = JSON.parse(saved);
-      if (!parsed.rolePermissions) {
-        parsed.rolePermissions = defaultConfig.rolePermissions;
+      const merged = { ...defaultConfig, ...parsed };
+      
+      if (!merged.rolePermissions) {
+        merged.rolePermissions = defaultConfig.rolePermissions;
       } else {
-        // Guarantee Cashier permissions contain only 'pos' and optionally 'portal' (which is general anyway)
-        parsed.rolePermissions.cashier = (parsed.rolePermissions.cashier || ['pos']).filter(
+        merged.rolePermissions.cashier = (merged.rolePermissions.cashier || ['pos']).filter(
           (view: string) => view === 'pos' || view === 'portal'
         );
-        if (parsed.rolePermissions.cashier.length === 0) {
-          parsed.rolePermissions.cashier = ['pos'];
+        if (merged.rolePermissions.cashier.length === 0) {
+          merged.rolePermissions.cashier = ['pos'];
         }
-        // Guarantee Veterinarian permissions are safe and initialized
-        if (!parsed.rolePermissions.veterinarian) {
-          parsed.rolePermissions.veterinarian = defaultConfig.rolePermissions.veterinarian;
+        if (!merged.rolePermissions.veterinarian) {
+          merged.rolePermissions.veterinarian = defaultConfig.rolePermissions.veterinarian;
         }
-        // Guarantee Admin permissions are safe and initialized
-        if (!parsed.rolePermissions.admin) {
-          parsed.rolePermissions.admin = defaultConfig.rolePermissions.admin;
+        if (!merged.rolePermissions.admin) {
+          merged.rolePermissions.admin = defaultConfig.rolePermissions.admin;
         }
-        // Guarantee Owner permissions are safe and initialized
-        if (!parsed.rolePermissions.owner) {
-          parsed.rolePermissions.owner = defaultConfig.rolePermissions.owner;
+        if (!merged.rolePermissions.owner) {
+          merged.rolePermissions.owner = defaultConfig.rolePermissions.owner;
         }
       }
-      // Migrate master and dummy PINs in storage config to hashes if they are plaintext
-      if (parsed.masterPin) parsed.masterPin = hashPin(parsed.masterPin);
-      if (parsed.dummyAdminPin) parsed.dummyAdminPin = hashPin(parsed.dummyAdminPin);
-      return parsed;
+      if (merged.masterPin && merged.masterPin === defaultConfig.masterPin) merged.masterPin = hashPin(merged.masterPin);
+      if (merged.dummyAdminPin && merged.dummyAdminPin === defaultConfig.dummyAdminPin) merged.dummyAdminPin = hashPin(merged.dummyAdminPin);
+      return merged;
     } catch (e) {
       return defaultConfig;
     }
