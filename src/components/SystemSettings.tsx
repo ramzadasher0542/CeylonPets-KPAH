@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { User, UserRole, InventoryItem, Invoice } from '../types';
 import { showToast } from './Toast';
+import { uploadImageToStorage } from '../lib/supabase';
 
 export interface SystemConfig {
   appName: string;
@@ -171,20 +172,21 @@ export default function SystemSettings({
     });
   };
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, key: 'loginLogoUrl' | 'posLogoUrl') => {
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, key: 'loginLogoUrl' | 'posLogoUrl') => {
     const file = e.target.files?.[0];
     if (file) {
       if (key === 'posLogoUrl' && file.type !== 'image/bmp') {
         alert('POS Receipt Logo must be in BMP format!');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setConfigValue(key, event.target.result as string);
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        showToast('Uploading image to secure storage...', 'info');
+        const url = await uploadImageToStorage(file, key);
+        setConfigValue(key, url);
+        showToast('Image uploaded successfully!', 'success');
+      } catch (err) {
+        showToast('Upload failed. Please ensure the "assets" storage bucket exists in Supabase.', 'error');
+      }
     }
   };
 
@@ -1594,6 +1596,45 @@ export default function SystemSettings({
                           Sync Cloud Snapshot
                         </button>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Danger Zone Section */}
+                  <div className="p-5 border bg-rose-50/30 rounded-2xl space-y-3.5 border-rose-200 shadow-xs">
+                    <div className="flex items-center gap-1.5 text-rose-800 font-black">
+                      <AlertTriangle className="h-5 w-5 text-rose-500 font-bold" />
+                      <span>Danger Zone</span>
+                    </div>
+                    <p className="text-rose-600/80 leading-relaxed font-semibold">
+                      Critical system actions. Use with extreme caution as these operations cannot be fully undone without a cloud backup.
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("Are you sure you want to perform a HARD REBOOT? This will clear all corrupted local state and refresh the UI framework.")) {
+                            onHardReboot?.();
+                          }
+                        }}
+                        className="py-2.5 px-3 border border-rose-300 hover:bg-rose-100 text-rose-800 leading-none transition-colors rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <RefreshCw className="h-4 w-4 shrink-0" />
+                        <span>Hard Reboot</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("CRITICAL WARNING: Are you absolutely sure you want to purge all local databases? You will lose all offline unsynced data!")) {
+                            onPurgeDatabases?.();
+                          }
+                        }}
+                        className="py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Trash2 className="h-4 w-4 shrink-0" />
+                        <span>Purge Data</span>
+                      </button>
                     </div>
                   </div>
 

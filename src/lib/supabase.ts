@@ -41,3 +41,30 @@ export const DB_TABLES = {
   NOTIFICATIONS: 'notifications',
   ALERTS:        'system_alerts',
 } as const;
+
+/**
+ * Uploads a file to the Supabase 'assets' storage bucket.
+ * Returns the public URL of the uploaded file.
+ */
+export async function uploadImageToStorage(file: File, path: string): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${path}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+  
+  const { data, error } = await supabase.storage
+    .from('assets')
+    .upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: true
+    });
+
+  if (error) {
+    console.error('Supabase storage upload error:', error);
+    throw error;
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('assets')
+    .getPublicUrl(data.path);
+
+  return publicUrl;
+}

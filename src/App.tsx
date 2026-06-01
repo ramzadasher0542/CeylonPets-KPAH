@@ -299,15 +299,7 @@ export default function App() {
   });
 
   // Access / Logins
-  const [currentUser, setCurrentUser] = useState<any>(() => {
-    try {
-      const saved = localStorage.getItem('ceylon_current_user_v2');
-      return saved ? JSON.parse(saved) : null;
-    } catch (e) {
-      console.error('Error parsing ceylon_current_user_v2:', e);
-      return null;
-    }
-  });
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Current Screen selection
   const [activeView, setActiveView] = useState<'dashboard' | 'pos' | 'appointments' | 'records' | 'inventory' | 'reminders' | 'portal' | 'settings'>('dashboard');
@@ -364,13 +356,7 @@ export default function App() {
     localStorage.setItem('ceylon_sync_queue_v2', JSON.stringify(syncQueue));
   }, [syncQueue]);
 
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem('ceylon_current_user_v2', JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem('ceylon_current_user_v2');
-    }
-  }, [currentUser]);
+  // User state sync removed for security (forces login on refresh)
 
   // ─── Supabase: hydrate all state from cloud on app mount ───────────────────
   // Loads instantly from localStorage cache (above), then silently refreshes
