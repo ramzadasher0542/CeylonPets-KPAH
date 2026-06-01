@@ -14,6 +14,7 @@ import {
   Bookmark
 } from 'lucide-react';
 import { InventoryItem, ItemCategory } from '../types';
+import { showToast } from './Toast';
 
 interface InventoryProps {
   inventory: InventoryItem[];
@@ -110,7 +111,7 @@ export default function InventoryManager({
   const handleAddProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sku || !name || !price) {
-      alert('All required asterisked fields must be completed.');
+      showToast('All required asterisked fields must be completed.', 'success');
       return;
     }
 
@@ -149,7 +150,7 @@ export default function InventoryManager({
     if (!editingItem) return;
 
     if (!editingSku || !editingName || !editingPrice) {
-      alert('All required asterisked fields must be completed.');
+      showToast('All required asterisked fields must be completed.', 'success');
       return;
     }
 

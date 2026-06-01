@@ -26,16 +26,20 @@ import {
   HeartPulse,
   Printer
 } from 'lucide-react';
-import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod } from '../types';
+import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser } from '../types';
+import { showToast } from './Toast';
 
 interface POSProps {
   inventory: InventoryItem[];
   appointments: Appointment[];
   isOnline: boolean;
-  currentUser: string;
+  currentUser: StaffUser;
+  invoices: Invoice[];
   onUpdateStock: (itemId: string, qtyDelta: number) => void;
   onAddInvoice: (invoice: Invoice) => void;
+  onVoidInvoice: (invoiceId: string) => void;
   systemConfig?: any;
+  onVerifyMasterPin?: (pin: string) => boolean;
 }
 
 export default function POSRegister({ 
@@ -43,12 +47,15 @@ export default function POSRegister({
   appointments, 
   isOnline, 
   currentUser,
+  invoices,
   onUpdateStock,
   onAddInvoice,
-  systemConfig
+  onVoidInvoice,
+  systemConfig,
+  onVerifyMasterPin
 }: POSProps) {
   // POS States
-  const [activeTab, setActiveTab] = useState<'service' | 'medication' | 'retail'>('service');
+  const [activeTab, setActiveTab] = useState<'service' | 'medication' | 'retail' | 'ledger'>('service');
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeFeedback, setBarcodeFeedback] = useState<{ text: string; error: boolean } | null>(null);
@@ -65,11 +72,93 @@ export default function POSRegister({
   const [amountReceived, setAmountReceived] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
 
+  // Ledger and Passcode states
+  const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
+  const [ledgerStatusFilter, setLedgerStatusFilter] = useState<'all' | 'paid' | 'void'>('all');
+  const [selectedInvoiceDetails, setSelectedInvoiceDetails] = useState<Invoice | null>(null);
+
+  // Void authentication prompt
+  const [showPinChallenge, setShowPinChallenge] = useState(false);
+  const [challengeInvoiceId, setChallengeInvoiceId] = useState<string | null>(null);
+  const [enteredChallengePin, setEnteredChallengePin] = useState('');
+  const [challengePinError, setChallengePinError] = useState(false);
+
   // Tabs style config matching the pastel sky blue interior
   const tabStyles = {
     service: { bg: 'bg-sky-50 text-sky-800 border-sky-300', active: 'bg-sky-500 text-white border-sky-500 shadow-sm' },
     medication: { bg: 'bg-emerald-50 text-emerald-800 border-emerald-300', active: 'bg-emerald-600 text-white border-emerald-600 shadow-sm' },
-    retail: { bg: 'bg-amber-50 text-amber-800 border-amber-300', active: 'bg-amber-500 text-white border-amber-500 shadow-sm' }
+    retail: { bg: 'bg-amber-50 text-amber-800 border-amber-300', active: 'bg-amber-500 text-white border-amber-500 shadow-sm' },
+    ledger: { bg: 'bg-indigo-50 text-indigo-800 border-indigo-300', active: 'bg-indigo-650 text-white border-indigo-650 shadow-sm' }
+  };
+
+  // Synchronous custom salted polynomial hash matching App.tsx security
+  const hashPin = (pin: string): string => {
+    if (!pin) return '';
+    const isPlaintext = /^\d{4}$/.test(pin);
+    if (!isPlaintext) return pin;
+
+    let hash = 5381;
+    const salt = "CeylonPetsSecuritySalt";
+    const combined = pin + salt;
+    for (let i = 0; i < combined.length; i++) {
+      hash = (hash * 33) ^ combined.charCodeAt(i);
+    }
+    return (hash >>> 0).toString(16).padStart(8, '0');
+  };
+
+  const handleInitiateVoid = (invId: string) => {
+    // 1. Check if user role is owner or admin (direct authorized bypass)
+    if (currentUser.role === 'owner' || currentUser.role === 'admin') {
+      const confirmVoid = window.confirm(`Are you sure you want to void Invoice ${invId}? This will reinstate inventory stock levels and cancel the transaction.`);
+      if (confirmVoid) {
+        onVoidInvoice(invId);
+        setSelectedInvoiceDetails(prev => prev && prev.id === invId ? { ...prev, paymentStatus: 'void' } : prev);
+      }
+    } else {
+      // 2. Trigger Passcode Challenge for Cashier / Veterinarian
+      setChallengeInvoiceId(invId);
+      setEnteredChallengePin('');
+      setChallengePinError(false);
+      setShowPinChallenge(true);
+    }
+  };
+
+  const handleVerifyChallengePin = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!challengeInvoiceId) return;
+
+    const isAuthorized = onVerifyMasterPin 
+      ? onVerifyMasterPin(enteredChallengePin)
+      : hashPin(enteredChallengePin) === (systemConfig?.masterPin || hashPin('5692'));
+
+    if (isAuthorized) {
+      // Authorized!
+      onVoidInvoice(challengeInvoiceId);
+      setSelectedInvoiceDetails(prev => prev && prev.id === challengeInvoiceId ? { ...prev, paymentStatus: 'void' } : prev);
+      
+      // Close challenge
+      setShowPinChallenge(false);
+      setChallengeInvoiceId(null);
+      setEnteredChallengePin('');
+      setChallengePinError(false);
+      
+      showToast(`Elevated Authority Granted. Transaction ${challengeInvoiceId} voided successfully.`, 'success');
+    } else {
+      // Failed verification
+      setChallengePinError(true);
+      setEnteredChallengePin('');
+      setTimeout(() => setChallengePinError(false), 2000);
+    }
+  };
+
+  const handlePinKeypress = (num: string) => {
+    if (enteredChallengePin.length < 4) {
+      setEnteredChallengePin(prev => prev + num);
+    }
+  };
+
+  const handlePinBackspace = () => {
+    setEnteredChallengePin(prev => prev.slice(0, -1));
   };
 
   // Filter items based on active tab and search query
@@ -127,13 +216,13 @@ export default function POSRegister({
   // Cart operations
   const addToCart = (product: InventoryItem) => {
     if (product.stock <= 0 && product.category !== 'service') {
-      alert(`Critical: ${product.name} is currently out of stock. Please adjust inventory parameters.`);
+      showToast(`Critical: ${product.name} is currently out of stock. Please adjust inventory parameters.`, 'error');
       return;
     }
     const existing = cart.find(i => i.item.id === product.id);
     if (existing) {
       if (existing.quantity >= product.stock && product.category !== 'service') {
-        alert(`Cannot add more. Limit of ${product.stock} reached.`);
+        showToast(`Cannot add more. Limit of ${product.stock} reached.`, 'error');
         return;
       }
       setCart(cart.map(i => i.item.id === product.id ? { ...i, quantity: i.quantity + 1 } : i));
@@ -152,7 +241,7 @@ export default function POSRegister({
       setCart(cart.filter(i => i.item.id !== productId));
     } else {
       if (newQty > itemStock && existing.item.category !== 'service') {
-        alert(`Cannot add more. Retail cap is ${itemStock} units.`);
+        showToast(`Cannot add more. Retail cap is ${itemStock} units.`, 'error');
         return;
       }
       setCart(cart.map(i => i.item.id === productId ? { ...i, quantity: newQty } : i));
@@ -229,7 +318,7 @@ export default function POSRegister({
       total: parseFloat(total.toFixed(2)),
       paymentMethod: paymentMethod,
       paymentStatus: 'paid',
-      createdBy: currentUser,
+      createdBy: currentUser?.name || 'Unknown',
       notes: selectedPetId !== 'walkin' ? `Check out from scheduled visit reason: ${selectedApt?.reason}` : 'Quick shop checkout'
     };
 
@@ -250,7 +339,7 @@ export default function POSRegister({
   const handlePrintReceipt = (inv: Invoice) => {
     const printWindow = window.open('', '_blank', 'width=350,height=600');
     if (!printWindow) {
-      alert('Pop-up blocked! Please allow pop-ups to print receipts.');
+      showToast('Pop-up blocked! Please allow pop-ups to print receipts.', 'error');
       return;
     }
 
@@ -260,6 +349,8 @@ export default function POSRegister({
     const hospitalEmail = systemConfig?.hospitalEmail || 'contact@ceylonpets.lk';
     const logoEmoji = systemConfig?.invoiceLogo || '🐾';
     const footerMessage = systemConfig?.invoiceFooterMessage || 'Please pay upon discharge. Thank you for choosing CeylonPets!';
+    const subFooterMessage = systemConfig?.invoiceSubFooterMessage || '* CEYLONPETS OFFICIAL RECEIPT *';
+    const extraFooterMessage = systemConfig?.invoiceExtraFooterMessage || '';
 
     const printHtml = `
       <html>
@@ -290,7 +381,7 @@ export default function POSRegister({
         </head>
         <body>
           <div class="center">
-            <span style="font-size: 24px;">${logoEmoji}</span>
+            ${systemConfig?.posLogoUrl ? `<img src="${systemConfig.posLogoUrl}" style="max-height: 48px; display: block; margin: 0 auto 6px auto; object-fit: contain;" />` : `<span style="font-size: 24px;">${logoEmoji}</span>`}
             <div class="header-title">${hospitalName}</div>
             <div>${hospitalAddress}</div>
             <div>PH: ${hospitalPhone}</div>
@@ -355,7 +446,8 @@ export default function POSRegister({
           
           <div class="footer">
             ${footerMessage}
-            <div style="margin-top: 8px; letter-spacing: 2px;">* POWERED BY ASH POINT SOLUTIONS *</div>
+            <div style="margin-top: 8px; letter-spacing: 2px; text-transform: uppercase;">${subFooterMessage}</div>
+            ${extraFooterMessage ? `<div style="margin-top: 4px; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; color: #555;">${extraFooterMessage}</div>` : ''}
           </div>
 
           <script>
@@ -379,43 +471,75 @@ export default function POSRegister({
       <div className="lg:col-span-7 space-y-4">
         {/* Search and Tabs Controller */}
         <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search services, prescription meds, or toy inventory by SKU / name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
-              />
-            </div>
+          {activeTab !== 'ledger' ? (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search services, prescription meds, or toy inventory by SKU / name..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                />
+              </div>
 
-            {/* Barcode scanner input */}
-            <div className="relative w-full sm:w-64">
-              <QrCode className="absolute left-3.5 top-3 h-4 w-4 text-indigo-500" />
-              <input
-                type="text"
-                placeholder="Scan Barcode (SKU)..."
-                value={barcodeInput}
-                onChange={(e) => setBarcodeInput(e.target.value)}
-                onKeyDown={handleBarcodeKeydown}
-                className="w-full pl-10 pr-10 py-2.5 bg-indigo-50/40 border border-indigo-200 text-xs font-bold rounded-xl text-slate-800 placeholder-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-              {barcodeInput && (
-                <button
-                  type="button"
-                  onClick={() => setBarcodeInput('')}
-                  className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 font-bold"
-                >
-                  ✕
-                </button>
-              )}
+              {/* Barcode scanner input */}
+              <div className="relative w-full sm:w-64">
+                <QrCode className="absolute left-3.5 top-3 h-4 w-4 text-indigo-500" />
+                <input
+                  type="text"
+                  placeholder="Scan Barcode (SKU)..."
+                  value={barcodeInput}
+                  onChange={(e) => setBarcodeInput(e.target.value)}
+                  onKeyDown={handleBarcodeKeydown}
+                  className="w-full pl-10 pr-10 py-2.5 bg-indigo-50/40 border border-indigo-200 text-xs font-bold rounded-xl text-slate-800 placeholder-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                />
+                {barcodeInput && (
+                  <button
+                    type="button"
+                    onClick={() => setBarcodeInput('')}
+                    className="absolute right-3.5 top-3 text-slate-400 hover:text-slate-600 font-bold"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search ledger by Invoice ID, Client name, or Pet patient..."
+                  value={ledgerSearchQuery}
+                  onChange={(e) => setLedgerSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                />
+              </div>
+
+              <div className="flex bg-slate-50 rounded-xl p-1 border border-slate-200 items-center">
+                {(['all', 'paid', 'void'] as const).map(status => (
+                  <button
+                    key={status}
+                    type="button"
+                    onClick={() => setLedgerStatusFilter(status)}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold capitalize cursor-pointer transition-all ${
+                      ledgerStatusFilter === status 
+                        ? 'bg-indigo-650 text-white shadow-xs' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    {status}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Barcode validation feedback message strip */}
-          {barcodeFeedback && (
+          {activeTab !== 'ledger' && barcodeFeedback && (
             <div className={`p-2.5 rounded-xl border flex items-center justify-between text-[11px] font-bold animate-fade-in ${
               barcodeFeedback.error 
                 ? 'bg-rose-50 border-rose-200 text-rose-800' 
@@ -434,10 +558,10 @@ export default function POSRegister({
             </div>
           )}
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               onClick={() => setActiveTab('service')}
-              className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'service' ? tabStyles.service.active : tabStyles.service.bg
               }`}
             >
@@ -445,7 +569,7 @@ export default function POSRegister({
             </button>
             <button
               onClick={() => setActiveTab('medication')}
-              className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'medication' ? tabStyles.medication.active : tabStyles.medication.bg
               }`}
             >
@@ -453,111 +577,229 @@ export default function POSRegister({
             </button>
             <button
               onClick={() => setActiveTab('retail')}
-              className={`py-2 px-3 border rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 activeTab === 'retail' ? tabStyles.retail.active : tabStyles.retail.bg
               }`}
             >
               <ShoppingBag className="h-4 w-4" /> Pet Retail Shop
             </button>
+            <button
+              onClick={() => setActiveTab('ledger')}
+              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === 'ledger' ? tabStyles.ledger.active : tabStyles.ledger.bg
+              }`}
+            >
+              <FileCheck2 className="h-4 w-4" /> Transaction Ledger
+            </button>
           </div>
         </div>
 
-        {/* Dynamic Catalog Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[38rem] overflow-y-auto pr-1">
-          {filteredProducts.map(product => {
-            const isLowStock = product.stock <= product.minStock && product.category !== 'service';
-            return (
-              <div
-                key={product.id}
-                onClick={() => addToCart(product)}
-                className="bg-white p-3.5 rounded-2xl border border-sky-50 hover:border-sky-300 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between group relative overflow-hidden active:scale-95"
-              >
-                <div className="space-y-1">
-                  <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                    product.category === 'service' ? 'bg-sky-100 text-sky-800' :
-                    product.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
-                    'bg-amber-100 text-amber-800'
-                  }`}>
-                    {product.sku}
-                  </span>
-                  <h5 className="text-xs font-bold text-slate-800 tracking-tight leading-snug mt-1 group-hover:text-sky-600 line-clamp-2">
-                    {product.name}
-                  </h5>
-                  {product.category !== 'service' && (
-                    <span className={`text-[10px] font-mono block ${isLowStock ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
-                      Stock: {product.stock} {product.unit}s
-                    </span>
-                  )}
-                </div>
+        {activeTab !== 'ledger' ? (
+          <>
+            {/* Dynamic Catalog Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[38rem] overflow-y-auto pr-1">
+              {filteredProducts.map(product => {
+                const isLowStock = product.stock <= product.minStock && product.category !== 'service';
+                return (
+                  <div
+                    key={product.id}
+                    onClick={() => addToCart(product)}
+                    className="bg-white p-3.5 rounded-2xl border border-sky-50 hover:border-sky-300 hover:shadow-md cursor-pointer transition-all flex flex-col justify-between group relative overflow-hidden active:scale-95"
+                  >
+                    <div className="space-y-1">
+                      <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        product.category === 'service' ? 'bg-sky-100 text-sky-800' :
+                        product.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
+                        'bg-amber-100 text-amber-800'
+                      }`}>
+                        {product.sku}
+                      </span>
+                      <h5 className="text-xs font-bold text-slate-800 tracking-tight leading-snug mt-1 group-hover:text-sky-600 line-clamp-2">
+                        {product.name}
+                      </h5>
+                      {product.category !== 'service' && (
+                        <span className={`text-[10px] font-mono block ${isLowStock ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
+                          Stock: {product.stock} {product.unit}s
+                        </span>
+                      )}
+                    </div>
 
-                <div className="mt-3 flex justify-between items-center pt-2 border-t border-slate-50">
-                  <span className="text-sm font-black text-slate-800">{currencySign}{product.price.toFixed(2)}</span>
-                  <span className="p-1 bg-slate-50 group-hover:bg-sky-50 text-slate-400 group-hover:text-sky-600 rounded-lg transition-colors">
-                    <Plus className="h-4 w-4" />
-                  </span>
-                </div>
+                    <div className="mt-3 flex justify-between items-center pt-2 border-t border-slate-50">
+                      <span className="text-sm font-black text-slate-800">{currencySign}{product.price.toFixed(2)}</span>
+                      <span className="p-1 bg-slate-50 group-hover:bg-sky-50 text-slate-400 group-hover:text-sky-600 rounded-lg transition-colors">
+                        <Plus className="h-4 w-4" />
+                      </span>
+                    </div>
 
-                {isLowStock && (
-                  <div className="absolute top-0 right-0 p-1 bg-rose-500 rounded-bl-xl text-white">
-                    <AlertTriangle className="h-3 w-3 animate-bounce" />
+                    {isLowStock && (
+                      <div className="absolute top-0 right-0 p-1 bg-rose-500 rounded-bl-xl text-white">
+                        <AlertTriangle className="h-3 w-3 animate-bounce" />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-          {filteredProducts.length === 0 && (
-            <div className="col-span-full bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center text-slate-400 text-xs">
-              No clinical or retail items matching search tags.
+                );
+              })}
+              {filteredProducts.length === 0 && (
+                <div className="col-span-full bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                  No clinical or retail items matching search tags.
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Custom Quick Item Form */}
-        <form onSubmit={addCustomCharge} className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
-          <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
-            <Sparkles className="h-4 w-4 text-amber-500" />
-            Quick Service / Custom Retail Addition
+            {/* Custom Quick Item Form */}
+            <form onSubmit={addCustomCharge} className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
+                <Sparkles className="h-4 w-4 text-amber-500" />
+                Quick Service / Custom Retail Addition
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                <div className="sm:col-span-5">
+                  <input
+                    type="text"
+                    placeholder="Product/Service description"
+                    value={customItemName}
+                    onChange={(e) => setCustomItemName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder={`Price (${currencySign})`}
+                    value={customItemPrice}
+                    onChange={(e) => setCustomItemPrice(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <select
+                    value={customItemCategory}
+                    onChange={(e) => setCustomItemCategory(e.target.value as 'service' | 'retail')}
+                    className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                  >
+                    <option value="service">Clinical</option>
+                    <option value="retail">Pet Shop</option>
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="w-full h-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer"
+                  >
+                    Charge item
+                  </button>
+                </div>
+              </div>
+            </form>
+          </>
+        ) : (
+          /* TRANSACTION LEDGER PANEL */
+          <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 block">Past Transactions History Ledger</span>
+              <span className="text-[10px] font-mono text-slate-400">Total: {invoices.length} checkouts</span>
+            </div>
+
+            <div className="max-h-[35rem] overflow-y-auto space-y-2 pr-1">
+              {invoices
+                .filter(inv => {
+                  const matchesSearch = inv.id.toLowerCase().includes(ledgerSearchQuery.toLowerCase()) ||
+                                      inv.ownerName.toLowerCase().includes(ledgerSearchQuery.toLowerCase()) ||
+                                      inv.petName.toLowerCase().includes(ledgerSearchQuery.toLowerCase()) ||
+                                      (inv.createdBy && inv.createdBy.toLowerCase().includes(ledgerSearchQuery.toLowerCase()));
+                  const matchesStatus = ledgerStatusFilter === 'all' || inv.paymentStatus === ledgerStatusFilter;
+                  return matchesSearch && matchesStatus;
+                })
+                .map(inv => {
+                  const isVoid = inv.paymentStatus === 'void';
+                  return (
+                    <div 
+                      key={inv.id} 
+                      className={`p-3.5 border rounded-2xl flex items-center justify-between gap-4 transition-all hover:shadow-xs ${
+                        isVoid 
+                          ? 'bg-slate-50/50 border-slate-200 opacity-75' 
+                          : 'bg-white border-sky-50 hover:border-sky-300'
+                      }`}
+                    >
+                      {/* Left: ID and Date */}
+                      <div className="space-y-1 max-w-[40%] text-left">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-slate-800 text-xs">{inv.id}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                            isVoid 
+                              ? 'bg-slate-205 text-slate-500 border border-slate-250' 
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {inv.paymentStatus.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-semibold">{inv.date}</div>
+                        <div className="text-[9px] text-slate-400 font-semibold truncate">Cashier: {inv.createdBy || 'Staff'}</div>
+                      </div>
+
+                      {/* Middle: Patient & Owner */}
+                      <div className="space-y-0.5 flex-1 min-w-0 text-left">
+                        <span className="text-[9px] font-bold text-indigo-600 block truncate">Pet: {inv.petName}</span>
+                        <span className="text-[10px] font-semibold text-slate-600 block truncate">Owner: {inv.ownerName}</span>
+                        {inv.paymentMethod && (
+                          <span className="text-[8px] font-bold text-slate-400 font-mono block uppercase">
+                            Method: {inv.paymentMethod.replace('_', ' ')}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right: Price & Quick Actions */}
+                      <div className="flex items-center gap-3">
+                        <div className="text-right font-mono min-w-[70px]">
+                          <span className={`text-sm font-black ${isVoid ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
+                            {currencySign}{inv.total.toFixed(2)}
+                          </span>
+                          <span className="block text-[8px] text-slate-400 mt-0.5">{inv.items.length} items</span>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-1 pl-2 border-l border-slate-100">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedInvoiceDetails(inv)}
+                            className="p-1.5 bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 rounded-lg cursor-pointer transition-colors"
+                            title="View Transaction Details"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handlePrintReceipt(inv)}
+                            className="p-1.5 bg-slate-50 hover:bg-emerald-50 text-slate-500 hover:text-emerald-600 rounded-lg cursor-pointer transition-colors"
+                            title="Reprint Invoice Receipt"
+                          >
+                            <Printer className="h-3.5 w-3.5" />
+                          </button>
+                          {!isVoid && (
+                            <button
+                              type="button"
+                              onClick={() => handleInitiateVoid(inv.id)}
+                              className="p-1.5 bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg cursor-pointer transition-colors"
+                              title="Void/Refund Transaction"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              
+              {invoices.length === 0 && (
+                <div className="bg-slate-50 border border-slate-100 rounded-2xl p-8 text-center text-slate-400 text-xs">
+                  No transactions logged in the past checkout archives yet.
+                </div>
+              )}
+            </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
-            <div className="sm:col-span-5">
-              <input
-                type="text"
-                placeholder="Product/Service description"
-                value={customItemName}
-                onChange={(e) => setCustomItemName(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
-              />
-            </div>
-            <div className="sm:col-span-3">
-              <input
-                type="number"
-                step="0.01"
-                placeholder={`Price (${currencySign})`}
-                value={customItemPrice}
-                onChange={(e) => setCustomItemPrice(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono"
-              />
-            </div>
-            <div className="sm:col-span-2">
-              <select
-                value={customItemCategory}
-                onChange={(e) => setCustomItemCategory(e.target.value as 'service' | 'retail')}
-                className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
-              >
-                <option value="service">Clinical</option>
-                <option value="retail">Pet Shop</option>
-              </select>
-            </div>
-            <div className="sm:col-span-2">
-              <button
-                type="submit"
-                className="w-full h-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer"
-              >
-                Charge item
-              </button>
-            </div>
-          </div>
-        </form>
+        )}
       </div>
 
       {/* Right Column - Active Invoice Cart System (5 Cols) */}
@@ -849,6 +1091,236 @@ export default function POSRegister({
                 Close Panel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 1. Passcode PIN Challenge Modal Overlay */}
+      {showPinChallenge && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-center space-y-5 shadow-2xl animate-scale-up text-xs font-sans">
+            <div className="w-12 h-12 bg-rose-50 text-rose-600 border border-rose-100 rounded-full flex items-center justify-center mx-auto text-lg animate-bounce">
+              🔒
+            </div>
+            
+            <div>
+              <h4 className="text-sm font-extrabold text-slate-800 leading-none">Manager Authorization Required</h4>
+              <p className="text-[10px] text-slate-400 mt-1.5">
+                Voiding Invoice <span className="font-mono font-bold text-slate-700">{challengeInvoiceId}</span> requires administrator authority.
+              </p>
+            </div>
+
+            {/* Passcode display field */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider text-left">Passcode PIN Code</span>
+                {challengePinError && (
+                  <span className="text-[9px] text-rose-600 font-extrabold animate-pulse">Incorrect Master PIN</span>
+                )}
+              </div>
+              <div className="h-12 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-center gap-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <span 
+                    key={i}
+                    className={`w-3 h-3 rounded-full transition-all duration-150 ${
+                      enteredChallengePin.length > i 
+                        ? 'bg-slate-800 scale-110 shadow-xs' 
+                        : 'bg-slate-200'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Touchscreen Keyboard Pad */}
+            <div className="grid grid-cols-3 gap-2">
+              {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => handlePinKeypress(num)}
+                  className="py-3 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 font-mono font-black text-sm rounded-xl cursor-pointer transition-all active:scale-95"
+                >
+                  {num}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={handlePinBackspace}
+                className="py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold rounded-xl cursor-pointer active:scale-95"
+              >
+                ⌫
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePinKeypress('0')}
+                className="py-3 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-700 hover:text-slate-900 font-mono font-black text-sm rounded-xl cursor-pointer transition-all active:scale-95"
+              >
+                0
+              </button>
+              <button
+                type="button"
+                onClick={() => setEnteredChallengePin('')}
+                className="py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold rounded-xl cursor-pointer active:scale-95"
+              >
+                Clear
+              </button>
+            </div>
+
+            <div className="flex gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPinChallenge(false);
+                  setEnteredChallengePin('');
+                }}
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleVerifyChallengePin()}
+                disabled={enteredChallengePin.length !== 4}
+                className={`flex-1 py-2 text-white font-extrabold rounded-xl cursor-pointer transition-all shadow-xs ${
+                  enteredChallengePin.length === 4 
+                    ? 'bg-indigo-650 hover:bg-indigo-750 active:scale-95' 
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                Authorize Void
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Invoice Details Sheet Modal Overlay */}
+      {selectedInvoiceDetails && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 space-y-4 shadow-2xl animate-scale-up text-xs font-sans text-left">
+            
+            <div className="flex justify-between items-start">
+              <div>
+                <h4 className="text-sm font-extrabold text-slate-800 leading-none">Invoice Transaction Sheet</h4>
+                <p className="text-[10px] text-slate-400 mt-1">Audit sheet for invoice checkout records</p>
+              </div>
+              <button 
+                onClick={() => setSelectedInvoiceDetails(null)}
+                className="p-1 hover:bg-slate-100 text-slate-400 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Audit log strip */}
+            <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-medium">Invoice ID:</span>
+                <span className="font-mono font-bold text-slate-800">{selectedInvoiceDetails.id}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-medium">Checkout Date:</span>
+                <span className="font-mono text-slate-650 font-semibold">{selectedInvoiceDetails.date}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400 font-medium">Billed Cashier:</span>
+                <span className="font-semibold text-slate-650">{selectedInvoiceDetails.createdBy || 'Authorized Staff'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 font-medium">Discharge Status:</span>
+                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                  selectedInvoiceDetails.paymentStatus === 'void' 
+                    ? 'bg-slate-205 text-slate-500 border border-slate-250' 
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {selectedInvoiceDetails.paymentStatus.toUpperCase()}
+                </span>
+              </div>
+            </div>
+
+            {/* Client / Pet linkage info */}
+            <div className="p-3 bg-indigo-50/20 border border-indigo-100/50 rounded-xl text-left">
+              <span className="text-[8px] font-bold text-indigo-500 uppercase tracking-wider block font-mono">Billed Customer / Patient</span>
+              <span className="font-bold text-slate-800 block text-xs mt-0.5">Owner: {selectedInvoiceDetails.ownerName}</span>
+              <span className="text-[10px] text-indigo-600 font-semibold block mt-0.5">Pet Patient: {selectedInvoiceDetails.petName}</span>
+              <span className="text-[9px] text-slate-400 block font-mono mt-0.5">Phone: {selectedInvoiceDetails.ownerPhone}</span>
+            </div>
+
+            {/* Itemized Table */}
+            <div className="border border-slate-100 rounded-xl overflow-hidden">
+              <table className="w-full text-left text-[10px]">
+                <thead className="bg-slate-50 font-bold text-slate-500 border-b border-slate-100">
+                  <tr>
+                    <th className="p-2 w-[55%]">Item Description</th>
+                    <th className="p-2 text-center w-[15%]">Qty</th>
+                    <th className="p-2 text-right w-[30%]">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50 font-semibold text-slate-700">
+                  {selectedInvoiceDetails.items.map((item, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="p-2">
+                        <span className="text-[8px] font-mono text-slate-400 block">{item.sku}</span>
+                        <div className="truncate max-w-[200px]">{item.name}</div>
+                      </td>
+                      <td className="p-2 text-center font-mono">{item.quantity}</td>
+                      <td className="p-2 text-right font-mono">{currencySign}{item.totalPrice.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Math break downs */}
+            <div className="space-y-1.5 pt-1.5 text-[10px] font-semibold text-slate-500">
+              <div className="flex justify-between">
+                <span>Items Subtotal:</span>
+                <span className="font-mono text-slate-700">{currencySign}{selectedInvoiceDetails.subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Discount Applied:</span>
+                <span className="font-mono text-slate-700">-{currencySign}{selectedInvoiceDetails.discount.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
+                <span>Vet Sales Tax:</span>
+                <span className="font-mono text-slate-700">{currencySign}{selectedInvoiceDetails.tax.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-xs font-bold text-slate-800 pt-0.5">
+                <span>Discharged Total:</span>
+                <span className="font-mono text-emerald-600 font-black text-sm">
+                  {currencySign}{selectedInvoiceDetails.total.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick sheet controls */}
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => handlePrintReceipt(selectedInvoiceDetails)}
+                className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Printer className="h-4 w-4" /> Reprint Receipt
+              </button>
+              {selectedInvoiceDetails.paymentStatus !== 'void' && (
+                <button
+                  type="button"
+                  onClick={() => handleInitiateVoid(selectedInvoiceDetails.id)}
+                  className="py-2.5 px-3 border border-rose-200 hover:bg-rose-50 text-rose-600 font-bold rounded-xl cursor-pointer"
+                >
+                  Void Invoice
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setSelectedInvoiceDetails(null)}
+                className="py-2.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-xl cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
           </div>
         </div>
       )}

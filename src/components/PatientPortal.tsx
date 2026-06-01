@@ -19,19 +19,22 @@ import {
   Smartphone
 } from 'lucide-react';
 import { MedicalRecord, Appointment, Vaccination } from '../types';
+import { showToast } from './Toast';
 
 interface PortalProps {
   records: MedicalRecord[];
   appointments: Appointment[];
   isOnline: boolean;
   onBookAppointment: (appointment: Appointment) => void;
+  systemConfig?: any;
 }
 
 export default function PatientPortal({ 
   records, 
   appointments, 
   isOnline, 
-  onBookAppointment 
+  onBookAppointment,
+  systemConfig
 }: PortalProps) {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [matchingRecords, setMatchingRecords] = useState<MedicalRecord[]>([]);
@@ -48,9 +51,14 @@ export default function PatientPortal({
   const handleDownloadPassport = (pet: MedicalRecord) => {
     const printWindow = window.open('', '_blank', 'width=500,height=700');
     if (!printWindow) {
-      alert('Pop-up blocked! Please allow pop-ups to print/download the vaccine passport.');
+      showToast('Pop-up blocked! Please allow pop-ups to print/download the vaccine passport.', 'error');
       return;
     }
+
+    const hospitalName = systemConfig?.hospitalName || 'Ceylon Pets Animal Hospital';
+    const hospitalAddress = systemConfig?.hospitalAddress || 'No. 34 Palace Road, Petaluma CA';
+    const hospitalPhone = systemConfig?.hospitalPhone || '+1 (555) 781-4200';
+    const logoEmoji = systemConfig?.invoiceLogo || '🐾';
 
     const printHtml = `
       <html>
@@ -146,7 +154,7 @@ export default function PatientPortal({
         </head>
         <body>
           <div class="header">
-            <span style="font-size: 32px;">🐾</span>
+            <span style="font-size: 32px;">${logoEmoji}</span>
             <div class="subtitle">Official Healthcare Certificate</div>
             <div class="title">COMPANION VACCINE PASSPORT</div>
           </div>
@@ -197,8 +205,8 @@ export default function PatientPortal({
           </table>
           
           <div class="footer">
-            This document confirms immunization records on file at Kandy Animal Pet Hospital.<br/>
-            No. 34 Palace Road, Petaluma CA • PH: +1 (555) 781-4200<br/>
+            This document confirms immunization records on file at ${hospitalName}.<br/>
+            ${hospitalAddress} • PH: ${hospitalPhone}<br/>
             <strong style="display: block; margin-top: 10px; color: #64748b;">* VERIFIED SECURE CLINICAL EHR RECORD *</strong>
           </div>
           
@@ -240,7 +248,7 @@ export default function PatientPortal({
   const handleBookNextBooster = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookingPet || !bookingReason) {
-      alert('Specify vaccine booster intent.');
+      showToast('Specify vaccine booster intent.', 'success');
       return;
     }
 
@@ -276,7 +284,7 @@ export default function PatientPortal({
           <span className="px-3 py-1 bg-white/20 text-white rounded-full font-bold uppercase tracking-wider text-[9px] backdrop-blur-xs flex items-center gap-1 w-max">
             <Smartphone className="w-3.5 h-3.5" /> Pet Parent Portal
           </span>
-          <h2 className="text-2.5xl font-extrabold tracking-tight">Kandy Animal Hospital Portal</h2>
+          <h2 className="text-2.5xl font-extrabold tracking-tight">{systemConfig?.hospitalName || 'Kandy Animal Hospital'} Portal</h2>
           <p className="text-white/80 font-medium leading-relaxed">
             Welcome pet parents! Retrieve your companion's vaccine schedule, therapeutic diagnosis history, and schedule boosters instantly.
           </p>
@@ -320,9 +328,9 @@ export default function PatientPortal({
               Hospital Location info
             </div>
             <p className="text-slate-400 text-[10px] leading-relaxed">
-              Kandy Animal Pet Hospital<br />
-              104 Veterinary Drive, Petaluma CA<br />
-              Emergency Clinic Line: (555) 911-3000
+              {systemConfig?.hospitalName || 'Ceylon Pets Animal Hospital'}<br />
+              {systemConfig?.hospitalAddress || 'No. 34 Palace Road, Petaluma CA'}<br />
+              Emergency Clinic Line: {systemConfig?.hospitalPhone || '+1 (555) 781-4200'}
             </p>
           </div>
         </div>

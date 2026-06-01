@@ -20,6 +20,7 @@ import {
   Stethoscope
 } from 'lucide-react';
 import { Appointment, AppointmentStatus } from '../types';
+import { showToast } from './Toast';
 
 interface AppointmentsProps {
   appointments: Appointment[];
@@ -76,7 +77,7 @@ export default function AppointmentsManager({
   const handleCreateAppointment = (e: React.FormEvent) => {
     e.preventDefault();
     if (!petName || !ownerName || !ownerPhone || !reason) {
-      alert('Please complete all veterinary scheduling details');
+      showToast('Please complete all veterinary scheduling details', 'info');
       return;
     }
 
@@ -250,12 +251,12 @@ export default function AppointmentsManager({
       {/* Add Appointment Modal Overlay */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-lg w-full p-6 text-xs shadow-xl animate-fade-in">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-2xl w-full p-5 text-xs shadow-xl animate-fade-in">
             
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start mb-3">
               <div>
-                <h4 className="text-base font-extrabold text-slate-800 leading-none">Schedule Veterinary Check-up</h4>
-                <p className="text-[11px] text-slate-400 mt-1">Add details regarding patient and primary clinic complaint</p>
+                <h4 className="text-sm font-extrabold text-slate-800 leading-none">Schedule Veterinary Check-up</h4>
+                <p className="text-[10px] text-slate-400 mt-1">Add details regarding patient and primary clinic complaint</p>
               </div>
               <button 
                 onClick={() => setShowAddModal(false)}
@@ -265,28 +266,28 @@ export default function AppointmentsManager({
               </button>
             </div>
 
-            <form onSubmit={handleCreateAppointment} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <form onSubmit={handleCreateAppointment} className="space-y-3">
+              <div className="grid grid-cols-3 gap-2.5 text-[11px]">
                 
                 {/* Pet info */}
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Patient Name *</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Patient Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="Coco, Buster, etc."
                     value={petName}
                     onChange={(e) => setPetName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Animal Classification</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Animal Classification</label>
                   <select
                     value={petType}
                     onChange={(e) => setPetType(e.target.value as any)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   >
                     <option value="Dog">Dog</option>
                     <option value="Cat">Cat</option>
@@ -296,110 +297,110 @@ export default function AppointmentsManager({
                   </select>
                 </div>
 
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Breed / Description</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Breed / Description</label>
                   <input
                     type="text"
-                    placeholder="Goldendoodle, Siamese Mix, etc."
+                    placeholder="Goldendoodle, etc."
                     value={breed}
                     onChange={(e) => setBreed(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
 
                 {/* Owner info */}
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Owner Name *</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Owner Name *</label>
                   <input
                     type="text"
                     required
                     placeholder="Isabella Bennett"
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Owner Phone *</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Owner Phone *</label>
                   <input
                     type="text"
                     required
                     placeholder="+1 (555) 781-4200"
                     value={ownerPhone}
                     onChange={(e) => setOwnerPhone(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono"
                   />
                 </div>
 
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Owner Email Address</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Owner Email Address</label>
                   <input
                     type="email"
                     placeholder="isabella.b@example.com"
                     value={ownerEmail}
                     onChange={(e) => setOwnerEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
 
                 {/* Scheduling meta */}
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Visit Date</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Visit Date</label>
                   <input
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Hour Slot</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Hour Slot</label>
                   <input
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   />
                 </div>
 
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Assigned Doctor/Vet</label>
+                <div className="space-y-0.5 col-span-1">
+                  <label className="font-bold text-slate-600 block text-[10px]">Assigned Doctor/Vet</label>
                   <select
                     value={veterinarian}
                     onChange={(e) => setVeterinarian(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   >
-                    <option value="Dr. Kandy Cruz, DVM">Dr. Kandy Cruz, DVM (Chief Admin)</option>
-                    <option value="Dr. Dave Assistant, DVM">Dr. Dave Assistant, DVM</option>
+                    <option value="Dr. Kandy Cruz, DVM">Dr. Kandy Cruz (Chief)</option>
+                    <option value="Dr. Dave Assistant, DVM">Dr. Dave (Assistant)</option>
                   </select>
                 </div>
 
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Reason for Care / Chief Complaint *</label>
+                <div className="space-y-0.5 col-span-3">
+                  <label className="font-bold text-slate-600 block text-[10px]">Reason for Care / Chief Complaint *</label>
                   <textarea
                     required
-                    rows={2}
-                    placeholder="e.g. Coughing, rabies vaccines booster need, ear canal check-up with drops review"
+                    rows={1}
+                    placeholder="e.g. Coughing, rabies vaccines booster need, ear canal check-up"
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-snug"
+                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-normal focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[11px]"
                   />
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2 justify-end">
+              <div className="flex gap-2 pt-1 justify-end">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-slate-200 text-slate-600 font-bold rounded-lg hover:bg-slate-50 cursor-pointer"
+                  className="px-4 py-1.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 cursor-pointer transition-colors"
                 >
                   Close
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer shadow-xs"
+                  className="px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl cursor-pointer shadow-xs transition-colors"
                 >
                   Create Appointment Slot
                 </button>

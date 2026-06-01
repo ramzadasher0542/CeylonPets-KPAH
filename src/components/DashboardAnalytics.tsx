@@ -162,7 +162,7 @@ export default function DashboardAnalytics({
 
     let rtext = "";
     rtext += `${separator}\n`;
-    rtext += `         KANDY ANIMAL PET HOSPITAL - MONTHLY CLINICAL & BILLING REPORT\n`;
+    rtext += `         ${(systemConfig?.hospitalName || 'Kandy Animal Pet Hospital').toUpperCase()} - MONTHLY CLINICAL & BILLING REPORT\n`;
     rtext += `${separator}\n`;
     rtext += `Generated At : 2026-05-22 00:46:22 UTC\n`;
     rtext += `Report Month : ${reportMonth}\n`;
@@ -229,7 +229,8 @@ export default function DashboardAnalytics({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `Kandy_Pet_Hospital_Monthly_Report_${reportMonth}.txt`);
+    const cleanHospitalName = (systemConfig?.hospitalName || 'Kandy_Pet_Hospital').replace(/\s+/g, '_');
+    link.setAttribute('download', `${cleanHospitalName}_Monthly_Report_${reportMonth}.txt`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

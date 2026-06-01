@@ -57,6 +57,7 @@ import InventoryManager from './components/InventoryManager';
 import NotificationsModal from './components/NotificationsModal';
 import PatientPortal from './components/PatientPortal';
 import SystemSettings, { SystemConfig } from './components/SystemSettings';
+import ToastContainer, { showToast } from './components/Toast';
 
 // Supabase data layer
 import { supabase, DB_TABLES } from './lib/supabase';
@@ -99,25 +100,39 @@ function safeGetLocalStorage<T>(key: string, defaultValue: T): T {
 }
 
 export default function App() {
+  // First Deployment Boot Reboot Utility
+  useState(() => {
+    try {
+      const booted = localStorage.getItem('ceylon_deployment_final_force_clear_v1');
+      if (!booted) {
+        console.log('[CeylonPets] Force clear trigger detected. Purging all browser local storage databases...');
+        localStorage.clear();
+        localStorage.setItem('ceylon_deployment_final_force_clear_v1', 'true');
+      }
+    } catch (e) {
+      console.error('[CeylonPets] Error during deployment boot initialization:', e);
+    }
+  });
+
   // Main Databases (Loaded from LocalStorage or Default rich datasets for a fresh start)
   const [inventory, setInventory] = useState<InventoryItem[]>(() => {
-    return safeGetLocalStorage('ceylon_inventory_v2', INITIAL_INVENTORY);
+    return safeGetLocalStorage('ceylon_inventory_v2', []);
   });
 
   const [appointments, setAppointments] = useState<Appointment[]>(() => {
-    return safeGetLocalStorage('ceylon_appointments_v2', INITIAL_APPOINTMENTS);
+    return safeGetLocalStorage('ceylon_appointments_v2', []);
   });
 
   const [records, setRecords] = useState<MedicalRecord[]>(() => {
-    return safeGetLocalStorage('ceylon_records_v2', INITIAL_MEDICAL_RECORDS);
+    return safeGetLocalStorage('ceylon_records_v2', []);
   });
 
   const [notifications, setNotifications] = useState<ClientNotification[]>(() => {
-    return safeGetLocalStorage('ceylon_notifications_v2', INITIAL_NOTIFICATIONS);
+    return safeGetLocalStorage('ceylon_notifications_v2', []);
   });
 
   const [alerts, setAlerts] = useState<SystemAlert[]>(() => {
-    return safeGetLocalStorage('ceylon_alerts_v2', INITIAL_ALERTS);
+    return safeGetLocalStorage('ceylon_alerts_v2', []);
   });
 
   const [invoices, setInvoices] = useState<Invoice[]>(() => {
@@ -147,6 +162,8 @@ export default function App() {
       hospitalEmail: 'contact@ceylonpets.lk',
       invoiceLogo: '🐾',
       invoiceFooterMessage: 'Please pay upon discharge. Thank you for choosing CeylonPets!',
+      invoiceSubFooterMessage: '* CEYLONPETS OFFICIAL RECEIPT *',
+      invoiceExtraFooterMessage: '',
       taxRate: 0.08,
       currencySymbol: 'Rs.',
       selectedReceiptPrinter: 'Epson TM-T88VI Serial COM Port',
@@ -162,7 +179,8 @@ export default function App() {
       rolePermissions: {
         cashier: ['pos'],
         veterinarian: ['dashboard', 'appointments', 'records'],
-        admin: ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
+        admin: ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal'],
+        owner: ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
       },
       masterPin: hashPin('5692'),
       dummyAdminPin: hashPin('7777')
@@ -189,6 +207,10 @@ export default function App() {
         if (!parsed.rolePermissions.admin) {
           parsed.rolePermissions.admin = defaultConfig.rolePermissions.admin;
         }
+        // Guarantee Owner permissions are safe and initialized
+        if (!parsed.rolePermissions.owner) {
+          parsed.rolePermissions.owner = defaultConfig.rolePermissions.owner;
+        }
       }
       // Migrate master and dummy PINs in storage config to hashes if they are plaintext
       if (parsed.masterPin) parsed.masterPin = hashPin(parsed.masterPin);
@@ -199,74 +221,80 @@ export default function App() {
     }
   });
 
-  const [users, setUsers] = useState<any[]>(() => {
+  // Load users and pins separately from localStorage / DEFAULT_USERS
+  const [pinCache, setPinCache] = useState<Record<string, string>>(() => {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v2');
       baseUsers = saved ? JSON.parse(saved) : [
         {
-          id: 'usr-1',
-          name: 'Dr. Kandy Cruz, DVM',
-          username: 'drkandy',
-          role: 'admin',
-          avatarColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          pin: hashPin('1111')
-        },
-        {
-          id: 'usr-2',
-          name: 'Dr. Dave Assistant, DVM',
-          username: 'drdave',
-          role: 'veterinarian',
-          avatarColor: 'bg-blue-100 text-blue-800 border-blue-300',
-          pin: hashPin('2222')
-        },
-        {
-          id: 'usr-3',
-          name: 'Samantha Pierce (Reception)',
-          username: 'samantha',
-          role: 'cashier',
-          avatarColor: 'bg-amber-100 text-amber-800 border-amber-300',
-          pin: hashPin('3333')
+          id: 'usr-owner',
+          name: 'System Administrator',
+          username: 'admin',
+          role: 'owner',
+          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
+          pin: hashPin('5692')
         }
       ];
     } catch (e) {
       console.error('Error parsing ceylon_users_v2:', e);
       baseUsers = [
         {
-          id: 'usr-1',
-          name: 'Dr. Kandy Cruz, DVM',
-          username: 'drkandy',
-          role: 'admin',
-          avatarColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          pin: hashPin('1111')
-        },
+          id: 'usr-owner',
+          name: 'System Administrator',
+          username: 'admin',
+          role: 'owner',
+          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
+          pin: hashPin('5692')
+        }
+      ];
+    }
+
+    const cache: Record<string, string> = {};
+    baseUsers.forEach((user: any) => {
+      let p = user.pin;
+      if (!p) {
+        if (user.username === 'admin') p = hashPin('5692');
+        else p = hashPin('0000');
+      } else {
+        p = hashPin(p);
+      }
+      cache[user.username] = p;
+    });
+    return cache;
+  });
+
+  const [users, setUsers] = useState<any[]>(() => {
+    let baseUsers = [];
+    try {
+      const saved = localStorage.getItem('ceylon_users_v2');
+      baseUsers = saved ? JSON.parse(saved) : [
         {
-          id: 'usr-2',
-          name: 'Dr. Dave Assistant, DVM',
-          username: 'drdave',
-          role: 'veterinarian',
-          avatarColor: 'bg-blue-100 text-blue-800 border-blue-300',
-          pin: hashPin('2222')
-        },
+          id: 'usr-owner',
+          name: 'System Administrator',
+          username: 'admin',
+          role: 'owner',
+          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
+          pin: hashPin('5692')
+        }
+      ];
+    } catch (e) {
+      console.error('Error parsing ceylon_users_v2:', e);
+      baseUsers = [
         {
-          id: 'usr-3',
-          name: 'Samantha Pierce (Reception)',
-          username: 'samantha',
-          role: 'cashier',
-          avatarColor: 'bg-amber-100 text-amber-800 border-amber-300',
-          pin: hashPin('3333')
+          id: 'usr-owner',
+          name: 'System Administrator',
+          username: 'admin',
+          role: 'owner',
+          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
+          pin: hashPin('5692')
         }
       ];
     }
 
     return baseUsers.map((user: any) => {
-      if (!user.pin) {
-        if (user.username === 'drkandy') return { ...user, pin: hashPin('1111') };
-        if (user.username === 'drdave') return { ...user, pin: hashPin('2222') };
-        if (user.username === 'samantha') return { ...user, pin: hashPin('3333') };
-        return { ...user, pin: hashPin('0000') };
-      }
-      return { ...user, pin: hashPin(user.pin) };
+      const { pin, ...safeU } = user;
+      return safeU;
     });
   });
 
@@ -294,9 +322,13 @@ export default function App() {
   }, [systemConfig]);
 
   useEffect(() => {
-    localStorage.setItem('ceylon_users_v2', JSON.stringify(users));
-    users.forEach(u => upsertStaffUser(u).catch(() => {}));
-  }, [users]);
+    const fullUsers = users.map(u => ({
+      ...u,
+      pin: pinCache[u.username] || u.pin
+    }));
+    localStorage.setItem('ceylon_users_v2', JSON.stringify(fullUsers));
+    fullUsers.forEach(u => upsertStaffUser(u).catch(() => {}));
+  }, [users, pinCache]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_inventory_v2', JSON.stringify(inventory));
@@ -345,17 +377,23 @@ export default function App() {
   // from Supabase in the background. Works offline (falls back to cache).
   useEffect(() => {
     fetchStaffUsers().then(cloudUsers => {
-      if (cloudUsers.length > 0) setUsers(cloudUsers);
+      const cache: Record<string, string> = {};
+      const safeUsers = cloudUsers.map(({ pin, ...u }) => {
+        if (pin) cache[u.username] = pin;
+        return u;
+      });
+      setPinCache(prev => ({ ...prev, ...cache }));
+      setUsers(safeUsers);
     });
     fetchSystemConfig().then(cloudConfig => {
       if (cloudConfig) setSystemConfig(cloudConfig);
     });
-    fetchInventory().then(data => { if (data.length > 0) setInventory(data); });
-    fetchAppointments().then(data => { if (data.length > 0) setAppointments(data); });
-    fetchMedicalRecords().then(data => { if (data.length > 0) setRecords(data); });
-    fetchInvoices().then(data => { if (data.length > 0) setInvoices(data); });
-    fetchNotifications().then(data => { if (data.length > 0) setNotifications(data); });
-    fetchAlerts().then(data => { if (data.length > 0) setAlerts(data); });
+    fetchInventory().then(data => { setInventory(data); });
+    fetchAppointments().then(data => { setAppointments(data); });
+    fetchMedicalRecords().then(data => { setRecords(data); });
+    fetchInvoices().then(data => { setInvoices(data); });
+    fetchNotifications().then(data => { setNotifications(data); });
+    fetchAlerts().then(data => { setAlerts(data); });
   }, []); // runs once on mount
 
   // ─── Auto-sync: listen for real browser connectivity changes ───────────────
@@ -401,32 +439,36 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.INVENTORY },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time inventory change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const row = payload.new;
-            const mappedItem: InventoryItem = {
-              id:       row.id,
-              sku:      row.sku,
-              name:     row.name,
-              category: row.category as any,
-              price:    Number(row.price),
-              cost:     Number(row.cost),
-              stock:    Number(row.stock),
-              minStock: Number(row.min_stock),
-              unit:     row.unit,
-              location: row.location ?? undefined,
-            };
-            setInventory(prev => {
-              const exists = prev.some(item => item.id === mappedItem.id);
-              if (exists) {
-                return prev.map(item => item.id === mappedItem.id ? mappedItem : item);
-              } else {
-                return [mappedItem, ...prev];
-              }
-            });
-          } else if (payload.eventType === 'DELETE') {
-            const oldId = payload.old.id;
-            setInventory(prev => prev.filter(item => item.id !== oldId));
+          try {
+            console.log('[CeylonPets] Real-time inventory change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const row = payload.new;
+              const mappedItem: InventoryItem = {
+                id:       row.id,
+                sku:      row.sku,
+                name:     row.name,
+                category: row.category as any,
+                price:    Number(row.price),
+                cost:     Number(row.cost),
+                stock:    Number(row.stock),
+                minStock: Number(row.min_stock),
+                unit:     row.unit,
+                location: row.location ?? undefined,
+              };
+              setInventory(prev => {
+                const exists = prev.some(item => item.id === mappedItem.id);
+                if (exists) {
+                  return prev.map(item => item.id === mappedItem.id ? mappedItem : item);
+                } else {
+                  return [mappedItem, ...prev];
+                }
+              });
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              setInventory(prev => prev.filter(item => item.id !== oldId));
+            }
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime inventory change:', err);
           }
         }
       )
@@ -439,34 +481,38 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.APPOINTMENTS },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time appointments change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const row = payload.new;
-            const mappedApt: Appointment = {
-              id:          row.id,
-              petName:     row.pet_name,
-              petType:     row.pet_type as any,
-              breed:       row.breed ?? '',
-              ownerName:   row.owner_name,
-              ownerPhone:  row.owner_phone,
-              ownerEmail:  row.owner_email ?? '',
-              date:        row.date,
-              time:        row.time,
-              veterinarian:row.veterinarian ?? '',
-              reason:      row.reason ?? '',
-              status:      row.status as any,
-            };
-            setAppointments(prev => {
-              const exists = prev.some(a => a.id === mappedApt.id);
-              if (exists) {
-                return prev.map(a => a.id === mappedApt.id ? mappedApt : a);
-              } else {
-                return [mappedApt, ...prev];
-              }
-            });
-          } else if (payload.eventType === 'DELETE') {
-            const oldId = payload.old.id;
-            setAppointments(prev => prev.filter(a => a.id !== oldId));
+          try {
+            console.log('[CeylonPets] Real-time appointments change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const row = payload.new;
+              const mappedApt: Appointment = {
+                id:          row.id,
+                petName:     row.pet_name,
+                petType:     row.pet_type as any,
+                breed:       row.breed ?? '',
+                ownerName:   row.owner_name,
+                ownerPhone:  row.owner_phone,
+                ownerEmail:  row.owner_email ?? '',
+                date:        row.date,
+                time:        row.time,
+                veterinarian:row.veterinarian ?? '',
+                reason:      row.reason ?? '',
+                status:      row.status as any,
+              };
+              setAppointments(prev => {
+                const exists = prev.some(a => a.id === mappedApt.id);
+                if (exists) {
+                  return prev.map(a => a.id === mappedApt.id ? mappedApt : a);
+                } else {
+                  return [mappedApt, ...prev];
+                }
+              });
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              setAppointments(prev => prev.filter(a => a.id !== oldId));
+            }
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime appointments change:', err);
           }
         }
       )
@@ -479,22 +525,26 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.RECORDS },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time records change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const record = payload.new.data as MedicalRecord; // stored as JSONB in `data`
-            if (record) {
-              setRecords(prev => {
-                const exists = prev.some(r => r.id === record.id);
-                if (exists) {
-                  return prev.map(r => r.id === record.id ? record : r);
-                } else {
-                  return [record, ...prev];
-                }
-              });
+          try {
+            console.log('[CeylonPets] Real-time records change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const record = payload.new.data as MedicalRecord; // stored as JSONB in `data`
+              if (record) {
+                setRecords(prev => {
+                  const exists = prev.some(r => r.id === record.id);
+                  if (exists) {
+                    return prev.map(r => r.id === record.id ? record : r);
+                  } else {
+                    return [record, ...prev];
+                  }
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              setRecords(prev => prev.filter(r => r.id !== oldId));
             }
-          } else if (payload.eventType === 'DELETE') {
-            const oldId = payload.old.id;
-            setRecords(prev => prev.filter(r => r.id !== oldId));
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime records change:', err);
           }
         }
       )
@@ -507,22 +557,26 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.INVOICES },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time invoices change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const invoice = payload.new.data as Invoice; // stored as JSONB in `data`
-            if (invoice) {
-              setInvoices(prev => {
-                const exists = prev.some(i => i.id === invoice.id);
-                if (exists) {
-                  return prev.map(i => i.id === invoice.id ? invoice : i);
-                } else {
-                  return [invoice, ...prev];
-                }
-              });
+          try {
+            console.log('[CeylonPets] Real-time invoices change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const invoice = payload.new.data as Invoice; // stored as JSONB in `data`
+              if (invoice) {
+                setInvoices(prev => {
+                  const exists = prev.some(i => i.id === invoice.id);
+                  if (exists) {
+                    return prev.map(i => i.id === invoice.id ? invoice : i);
+                  } else {
+                    return [invoice, ...prev];
+                  }
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              setInvoices(prev => prev.filter(i => i.id !== oldId));
             }
-          } else if (payload.eventType === 'DELETE') {
-            const oldId = payload.old.id;
-            setInvoices(prev => prev.filter(i => i.id !== oldId));
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime invoices change:', err);
           }
         }
       )
@@ -535,22 +589,26 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.NOTIFICATIONS },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time notifications change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const notif = payload.new.data as ClientNotification; // stored as JSONB in `data`
-            if (notif) {
-              setNotifications(prev => {
-                const exists = prev.some(n => n.id === notif.id);
-                if (exists) {
-                  return prev.map(n => n.id === notif.id ? notif : n);
-                } else {
-                  return [notif, ...prev];
-                }
-              });
+          try {
+            console.log('[CeylonPets] Real-time notifications change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const notif = payload.new.data as ClientNotification; // stored as JSONB in `data`
+              if (notif) {
+                setNotifications(prev => {
+                  const exists = prev.some(n => n.id === notif.id);
+                  if (exists) {
+                    return prev.map(n => n.id === notif.id ? notif : n);
+                  } else {
+                    return [notif, ...prev];
+                  }
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              setNotifications(prev => prev.filter(n => n.id !== oldId));
             }
-          } else if (payload.eventType === 'DELETE') {
-            const oldId = payload.old.id;
-            setNotifications(prev => prev.filter(n => n.id !== oldId));
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime notifications change:', err);
           }
         }
       )
@@ -563,22 +621,26 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.ALERTS },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time alerts change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const alert = payload.new.data as SystemAlert; // stored as JSONB in `data`
-            if (alert) {
-              setAlerts(prev => {
-                const exists = prev.some(a => a.id === alert.id);
-                if (exists) {
-                  return prev.map(a => a.id === alert.id ? alert : a);
-                } else {
-                  return [alert, ...prev];
-                }
-              });
+          try {
+            console.log('[CeylonPets] Real-time alerts change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const alert = payload.new.data as SystemAlert; // stored as JSONB in `data`
+              if (alert) {
+                setAlerts(prev => {
+                  const exists = prev.some(a => a.id === alert.id);
+                  if (exists) {
+                    return prev.map(a => a.id === alert.id ? alert : a);
+                  } else {
+                    return [alert, ...prev];
+                  }
+                });
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const oldId = payload.old.id;
+              setAlerts(prev => prev.filter(a => a.id !== oldId));
             }
-          } else if (payload.eventType === 'DELETE') {
-            const oldId = payload.old.id;
-            setAlerts(prev => prev.filter(a => a.id !== oldId));
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime alerts change:', err);
           }
         }
       )
@@ -591,10 +653,14 @@ export default function App() {
         'postgres_changes',
         { event: '*', schema: 'public', table: DB_TABLES.SYSTEM_CONFIG },
         (payload: any) => {
-          console.log('[CeylonPets] Real-time system config change:', payload);
-          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-            const config = payload.new.config as SystemConfig;
-            if (config) setSystemConfig(config);
+          try {
+            console.log('[CeylonPets] Real-time system config change:', payload);
+            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+              const config = payload.new.config as SystemConfig;
+              if (config) setSystemConfig(config);
+            }
+          } catch (err) {
+            console.error('[CeylonPets] Error processing realtime system config change:', err);
           }
         }
       )
@@ -742,13 +808,14 @@ export default function App() {
       triggerAutoSynchronize();
     } else {
       setIsOnline(false);
-      // alert('Entered Vet Field care mode! Calculations and edits will store securely locally.');
+      // showToast('Entered Vet Field care mode! Calculations and edits will store securely locally.', 'success');
     }
   };
 
   // State manipulation triggers
   const handleAddProduct = (product: InventoryItem) => {
     setInventory(prev => [product, ...prev]);
+    showToast(`${product.name} added to inventory.`);
 
     if (!isOnline) {
       const syncItem: OfflineSyncItem = {
@@ -779,6 +846,7 @@ export default function App() {
             };
             setAlerts(prev => [lowStockAlert, ...prev]);
           }
+          showToast(`Stock updated: ${item.name} (${newStock} remaining).`);
           return { ...item, stock: newStock };
         }
         return item;
@@ -801,10 +869,12 @@ export default function App() {
     setInventory(prev => 
       prev.map(item => item.id === id ? { ...item, price: newPrice } : item)
     );
+    showToast(`Price updated for item.`);
   };
 
   const handleAddAppointment = (appointment: Appointment) => {
     setAppointments(prev => [appointment, ...prev]);
+    showToast(`Appointment scheduled for ${appointment.petName}.`);
 
     // Setup automated client reminders queue
     const emailNotif: ClientNotification = {
@@ -814,7 +884,7 @@ export default function App() {
       recipient: appointment.ownerEmail,
       type: 'appointment_reminder',
       channel: 'email',
-      message: `Friendly reminder: ${appointment.petName} has an appointment scheduled at Kandy Animal Pet Hospital on ${appointment.date} at ${appointment.time} for: ${appointment.reason}.`,
+      message: `Friendly reminder: ${appointment.petName} has an appointment scheduled at ${systemConfig.hospitalName} on ${appointment.date} at ${appointment.time} for: ${appointment.reason}.`,
       scheduledTime: appointment.date,
       status: 'queued'
     };
@@ -851,6 +921,7 @@ export default function App() {
       };
       setAlerts(prev => [checkAlert, ...prev]);
     }
+    showToast(`Appointment status updated to ${status}.`);
 
     if (!isOnline) {
       const syncItem: OfflineSyncItem = {
@@ -866,6 +937,7 @@ export default function App() {
 
   const handleAddRecord = (newRec: MedicalRecord) => {
     setRecords(prev => [newRec, ...prev]);
+    showToast(`Medical record added for ${newRec.petName}.`);
 
     if (!isOnline) {
       const syncItem: OfflineSyncItem = {
@@ -883,6 +955,7 @@ export default function App() {
     setRecords(prev =>
       prev.map(r => r.id === updated.id ? updated : r)
     );
+    showToast(`Medical record updated for ${updated.petName}.`);
 
     if (!isOnline) {
       const syncItem: OfflineSyncItem = {
@@ -899,6 +972,7 @@ export default function App() {
 
   const handleAddInvoice = (invoice: Invoice) => {
     setInvoices(prev => [invoice, ...prev]);
+    showToast(`Invoice added: $${invoice.total.toFixed(2)}.`);
 
     // Also look for corresponding appointment and mark it 'completed'
     if (invoice.appointmentId) {
@@ -915,6 +989,38 @@ export default function App() {
       };
       setSyncQueue(prev => [...prev, syncItem]);
     }
+  };
+
+  const handleVoidInvoice = (invoiceId: string) => {
+    setInvoices(prev =>
+      prev.map(inv => {
+        if (inv.id === invoiceId) {
+          if (inv.paymentStatus === 'void') return inv;
+
+          // Revert stock for retail/medication items
+          inv.items.forEach(item => {
+            if (item.category !== 'service') {
+              // Add stock back: call handleUpdateStock with positive quantity
+              handleUpdateStock(item.itemId, item.quantity);
+            }
+          });
+
+          // Create a system alert for the void operation
+          const voidAlert: SystemAlert = {
+            id: `al-void-${Date.now()}-${invoiceId}`,
+            severity: 'warning',
+            category: 'system',
+            message: `TRANSACTION VOIDED: Invoice ${invoiceId} has been successfully voided. Inventory stock levels reinstated.`,
+            timestamp: new Date().toISOString(),
+            read: false
+          };
+          setAlerts(prevAlerts => [voidAlert, ...prevAlerts]);
+
+          return { ...inv, paymentStatus: 'void' };
+        }
+        return inv;
+      })
+    );
   };
 
   const handleDismissAlert = (id: string) => {
@@ -940,16 +1046,169 @@ export default function App() {
     if (snapshot.notifications) setNotifications(snapshot.notifications);
   };
 
+  const handlePurgeDatabases = async () => {
+    setIsSyncing(true);
+    setSyncProgress(20);
+    setSyncStepDescription("Connecting to database cloud target...");
+    try {
+      const deleteEndpoints = [
+        DB_TABLES.INVENTORY,
+        DB_TABLES.APPOINTMENTS,
+        DB_TABLES.RECORDS,
+        DB_TABLES.INVOICES,
+        DB_TABLES.NOTIFICATIONS,
+        DB_TABLES.ALERTS
+      ];
+
+      setSyncProgress(50);
+      setSyncStepDescription("Purging Supabase cloud tables...");
+      
+      for (const table of deleteEndpoints) {
+        const { error } = await supabase.from(table).delete().neq('id', '_non_existent_');
+        if (error) console.error(`Error deleting table ${table}:`, error);
+      }
+
+      setSyncProgress(85);
+      setSyncStepDescription("Purging client local caches...");
+      
+      setInventory([]);
+      setAppointments([]);
+      setRecords([]);
+      setInvoices([]);
+      setNotifications([]);
+      setAlerts([]);
+      setSyncQueue([]);
+
+      setSyncProgress(100);
+      setSyncStepDescription("Database purge completed!");
+      showToast("Database purge completed successfully! All live history records are cleared. System configurations and staff users are preserved.", 'success');
+      window.location.reload();
+    } catch (e: any) {
+      console.error("Purge failed:", e);
+      showToast("Error: Cloud connection failed. Local databases have been purged, but cloud tables might still retain some records.", 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleVerifyMasterPin = (pin: string): boolean => {
+    const ownerPinHash = systemConfig.masterPin || hashPin('5692');
+    return hashPin(pin) === ownerPinHash;
+  };
+
+  const handleHardReboot = async () => {
+    setIsSyncing(true);
+    setSyncProgress(10);
+    setSyncStepDescription("Initializing Hard Reboot slate reset...");
+    try {
+      // 1. Purge Supabase Dynamic tables
+      const dynamicTables = [
+        DB_TABLES.INVENTORY,
+        DB_TABLES.APPOINTMENTS,
+        DB_TABLES.RECORDS,
+        DB_TABLES.INVOICES,
+        DB_TABLES.NOTIFICATIONS,
+        DB_TABLES.ALERTS
+      ];
+
+      setSyncProgress(30);
+      setSyncStepDescription("Purging cloud transactional databases...");
+      for (const table of dynamicTables) {
+        const { error } = await supabase.from(table).delete().neq('id', '_non_existent_');
+        if (error) console.error(`Error deleting table ${table}:`, error);
+      }
+
+      // 2. Clear dynamic users from Supabase and seed System Owner
+      setSyncProgress(60);
+      setSyncStepDescription("Wiping dynamic clinicians & seeding System Owner...");
+      const { error: clearUsersErr } = await supabase.from(DB_TABLES.USERS).delete().neq('id', '_non_existent_');
+      if (clearUsersErr) console.error('Failed to clear users table:', clearUsersErr);
+
+      const ownerPin = hashPin('5692');
+      const { error: seedUsersErr } = await supabase.from(DB_TABLES.USERS).insert([
+        {
+          id: 'usr-owner',
+          name: 'System Administrator',
+          username: 'admin',
+          role: 'owner',
+          avatar_color: 'bg-indigo-600 text-white border-indigo-700',
+          pin: ownerPin
+        }
+      ]);
+      if (seedUsersErr) console.error('Failed to seed default admin:', seedUsersErr);
+
+      // 3. Reset system config in Supabase
+      setSyncProgress(80);
+      setSyncStepDescription("Resetting reseller config parameters...");
+      const { error: clearConfigErr } = await supabase.from(DB_TABLES.SYSTEM_CONFIG).delete().neq('id', 0);
+      if (clearConfigErr) console.error('Failed to clear config table:', clearConfigErr);
+
+      const { error: seedConfigErr } = await supabase.from(DB_TABLES.SYSTEM_CONFIG).insert([
+        {
+          id: 1,
+          config: {
+            appName: "CeylonPets",
+            hospitalName: "Ceylon Pets Animal Hospital",
+            resellerName: "ASH POINT SOLUTIONS",
+            invoiceBranding: "Tablet Field Service Suite • Powered by ASH POINT SOLUTIONS",
+            invoiceLogo: "🐾",
+            masterPin: ownerPin,
+            dummyAdminPin: hashPin("7777"),
+            cloudEndpoint: "https://vault.ashpointsolutions.lk/api/backup/client1",
+            cloudBackupEnabled: true,
+            rolePermissions: {
+              cashier: ["pos"],
+              veterinarian: ["dashboard", "appointments", "records"],
+              admin: ["dashboard", "pos", "appointments", "records", "inventory", "reminders", "portal"]
+            }
+          }
+        }
+      ]);
+      if (seedConfigErr) console.error('Failed to seed default config:', seedConfigErr);
+
+      setSyncProgress(95);
+      setSyncStepDescription("Purging all client local storage caches...");
+
+      // 4. Force browser local storage clear and keep the force-clear key active
+      localStorage.clear();
+      localStorage.setItem('ceylon_deployment_final_force_clear_v1', 'true');
+
+      // 5. Clear state
+      setInventory([]);
+      setAppointments([]);
+      setRecords([]);
+      setInvoices([]);
+      setNotifications([]);
+      setAlerts([]);
+      setSyncQueue([]);
+      setUsers([]);
+      setCurrentUser(null);
+
+      setSyncProgress(100);
+      setSyncStepDescription("System slate completely reset!");
+      showToast("HARD REBOOT COMPLETE!  The entire cloud database, local storage caches, dynamic staff users, and configs have been wiped and reset to a pristine starter slate.  You will now be logged out and the application will reload.", 'success');
+      window.location.reload();
+    } catch (e: any) {
+      console.error("Hard reboot failed:", e);
+      showToast("Error: Hard reboot cloud operations failed. Cloud connection error.", 'error');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Granular secure roles validation helpers
   const isViewPermitted = (viewName: string, user: any): boolean => {
     if (!user) return false;
-    if (user.role === 'owner') return true; // master clinical owner bypass
+    if (user.role === 'admin') return true; // POS service provider master bypass
     if (user.role === 'dummy_admin') {
       return viewName === 'settings';
     }
     if (user.role === 'pet_parent') {
       return viewName === 'portal';
     }
+    
+    // Explicitly block non-admin users from accessing system settings
+    if (viewName === 'settings') return false;
     
     // Dynamically retrieve configured permissions
     const userRole = user.role; // 'admin', 'veterinarian', 'cashier'
@@ -958,7 +1217,7 @@ export default function App() {
       veterinarian: ['dashboard', 'appointments', 'records'],
       admin: ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
     };
-    const permissions = (systemConfig.rolePermissions || defaultPermissions)[userRole as 'cashier' | 'veterinarian' | 'admin'] || [];
+    const permissions = (systemConfig.rolePermissions || defaultPermissions)[userRole as 'cashier' | 'veterinarian' | 'admin' | 'owner'] || [];
     
     // Clinicians & administrative staff have general permission to load Pet Parent control
     if (viewName === 'portal') return true;
@@ -968,7 +1227,7 @@ export default function App() {
 
   const getDefaultViewForUser = (user: any): any => {
     if (!user) return 'portal';
-    if (user.role === 'owner') return 'settings';
+    if (user.role === 'admin') return 'settings';
     if (user.role === 'dummy_admin') return 'settings';
     if (user.role === 'pet_parent') return 'portal';
     
@@ -1000,7 +1259,7 @@ export default function App() {
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUsername) {
-      alert("Please select a staff member first.");
+      showToast("Please select a staff member first.", 'info');
       return;
     }
     
@@ -1013,9 +1272,9 @@ export default function App() {
       if (enteredPinHash === ownerPinHash) {
         const ownerUser = {
           id: 'usr-ash-owner',
-          name: 'CeylonPets Owner (Administrator)',
+          name: `${systemConfig.appName} System Admin`,
           username: 'ashpoint_owner',
-          role: 'owner',
+          role: 'admin',
           avatarColor: 'bg-indigo-600 text-white border-indigo-700'
         };
         
@@ -1058,7 +1317,8 @@ export default function App() {
 
     // 3. Search dynamic clinicians in database
     const foundUser = users.find(u => u.username === selectedUsername);
-    if (foundUser && hashPin(enteredPin) === foundUser.pin) {
+    const cachedPin = pinCache[selectedUsername];
+    if (foundUser && hashPin(enteredPin) === cachedPin) {
       setCurrentUser(foundUser);
       setEnteredPin('');
       setSelectedUsername('');
@@ -1081,18 +1341,37 @@ export default function App() {
             
             {/* Visual Column - matching the photo (vibrant blue & yellow pastel, cushions and neon branding) */}
             <div className="p-8 bg-sky-600 text-white flex flex-col justify-between space-y-8 relative overflow-hidden">
-              <div className="space-y-4 relative z-10 font-sans">
-                <span className="px-3 py-1 bg-white/20 text-white font-bold rounded-full text-[9px] uppercase tracking-wider flex items-center gap-1.5 w-max">
-                  <span className="text-sm select-none leading-none">{systemConfig.invoiceLogo}</span> {systemConfig.appName} Core Medical Suite
-                </span>
-                
-                <h1 className="text-3xl font-extrabold tracking-tight font-display">
-                  {systemConfig.hospitalName} <br />POS Terminal
-                </h1>
-                
-                <p className="text-white/80 leading-relaxed font-semibold">
-                  Serving Pet parents cleanly and securely. Tablet-ready clinical charts, custom billing registers, and automated client alerts. Powered by {systemConfig.resellerName}.
-                </p>
+              <div className="relative z-10 font-sans flex flex-col h-full justify-between">
+                <div className="space-y-6">
+                  <span className="px-3 py-1 bg-white/20 text-white font-bold rounded-full text-[9px] uppercase tracking-wider flex items-center gap-1.5 w-max">
+                    <span className="text-sm select-none leading-none">{systemConfig.invoiceLogo}</span> {systemConfig.appName} Core Medical Suite
+                  </span>
+                  
+                  {systemConfig.loginLogoUrl ? (
+                    <div className="inline-block w-full py-2">
+                      <img 
+                        src={systemConfig.loginLogoUrl} 
+                        alt="Clinic Logo" 
+                        className="w-auto max-w-xs md:max-w-sm max-h-48 object-contain mix-blend-normal"
+                      />
+                    </div>
+                  ) : (
+                    <div className="bg-white/10 p-6 rounded-2xl backdrop-blur-sm border-2 border-white/30 border-dashed inline-block">
+                      <p className="text-white/70 font-bold text-xs uppercase tracking-widest text-center">Your Logo Here<br/><span className="text-[9px] font-medium opacity-75 capitalize mt-1 block">(Upload via System Settings)</span></p>
+                    </div>
+                  )}
+                  
+                  <p className="text-white/80 leading-relaxed font-semibold text-sm max-w-sm">
+                    Serving Pet parents cleanly and securely. Tablet-ready clinical charts, custom billing registers, and automated client alerts.
+                  </p>
+                </div>
+
+                <div className="text-white/90 font-semibold tracking-wide text-[10px] uppercase flex flex-col gap-0.5 mt-12 pb-4">
+                  <span className="opacity-70 tracking-widest">CeylonPets Medical OS</span>
+                  <span className="font-black text-[13px] tracking-widest drop-shadow-sm text-yellow-300">
+                    POWERED BY ASH POINT SOLUTIONS
+                  </span>
+                </div>
               </div>
 
               {/* Shading decorations */}
@@ -1121,7 +1400,7 @@ export default function App() {
                       required
                     >
                       <option value="" disabled>-- Choose Staff --</option>
-                      <option value="ashpoint_owner">Owner / Administrator (System Root)</option>
+                      <option value="ashpoint_owner">Service Provider (System Root Admin)</option>
                       <option value="printer_assistant">Printer Setup Assistant (Hardware Config)</option>
                       {users.map((u) => (
                         <option key={u.id} value={u.username}>
@@ -1386,7 +1665,7 @@ export default function App() {
                     }`}
                   >
                     <Lock className={`h-4.5 w-4.5 font-bold ${activeView === 'settings' ? 'text-indigo-600' : 'text-indigo-500'}`} />
-                    <span>CeylonPets Settings</span>
+                    <span>{systemConfig.appName} Settings</span>
                   </button>
                 )}
               </nav>
@@ -1407,17 +1686,23 @@ export default function App() {
                 />
               )}
 
-              {activeView === 'pos' && isViewPermitted('pos', currentUser) && (
-                <POSRegister
-                  inventory={inventory}
-                  appointments={appointments}
-                  isOnline={isOnline}
-                  currentUser={currentUser.name}
-                  onUpdateStock={handleUpdateStock}
-                  onAddInvoice={handleAddInvoice}
-                  systemConfig={systemConfig}
-                />
-              )}
+              {activeView === 'pos' && isViewPermitted('pos', currentUser) && (() => {
+                const { masterPin, dummyAdminPin, ...safeSystemConfig } = systemConfig;
+                return (
+                  <POSRegister
+                    inventory={inventory}
+                    appointments={appointments}
+                    isOnline={isOnline}
+                    currentUser={currentUser}
+                    invoices={invoices}
+                    onUpdateStock={handleUpdateStock}
+                    onAddInvoice={handleAddInvoice}
+                    onVoidInvoice={handleVoidInvoice}
+                    systemConfig={safeSystemConfig}
+                    onVerifyMasterPin={handleVerifyMasterPin}
+                  />
+                );
+              })()}
 
               {activeView === 'appointments' && isViewPermitted('appointments', currentUser) && (
                 <AppointmentsManager
@@ -1445,6 +1730,7 @@ export default function App() {
                     };
                     setAlerts(prev => [mockAlert, ...prev]);
                   }}
+                  systemConfig={systemConfig}
                 />
               )}
 
@@ -1485,23 +1771,39 @@ export default function App() {
                     };
                     setAlerts(prev => [portalAlert, ...prev]);
                   }}
+                  systemConfig={systemConfig}
                 />
               )}
 
-              {activeView === 'settings' && isViewPermitted('settings', currentUser) && (
-                <SystemSettings
-                  config={systemConfig}
-                  onChangeConfig={setSystemConfig}
-                  users={users}
-                  onAddUser={(user) => setUsers(prev => [...prev, user])}
-                  onRemoveUser={(id) => setUsers(prev => prev.filter(u => u.id !== id))}
-                  inventory={inventory}
-                  invoices={invoices}
-                  currentUser={currentUser}
-                  onUpdateInventory={(newInv) => setInventory(newInv)}
-                  onRestoreSnapshot={handleRestoreSnapshot}
-                />
-              )}
+              {activeView === 'settings' && isViewPermitted('settings', currentUser) && (() => {
+                const { masterPin, dummyAdminPin, ...safeSystemConfig } = systemConfig;
+                return (
+                  <SystemSettings
+                    config={safeSystemConfig}
+                    onChangeConfig={setSystemConfig}
+                    users={users.map(({ pin, ...safeU }) => safeU)}
+                    onAddUser={(user) => {
+                      const { pin, ...safeUser } = user;
+                      if (pin) {
+                        setPinCache(prev => ({ ...prev, [user.username]: pin }));
+                      }
+                      setUsers(prev => [...prev, safeUser]);
+                      showToast(`User ${safeUser.name} added successfully.`);
+                    }}
+                    onRemoveUser={(id) => {
+                      setUsers(prev => prev.filter(u => u.id !== id));
+                      showToast('User removed.');
+                    }}
+                    inventory={inventory}
+                    invoices={invoices}
+                    currentUser={currentUser}
+                    onUpdateInventory={(newInv) => setInventory(newInv)}
+                    onRestoreSnapshot={handleRestoreSnapshot}
+                    onPurgeDatabases={handlePurgeDatabases}
+                    onHardReboot={handleHardReboot}
+                  />
+                );
+              })()}
             </div>
           </main>
 
@@ -1509,7 +1811,7 @@ export default function App() {
           <footer className="py-6 border-t border-sky-100 bg-white mt-12 text-center text-slate-400 text-xs">
             <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-3">
               <p className="font-medium">
-                © 2026 Kandy Animal Pet Hospital Systems Inc. All diagnostic & ledger databases conform fully to HIPAA security provisions.
+                © 2026 {systemConfig.hospitalName} Systems Inc. All diagnostic & ledger databases conform fully to HIPAA security provisions.
               </p>
               <div className="flex gap-4 font-mono font-bold text-[10px] uppercase text-slate-400">
                 <span>Secure Server Port: 3000 Node Encrypted</span>
@@ -1519,6 +1821,7 @@ export default function App() {
           </footer>
         </>
       )}
+      <ToastContainer />
     </div>
   );
 }

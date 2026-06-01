@@ -60,7 +60,10 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
       .order('name');
 
     if (error) throw error;
-    if (!data || data.length === 0) return safeCache('ceylon_inventory_v2', []);
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_inventory_v2', JSON.stringify([]));
+      return [];
+    }
 
     const items: InventoryItem[] = data.map((row: any) => ({
       id:       row.id,
@@ -123,7 +126,10 @@ export async function fetchAppointments(): Promise<Appointment[]> {
       .order('date', { ascending: false });
 
     if (error) throw error;
-    if (!data || data.length === 0) return safeCache('ceylon_appointments_v2', []);
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_appointments_v2', JSON.stringify([]));
+      return [];
+    }
 
     const apts: Appointment[] = data.map((row: any) => ({
       id:          row.id,
@@ -182,7 +188,10 @@ export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
       .order('visit_date', { ascending: false });
 
     if (error) throw error;
-    if (!data || data.length === 0) return safeCache('ceylon_records_v2', []);
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_records_v2', JSON.stringify([]));
+      return [];
+    }
 
     // Full record is stored in the `data` JSONB column
     const records: MedicalRecord[] = data.map((row: any) => row.data as MedicalRecord);
@@ -223,7 +232,10 @@ export async function fetchInvoices(): Promise<Invoice[]> {
       .order('date', { ascending: false });
 
     if (error) throw error;
-    if (!data || data.length === 0) return safeCache('ceylon_invoices_v2', []);
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_invoices_v2', JSON.stringify([]));
+      return [];
+    }
 
     const invoices: Invoice[] = data.map((row: any) => row.data as Invoice);
 
@@ -264,7 +276,10 @@ export async function fetchNotifications(): Promise<ClientNotification[]> {
       .order('id');
 
     if (error) throw error;
-    if (!data || data.length === 0) return safeCache('ceylon_notifications_v2', []);
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_notifications_v2', JSON.stringify([]));
+      return [];
+    }
 
     const notifs: ClientNotification[] = data.map((row: any) => row.data as ClientNotification);
     localStorage.setItem('ceylon_notifications_v2', JSON.stringify(notifs));
@@ -296,7 +311,10 @@ export async function fetchAlerts(): Promise<SystemAlert[]> {
       .order('id');
 
     if (error) throw error;
-    if (!data || data.length === 0) return safeCache('ceylon_alerts_v2', []);
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_alerts_v2', JSON.stringify([]));
+      return [];
+    }
 
     const alerts: SystemAlert[] = data.map((row: any) => row.data as SystemAlert);
     localStorage.setItem('ceylon_alerts_v2', JSON.stringify(alerts));

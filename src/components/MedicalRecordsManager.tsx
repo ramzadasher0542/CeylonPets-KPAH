@@ -22,19 +22,22 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { MedicalRecord, Vaccination, LabResult } from '../types';
+import { showToast } from './Toast';
 
 interface EHRProps {
   records: MedicalRecord[];
   isOnline: boolean;
   onUpdateRecord: (updated: MedicalRecord) => void;
   onAddRecord: (newRec: MedicalRecord) => void;
+  systemConfig?: any;
 }
 
 export default function MedicalRecordsManager({ 
   records, 
   isOnline, 
   onUpdateRecord, 
-  onAddRecord 
+  onAddRecord,
+  systemConfig
 }: EHRProps) {
   const [selectedRecordId, setSelectedRecordId] = useState<string>(records[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,7 +105,7 @@ export default function MedicalRecordsManager({
         recordId: activeRecord.id,
         patient: activeRecord.petName,
         diagnoses: activeRecord.diagnosis,
-        lockedBy: 'Kandy_Vet_AES_256',
+        lockedBy: `${systemConfig?.appName || 'CeylonPets'}_Vet_AES_256`,
         timestamp: new Date().toISOString()
       });
       
@@ -122,7 +125,7 @@ export default function MedicalRecordsManager({
   const handleCreateNewEHR = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPetName || !newOwnerName || !newOwnerPhone) {
-      alert('Patient descriptors cannot be empty.');
+      showToast('Patient descriptors cannot be empty.', 'error');
       return;
     }
 
@@ -136,7 +139,7 @@ export default function MedicalRecordsManager({
       weight: parseFloat(newWeight) || 5.0,
       ownerName: newOwnerName,
       ownerPhone: newOwnerPhone,
-      ownerEmail: newOwnerEmail || 'no-email@kandy.com',
+      ownerEmail: newOwnerEmail || `no-email@${(systemConfig?.appName || 'CeylonPets').toLowerCase()}.com`,
       visitDate: new Date().toISOString().split('T')[0],
       symptoms: newSymptoms,
       diagnosis: newDiagnosis,
@@ -488,7 +491,7 @@ export default function MedicalRecordsManager({
                           type="button"
                           onClick={() => {
                             if (!newVacName.trim()) {
-                              alert('Vaccine name is required');
+                              showToast('Vaccine name is required', 'success');
                               return;
                             }
                             const updatedVaccinations = [
@@ -647,7 +650,7 @@ export default function MedicalRecordsManager({
                           type="button"
                           onClick={() => {
                             if (!newLabTestName.trim()) {
-                              alert('Lab test name is required');
+                              showToast('Lab test name is required', 'success');
                               return;
                             }
                             const updatedLabs = [

@@ -33,7 +33,10 @@ export async function fetchStaffUsers(): Promise<User[]> {
 
     if (error) throw error;
 
-    if (!data || data.length === 0) return getCachedUsers();
+    if (!data || data.length === 0) {
+      localStorage.setItem('ceylon_users_v2', JSON.stringify([]));
+      return [];
+    }
 
     // Map snake_case columns → camelCase User interface
     const users: User[] = data.map((row: any) => ({

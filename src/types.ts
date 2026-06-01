@@ -111,7 +111,7 @@ export interface Invoice {
   discount: number;
   total: number;
   paymentMethod?: PaymentMethod;
-  paymentStatus: 'unpaid' | 'paid';
+  paymentStatus: 'unpaid' | 'paid' | 'void';
   createdBy: string;
   notes?: string;
 }

@@ -10,7 +10,7 @@ export const DEFAULT_USERS: User[] = [
     id: 'usr-1',
     name: 'Dr. Kandy Cruz, DVM',
     username: 'drkandy',
-    role: 'admin',
+    role: 'owner',
     avatarColor: 'bg-emerald-100 text-emerald-800 border-emerald-300'
   },
   {

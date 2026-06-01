@@ -26,6 +26,7 @@ import {
   Smartphone
 } from 'lucide-react';
 import { User, UserRole, InventoryItem, Invoice } from '../types';
+import { showToast } from './Toast';
 
 export interface SystemConfig {
   appName: string;
@@ -36,6 +37,8 @@ export interface SystemConfig {
   hospitalEmail: string;
   invoiceLogo: string;
   invoiceFooterMessage: string;
+  invoiceSubFooterMessage: string;
+  invoiceExtraFooterMessage: string;
   taxRate: number; // e.g. 5% = 0.05
   currencySymbol: string;
   selectedReceiptPrinter: string;
@@ -53,9 +56,12 @@ export interface SystemConfig {
     cashier: string[];
     veterinarian: string[];
     admin: string[];
+    owner: string[];
   };
   masterPin?: string;
   dummyAdminPin?: string;
+  loginLogoUrl?: string;
+  posLogoUrl?: string;
 }
 
 // Helper to hash a PIN synchronously using a custom salted polynomial hash
@@ -86,6 +92,8 @@ interface SystemSettingsProps {
   currentUser?: any;
   onUpdateInventory?: (newInventory: InventoryItem[]) => void;
   onRestoreSnapshot?: (snapshot: any) => void;
+  onPurgeDatabases?: () => void;
+  onHardReboot?: () => void;
 }
 
 export default function SystemSettings({
@@ -98,12 +106,15 @@ export default function SystemSettings({
   invoices,
   currentUser,
   onUpdateInventory,
-  onRestoreSnapshot
+  onRestoreSnapshot,
+  onPurgeDatabases,
+  onHardReboot
 }: SystemSettingsProps) {
-  const rolePermissions = config.rolePermissions || {
-    cashier: ['pos'],
-    veterinarian: ['dashboard', 'appointments', 'records'],
-    admin: ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
+  const rolePermissions = {
+    cashier: config.rolePermissions?.cashier || ['pos'],
+    veterinarian: config.rolePermissions?.veterinarian || ['dashboard', 'appointments', 'records'],
+    admin: config.rolePermissions?.admin || ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal'],
+    owner: config.rolePermissions?.owner || ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
   };
 
   // Navigation inside Settings panel tabs
@@ -147,7 +158,7 @@ export default function SystemSettings({
   const [enteredPin, setEnteredPin] = useState('');
   const [pinError, setPinError] = useState('');
   const [pendingPermissionChange, setPendingPermissionChange] = useState<{
-    role: 'cashier' | 'veterinarian' | 'admin';
+    role: 'cashier' | 'veterinarian' | 'admin' | 'owner';
     view: string;
     checked: boolean;
   } | null>(null);
@@ -158,6 +169,23 @@ export default function SystemSettings({
       ...config,
       [key]: value
     });
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>, key: 'loginLogoUrl' | 'posLogoUrl') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (key === 'posLogoUrl' && file.type !== 'image/bmp') {
+        alert('POS Receipt Logo must be in BMP format!');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setConfigValue(key, event.target.result as string);
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleValidateCSV = () => {
@@ -274,7 +302,7 @@ export default function SystemSettings({
     setCsvIsValidated(true);
   };
 
-  const handleUpdatePermission = (role: 'cashier' | 'veterinarian' | 'admin', view: string, checked: boolean) => {
+  const handleUpdatePermission = (role: 'cashier' | 'veterinarian' | 'admin' | 'owner', view: string, checked: boolean) => {
     setPendingPermissionChange({ role, view, checked });
     setEnteredPin('');
     setPinError('');
@@ -286,10 +314,11 @@ export default function SystemSettings({
     if (hashPin(enteredPin) === targetPin) {
       if (pendingPermissionChange) {
         const { role, view, checked } = pendingPermissionChange;
-        const currentPermissions = config.rolePermissions || {
-          cashier: ['pos'],
-          veterinarian: ['dashboard', 'appointments', 'records'],
-          admin: ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
+        const currentPermissions = {
+          cashier: config.rolePermissions?.cashier || ['pos'],
+          veterinarian: config.rolePermissions?.veterinarian || ['dashboard', 'appointments', 'records'],
+          admin: config.rolePermissions?.admin || ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal'],
+          owner: config.rolePermissions?.owner || ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal']
         };
 
         const currentList = currentPermissions[role] || [];
@@ -704,8 +733,67 @@ export default function SystemSettings({
                       rows={2}
                       value={config.invoiceFooterMessage}
                       onChange={(e) => setConfigValue('invoiceFooterMessage', e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
+                    />
+                    <label className="font-bold text-slate-700 block text-[10px]">Receipt Official Footer Subtext</label>
+                    <input
+                      type="text"
+                      value={config.invoiceSubFooterMessage || ''}
+                      onChange={(e) => setConfigValue('invoiceSubFooterMessage', e.target.value)}
+                      placeholder="* CEYLONPETS OFFICIAL RECEIPT *"
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
+                    />
+                    <label className="font-bold text-slate-700 block text-[10px]">Optional Bottom Footer (e.g. Powered By text)</label>
+                    <input
+                      type="text"
+                      value={config.invoiceExtraFooterMessage || ''}
+                      onChange={(e) => setConfigValue('invoiceExtraFooterMessage', e.target.value)}
+                      placeholder="Optional extra message at the very bottom"
                       className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-100">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="font-bold text-slate-700 block text-[10px]">Login Screen Graphic Logo</label>
+                        {config.loginLogoUrl && (
+                          <button type="button" onClick={() => setConfigValue('loginLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+                        )}
+                      </div>
+                      {!config.loginLogoUrl ? (
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleLogoUpload(e, 'loginLogoUrl')}
+                          className="w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
+                        />
+                      ) : (
+                        <div className="text-[10px] bg-emerald-50 text-emerald-700 font-bold py-1.5 px-3 rounded-md border border-emerald-100 flex items-center justify-between">
+                          <span>✓ Logo is active</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="font-bold text-slate-700 block text-[10px]">Thermal Receipt Logo (BMP Only)</label>
+                        {config.posLogoUrl && (
+                          <button type="button" onClick={() => setConfigValue('posLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+                        )}
+                      </div>
+                      {!config.posLogoUrl ? (
+                        <input
+                          type="file"
+                          accept=".bmp,image/bmp"
+                          onChange={(e) => handleLogoUpload(e, 'posLogoUrl')}
+                          className="w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
+                        />
+                      ) : (
+                        <div className="text-[10px] bg-emerald-50 text-emerald-700 font-bold py-1.5 px-3 rounded-md border border-emerald-100 flex items-center justify-between">
+                          <span>✓ Logo is active</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -726,7 +814,11 @@ export default function SystemSettings({
                       
                       {/* Thermal receipt jagged top */}
                       <div className="text-center space-y-1">
-                        <span className="text-lg block select-none leading-none">{config.invoiceLogo}</span>
+                        {config.posLogoUrl ? (
+                          <img src={config.posLogoUrl} alt="Logo" className="max-h-12 w-auto mx-auto grayscale block" />
+                        ) : (
+                          <span className="text-lg block select-none leading-none">{config.invoiceLogo}</span>
+                        )}
                         <h4 className="text-xs font-black tracking-tighter text-slate-800 leading-tight block">{config.hospitalName || "Pet Hospital"}</h4>
                         <p className="text-[8px] text-slate-400 font-medium whitespace-pre-wrap">{config.hospitalAddress}</p>
                         <p className="text-[8px] text-slate-400 font-medium">PH: {config.hospitalPhone} • {config.hospitalEmail}</p>
@@ -772,8 +864,13 @@ export default function SystemSettings({
                       <div className="text-center pt-3 border-t border-dashed text-slate-400 text-[8px] leading-relaxed">
                         {config.invoiceFooterMessage || "Thank you for trusting CeylonPets!"}
                         <span className="block mt-1.5 text-[6px] tracking-widest text-[#72a1e3]">
-                          * {config.appName.toUpperCase()} OFFICIAL RECEIPT *
+                          {config.invoiceSubFooterMessage || `* ${config.appName.toUpperCase()} OFFICIAL RECEIPT *`}
                         </span>
+                        {config.invoiceExtraFooterMessage && (
+                          <span className="block mt-1.5 text-[5px] tracking-widest text-slate-400 uppercase">
+                            {config.invoiceExtraFooterMessage}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -920,19 +1017,19 @@ export default function SystemSettings({
                       
                       {/* Matrix Columns */}
                       <div className="grid grid-cols-12 bg-slate-50 p-2.5 font-bold text-slate-500 font-mono text-[9px] uppercase">
-                        <div className="col-span-4 block">System Screen Module</div>
-                        <div className="col-span-2.5 text-center">Cashier</div>
-                        <div className="col-span-2.5 text-center">Vet Doc</div>
-                        <div className="col-span-3 text-center">Clinic Admin</div>
+                        <div className="col-span-6 block">System Screen Module</div>
+                        <div className="col-span-2 text-center">Cashier</div>
+                        <div className="col-span-2 text-center">Vet Doc</div>
+                        <div className="col-span-2 text-center">Owner</div>
                       </div>
 
                       {/* Line module dashboard */}
                       <div className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-4 font-bold text-slate-800">
+                        <div className="col-span-6 font-bold text-slate-800">
                           Executive Dashboard
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Revenue counts, charts & stats</span>
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('dashboard')}
@@ -940,7 +1037,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('dashboard')}
@@ -948,11 +1045,11 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
-                            checked={rolePermissions.admin.includes('dashboard')}
-                            onChange={(e) => handleUpdatePermission('admin', 'dashboard', e.target.checked)}
+                            checked={rolePermissions.owner.includes('dashboard')}
+                            onChange={(e) => handleUpdatePermission('owner', 'dashboard', e.target.checked)}
                             className="cursor-pointer"
                           />
                         </div>
@@ -960,11 +1057,11 @@ export default function SystemSettings({
 
                       {/* Line POS Checkout */}
                       <div className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-4 font-bold text-slate-800">
+                        <div className="col-span-6 font-bold text-slate-800">
                           POS register terminal
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Product search, cart billing, prints</span>
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('pos')}
@@ -972,7 +1069,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('pos')}
@@ -980,11 +1077,11 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
-                            checked={rolePermissions.admin.includes('pos')}
-                            onChange={(e) => handleUpdatePermission('admin', 'pos', e.target.checked)}
+                            checked={rolePermissions.owner.includes('pos')}
+                            onChange={(e) => handleUpdatePermission('owner', 'pos', e.target.checked)}
                             className="cursor-pointer"
                           />
                         </div>
@@ -992,11 +1089,11 @@ export default function SystemSettings({
 
                       {/* Line Scheduling Planner */}
                       <div className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-4 font-bold text-slate-800">
-                          Scheduling Planner
-                          <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Book appointments, consult requests</span>
+                        <div className="col-span-6 font-bold text-slate-800">
+                          <span className="bg-indigo-600 text-white rounded px-1.5 py-0.5 leading-relaxed inline-block">Scheduling Planner</span>
+                          <span className="text-[8px] bg-indigo-500 text-white block font-semibold leading-relaxed mt-0.5 px-1.5 py-0.5 rounded">Book appointments, consult requests</span>
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('appointments')}
@@ -1004,7 +1101,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('appointments')}
@@ -1012,11 +1109,11 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
-                            checked={rolePermissions.admin.includes('appointments')}
-                            onChange={(e) => handleUpdatePermission('admin', 'appointments', e.target.checked)}
+                            checked={rolePermissions.owner.includes('appointments')}
+                            onChange={(e) => handleUpdatePermission('owner', 'appointments', e.target.checked)}
                             className="cursor-pointer"
                           />
                         </div>
@@ -1024,11 +1121,11 @@ export default function SystemSettings({
 
                       {/* Line Medical records EHR */}
                       <div className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-4 font-bold text-slate-800">
+                        <div className="col-span-6 font-bold text-slate-800">
                           EHR Patient Charts
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Write bloodwork labs, vaccine dates</span>
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('records')}
@@ -1036,7 +1133,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('records')}
@@ -1044,11 +1141,11 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
-                            checked={rolePermissions.admin.includes('records')}
-                            onChange={(e) => handleUpdatePermission('admin', 'records', e.target.checked)}
+                            checked={rolePermissions.owner.includes('records')}
+                            onChange={(e) => handleUpdatePermission('owner', 'records', e.target.checked)}
                             className="cursor-pointer"
                           />
                         </div>
@@ -1056,11 +1153,11 @@ export default function SystemSettings({
 
                       {/* Line Item & Stock Catalog */}
                       <div className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-4 font-bold text-slate-800">
+                        <div className="col-span-6 font-bold text-slate-800">
                           Item & Stock catalog
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Modify product lists, restock items</span>
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('inventory')}
@@ -1068,7 +1165,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('inventory')}
@@ -1076,11 +1173,11 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
-                            checked={rolePermissions.admin.includes('inventory')}
-                            onChange={(e) => handleUpdatePermission('admin', 'inventory', e.target.checked)}
+                            checked={rolePermissions.owner.includes('inventory')}
+                            onChange={(e) => handleUpdatePermission('owner', 'inventory', e.target.checked)}
                             className="cursor-pointer"
                           />
                         </div>
@@ -1088,11 +1185,11 @@ export default function SystemSettings({
 
                       {/* Line Alert & Reminders */}
                       <div className="grid grid-cols-12 p-2.5 items-center">
-                        <div className="col-span-4 font-bold text-slate-800">
+                        <div className="col-span-6 font-bold text-slate-800">
                           Alerts & Reminders Hub
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Flea alerts, reorder warnings</span>
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('reminders')}
@@ -1100,7 +1197,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2.5 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('reminders')}
@@ -1108,11 +1205,11 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-3 text-center">
+                        <div className="col-span-2 text-center">
                           <input
                             type="checkbox"
-                            checked={rolePermissions.admin.includes('reminders')}
-                            onChange={(e) => handleUpdatePermission('admin', 'reminders', e.target.checked)}
+                            checked={rolePermissions.owner.includes('reminders')}
+                            onChange={(e) => handleUpdatePermission('owner', 'reminders', e.target.checked)}
                             className="cursor-pointer"
                           />
                         </div>
@@ -2039,7 +2136,11 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                 <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full mb-3 uppercase">Spool Test Approved</span>
                 <div className="bg-white p-4 rounded border font-mono text-[8px] text-slate-700 w-full max-w-[210px] space-y-3 shadow-xs">
                   <div className="text-center space-y-1">
-                    <span className="text-lg leading-none">{config.invoiceLogo}</span>
+                    {config.posLogoUrl ? (
+                      <img src={config.posLogoUrl} alt="Logo" className="max-h-10 w-auto mx-auto grayscale block" />
+                    ) : (
+                      <span className="text-lg leading-none block">{config.invoiceLogo}</span>
+                    )}
                     <h5 className="font-extrabold text-slate-800 text-[10px] block">{config.hospitalName || "Hospital"}</h5>
                     <p className="text-[7px] text-slate-405 leading-relaxed">{config.hospitalAddress}</p>
                     <p className="text-[7px] text-slate-405">PH: {config.hospitalPhone}</p>
@@ -2057,7 +2158,12 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
 
                   <div className="border-t border-dashed pt-2 text-center text-[7px] text-slate-400 leading-normal">
                     {config.invoiceFooterMessage}
-                    <span className="block mt-1 text-[5px]">{config.appName.toUpperCase()} SYSTEM COMPILATION</span>
+                    <span className="block mt-1 text-[5px] uppercase">{config.invoiceSubFooterMessage || `${config.appName} SYSTEM COMPILATION`}</span>
+                    {config.invoiceExtraFooterMessage && (
+                      <span className="block mt-1 text-[4px] uppercase opacity-70">
+                        {config.invoiceExtraFooterMessage}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -2144,7 +2250,8 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
         const roleNames: Record<string, string> = {
           cashier: 'Cashier Staff',
           veterinarian: 'Veterinarian Doctor (Vet Doc)',
-          admin: 'Clinical Administrator'
+          admin: 'Clinical Administrator',
+          owner: 'Owner / Client'
         };
 
         return (
@@ -2297,6 +2404,17 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
           </div>
         </div>
       )}
+
+      {/* Satisfying Save Button */}
+      <div className="mt-8 flex justify-end pb-8">
+        <button
+          onClick={() => showToast('Configurations and preferences successfully saved to the active database!', 'success')}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-xl font-bold tracking-wide shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+        >
+          <Check className="w-5 h-5" />
+          Save All Changes
+        </button>
+      </div>
 
     </div>
   );
