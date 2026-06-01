@@ -103,6 +103,7 @@ export async function upsertInventoryItem(item: InventoryItem): Promise<void> {
     });
   } catch (err) {
     console.warn('[CeylonPets] upsertInventoryItem offline:', err);
+    throw err;
   }
 }
 
@@ -111,6 +112,7 @@ export async function deleteInventoryItem(id: string): Promise<void> {
     await supabaseDelete(DB_TABLES.INVENTORY, id);
   } catch (err) {
     console.warn('[CeylonPets] deleteInventoryItem offline:', err);
+    throw err;
   }
 }
 
@@ -173,6 +175,7 @@ export async function upsertAppointment(apt: Appointment): Promise<void> {
     });
   } catch (err) {
     console.warn('[CeylonPets] upsertAppointment offline:', err);
+    throw err;
   }
 }
 
@@ -217,6 +220,7 @@ export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
     });
   } catch (err) {
     console.warn('[CeylonPets] upsertMedicalRecord offline:', err);
+    throw err;
   }
 }
 
@@ -261,6 +265,7 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
     });
   } catch (err) {
     console.warn('[CeylonPets] upsertInvoice offline:', err);
+    throw err;
   }
 }
 
@@ -296,6 +301,7 @@ export async function upsertNotification(notif: ClientNotification): Promise<voi
     await supabaseUpsert(DB_TABLES.NOTIFICATIONS, { id: notif.id, data: notif });
   } catch (err) {
     console.warn('[CeylonPets] upsertNotification offline:', err);
+    throw err;
   }
 }
 
@@ -331,5 +337,6 @@ export async function upsertAlert(alert: SystemAlert): Promise<void> {
     await supabaseUpsert(DB_TABLES.ALERTS, { id: alert.id, data: alert });
   } catch (err) {
     console.warn('[CeylonPets] upsertAlert offline:', err);
+    throw err;
   }
 }
