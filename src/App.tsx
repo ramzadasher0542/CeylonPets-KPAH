@@ -1101,62 +1101,21 @@ export default function App() {
         if (error) console.error(`Error deleting table ${table}:`, error);
       }
 
-      // 2. Clear dynamic users from Supabase and seed System Owner
-      setSyncProgress(60);
-      setSyncStepDescription("Wiping dynamic clinicians & seeding System Owner...");
-      const { error: clearUsersErr } = await supabase.from(DB_TABLES.USERS).delete().neq('id', '_non_existent_');
-      if (clearUsersErr) console.error('Failed to clear users table:', clearUsersErr);
-
-      const ownerPin = hashPin('5692');
-      const { error: seedUsersErr } = await supabase.from(DB_TABLES.USERS).insert([
-        {
-          id: 'usr-owner',
-          name: 'System Administrator',
-          username: 'admin',
-          role: 'owner',
-          avatar_color: 'bg-indigo-600 text-white border-indigo-700',
-          pin: ownerPin
-        }
-      ]);
-      if (seedUsersErr) console.error('Failed to seed default admin:', seedUsersErr);
-
-      // 3. Reset system config in Supabase
-      setSyncProgress(80);
-      setSyncStepDescription("Resetting reseller config parameters...");
-      const { error: clearConfigErr } = await supabase.from(DB_TABLES.SYSTEM_CONFIG).delete().neq('id', 0);
-      if (clearConfigErr) console.error('Failed to clear config table:', clearConfigErr);
-
-      const { error: seedConfigErr } = await supabase.from(DB_TABLES.SYSTEM_CONFIG).insert([
-        {
-          id: 1,
-          config: {
-            appName: "CeylonPets",
-            hospitalName: "Ceylon Pets Animal Hospital",
-            resellerName: "ASH POINT SOLUTIONS",
-            invoiceBranding: "Tablet Field Service Suite • Powered by ASH POINT SOLUTIONS",
-            invoiceLogo: "🐾",
-            masterPin: ownerPin,
-            dummyAdminPin: hashPin("7777"),
-            cloudEndpoint: "https://vault.ashpointsolutions.lk/api/backup/client1",
-            cloudBackupEnabled: true,
-            rolePermissions: {
-              cashier: ["pos"],
-              veterinarian: ["dashboard", "appointments", "records"],
-              admin: ["dashboard", "pos", "appointments", "records", "inventory", "reminders", "portal"]
-            }
-          }
-        }
-      ]);
-      if (seedConfigErr) console.error('Failed to seed default config:', seedConfigErr);
-
-      setSyncProgress(95);
-      setSyncStepDescription("Purging all client local storage caches...");
-
-      // 4. Force browser local storage clear and keep the force-clear key active
-      localStorage.clear();
+      // 2. Remove local storage keys ONLY for dynamic data
+      const localKeysToClear = [
+        'ceylon_inventory_v2',
+        'ceylon_appointments_v2',
+        'ceylon_records_v2',
+        'ceylon_invoices_v2',
+        'ceylon_notifications_v2',
+        'ceylon_alerts_v2',
+        'ceylon_sync_queue_v2'
+      ];
+      localKeysToClear.forEach(key => localStorage.removeItem(key));
+      
       localStorage.setItem('ceylon_deployment_final_force_clear_v1', 'true');
 
-      // 5. Clear state
+      // 3. Clear React state for dynamic data
       setInventory([]);
       setAppointments([]);
       setRecords([]);
