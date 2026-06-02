@@ -28,6 +28,7 @@ interface EHRProps {
   records: MedicalRecord[];
   isOnline: boolean;
   onUpdateRecord: (updated: MedicalRecord) => void;
+  onDeleteRecord?: (id: string) => void;
   onAddRecord: (newRec: MedicalRecord) => void;
   systemConfig?: any;
 }
@@ -36,6 +37,7 @@ export default function MedicalRecordsManager({
   records, 
   isOnline, 
   onUpdateRecord, 
+  onDeleteRecord,
   onAddRecord,
   systemConfig
 }: EHRProps) {
@@ -62,6 +64,17 @@ export default function MedicalRecordsManager({
   const [newDiagnosis, setNewDiagnosis] = useState('');
   const [newTreatmentNotes, setNewTreatmentNotes] = useState('');
 
+  // Edit Patient Entry Form values
+  const [showEditRecordForm, setShowEditRecordForm] = useState(false);
+  const [editPetName, setEditPetName] = useState('');
+  const [editPetType, setEditPetType] = useState<'Dog' | 'Cat' | 'Bird' | 'Rabbit' | 'Other'>('Dog');
+  const [editBreed, setEditBreed] = useState('');
+  const [editAge, setEditAge] = useState('');
+  const [editWeight, setEditWeight] = useState('');
+  const [editOwnerName, setEditOwnerName] = useState('');
+  const [editOwnerPhone, setEditOwnerPhone] = useState('');
+  const [editOwnerEmail, setEditOwnerEmail] = useState('');
+
   // Editable report entry states
   const [isEditingReport, setIsEditingReport] = useState(false);
   const [editSymptoms, setEditSymptoms] = useState('');
@@ -74,6 +87,7 @@ export default function MedicalRecordsManager({
   const [newVacDate, setNewVacDate] = useState('');
   const [newVacDueDate, setNewVacDueDate] = useState('');
   const [newVacStatus, setNewVacStatus] = useState<'active' | 'overdue' | 'due-soon'>('active');
+  const [editVaccineIndex, setEditVaccineIndex] = useState<number | null>(null);
 
   // New Lab entry states
   const [showAddLab, setShowAddLab] = useState(false);
@@ -169,6 +183,56 @@ export default function MedicalRecordsManager({
     setNewTreatmentNotes('');
   };
 
+  const handleSaveEditEHR = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeRecord) return;
+    if (!editPetName || !editOwnerName || !editOwnerPhone) {
+      showToast('Patient descriptors cannot be empty.', 'error');
+      return;
+    }
+    const updatedRec: MedicalRecord = {
+      ...activeRecord,
+      petName: editPetName,
+      petType: editPetType,
+      breed: editBreed || 'Mixed Lineage',
+      age: editAge || 'Under 1 Year',
+      weight: parseFloat(editWeight) || 5.0,
+      ownerName: editOwnerName,
+      ownerPhone: editOwnerPhone,
+      ownerEmail: editOwnerEmail
+    };
+    onUpdateRecord(updatedRec);
+    setShowEditRecordForm(false);
+  };
+
+  const openEditPatientForm = () => {
+    if (!activeRecord) return;
+    setEditPetName(activeRecord.petName);
+    setEditPetType(activeRecord.petType);
+    setEditBreed(activeRecord.breed);
+    setEditAge(activeRecord.age);
+    setEditWeight(activeRecord.weight.toString());
+    setEditOwnerName(activeRecord.ownerName);
+    setEditOwnerPhone(activeRecord.ownerPhone);
+    setEditOwnerEmail(activeRecord.ownerEmail);
+    setShowEditRecordForm(true);
+  };
+
+  const handleDeletePatient = () => {
+    if (!activeRecord) return;
+    if (window.confirm(`Are you sure you want to permanently delete the medical chart for ${activeRecord.petName}? This action cannot be undone.`)) {
+      if (onDeleteRecord) {
+        onDeleteRecord(activeRecord.id);
+        const remaining = records.filter(r => r.id !== activeRecord.id);
+        if (remaining.length > 0) {
+          setSelectedRecordId(remaining[0].id);
+        } else {
+          setSelectedRecordId('');
+        }
+      }
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="ehr-manager-portal">
       
@@ -247,13 +311,19 @@ export default function MedicalRecordsManager({
                 </div>
 
                 {/* HIPAA compliance sync shield */}
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-2 items-end">
                   <button
                     onClick={triggerEHRCloudSynchronization}
                     className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                   >
                     <ShieldCheck className="h-4 w-4" />
                     <span>HIPAA External Sync</span>
+                  </button>
+                  <button
+                    onClick={openEditPatientForm}
+                    className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-xs text-[10px]"
+                  >
+                    ✏️ Edit Patient Details
                   </button>
                 </div>
               </div>
@@ -375,7 +445,6 @@ export default function MedicalRecordsManager({
                         <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{activeRecord.treatmentNotes}</p>
                       </div>
 
-                      <div className="flex justify-end">
                         <button
                           onClick={() => {
                             setEditSymptoms(activeRecord.symptoms);
@@ -386,6 +455,15 @@ export default function MedicalRecordsManager({
                           className="px-4.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs shadow-xs"
                         >
                           <span>✏️ Edit Clinical Entry</span>
+                        </button>
+                      </div>
+                      
+                      <div className="mt-8 pt-4 border-t border-rose-100">
+                        <button
+                          onClick={handleDeletePatient}
+                          className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 font-bold rounded-lg transition-colors cursor-pointer text-[10px]"
+                        >
+                          🗑️ Delete Patient Chart
                         </button>
                       </div>
                     </>
@@ -421,6 +499,7 @@ export default function MedicalRecordsManager({
                         setNewVacDate(new Date().toISOString().split('T')[0]);
                         setNewVacDueDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
                         setNewVacStatus('active');
+                        setEditVaccineIndex(null);
                         setShowAddVaccine(!showAddVaccine);
                       }}
                       className="px-2.5 py-1.5 text-[10px] bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold rounded-lg flex items-center gap-1 cursor-pointer"
@@ -491,23 +570,31 @@ export default function MedicalRecordsManager({
                           type="button"
                           onClick={() => {
                             if (!newVacName.trim()) {
-                              showToast('Vaccine name is required', 'success');
+                              showToast('Vaccine name is required', 'error');
                               return;
                             }
-                            const updatedVaccinations = [
-                              ...activeRecord.vaccinations,
-                              {
+                            let updatedVaccinations = [...activeRecord.vaccinations];
+                            if (editVaccineIndex !== null) {
+                              updatedVaccinations[editVaccineIndex] = {
                                 name: newVacName,
                                 dateAdministered: newVacDate,
                                 nextDueDate: newVacDueDate,
                                 status: newVacStatus
-                              }
-                            ];
+                              };
+                            } else {
+                              updatedVaccinations.push({
+                                name: newVacName,
+                                dateAdministered: newVacDate,
+                                nextDueDate: newVacDueDate,
+                                status: newVacStatus
+                              });
+                            }
                             onUpdateRecord({
                               ...activeRecord,
                               vaccinations: updatedVaccinations
                             });
                             setShowAddVaccine(false);
+                            setEditVaccineIndex(null);
                           }}
                           className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-lg text-[11px]"
                         >
@@ -519,10 +606,38 @@ export default function MedicalRecordsManager({
 
                   <div className="divide-y divide-slate-100">
                     {activeRecord.vaccinations.map((vac, idx) => (
-                      <div key={idx} className="py-2.5 flex justify-between items-center">
+                      <div key={idx} className="py-2.5 flex justify-between items-center group">
                         <div className="space-y-0.5">
                           <span className="font-bold text-slate-800 text-sm">{vac.name}</span>
                           <span className="text-slate-400 font-medium block">Administered: {vac.dateAdministered}</span>
+                          <div className="hidden group-hover:flex items-center gap-2 pt-1">
+                            <button
+                              onClick={() => {
+                                setNewVacName(vac.name);
+                                setNewVacDate(vac.dateAdministered);
+                                setNewVacDueDate(vac.nextDueDate);
+                                setNewVacStatus(vac.status as any);
+                                setEditVaccineIndex(idx);
+                                setShowAddVaccine(true);
+                              }}
+                              className="text-[10px] text-sky-600 hover:text-sky-800 font-bold cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <span className="text-slate-200 text-[10px]">|</span>
+                            <button
+                              onClick={() => {
+                                if(window.confirm('Are you sure you want to remove this vaccination record?')) {
+                                  const updated = [...activeRecord.vaccinations];
+                                  updated.splice(idx, 1);
+                                  onUpdateRecord({ ...activeRecord, vaccinations: updated });
+                                }
+                              }}
+                              className="text-[10px] text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
                         </div>
                         <div className="text-right space-y-1">
                           <span className="text-slate-500 font-mono font-bold block text-[11px]">Due: {vac.nextDueDate}</span>
@@ -931,6 +1046,142 @@ export default function MedicalRecordsManager({
           </div>
         </div>
       )}
+
+      {/* Edit EHR Consultation Record Overlay */}
+      {showEditRecordForm && activeRecord && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-lg w-full p-6 text-xs shadow-xl animate-fade-in max-h-[90vh] overflow-y-auto">
+            
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h4 className="text-base font-extrabold text-slate-800 leading-none">Edit Patient Medical Profile</h4>
+                <p className="text-[11px] text-slate-400 mt-1">Update patient demographics and owner information</p>
+              </div>
+              <button 
+                onClick={() => setShowEditRecordForm(false)}
+                className="p-1 hover:bg-slate-100 text-slate-400 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEditEHR} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Pet Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editPetName}
+                    onChange={(e) => setEditPetName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Animal species type</label>
+                  <select
+                    value={editPetType}
+                    onChange={(e) => setEditPetType(e.target.value as any)}
+                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                  >
+                    <option value="Dog">Dog</option>
+                    <option value="Cat">Cat</option>
+                    <option value="Rabbit">Rabbit</option>
+                    <option value="Bird">Bird</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Breed details</label>
+                  <input
+                    type="text"
+                    value={editBreed}
+                    onChange={(e) => setEditBreed(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Age designation</label>
+                  <input
+                    type="text"
+                    value={editAge}
+                    onChange={(e) => setEditAge(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Measured Weight (kg)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editWeight}
+                    onChange={(e) => setEditWeight(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+
+                <div className="col-span-1 sm:col-span-2 mt-2 pt-2 border-t border-slate-100">
+                  <h5 className="font-bold text-slate-800 mb-2">Pet Owner / Client Information</h5>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Owner Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editOwnerName}
+                    onChange={(e) => setEditOwnerName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label className="font-semibold text-slate-700 block">Contact Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={editOwnerPhone}
+                    onChange={(e) => setEditOwnerPhone(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="font-semibold text-slate-700 block">Email Address</label>
+                  <input
+                    type="email"
+                    value={editOwnerEmail}
+                    onChange={(e) => setEditOwnerEmail(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-4 mt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowEditRecordForm(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold rounded-xl transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all cursor-pointer shadow-xs"
+                >
+                  Save Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

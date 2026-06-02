@@ -68,7 +68,7 @@ import {
   fetchMedicalRecords, upsertMedicalRecord,
   fetchInvoices,     upsertInvoice,
   fetchNotifications, upsertNotification,
-  fetchAlerts,       upsertAlert,
+  fetchAlerts,       upsertAlert, deleteMedicalRecord
 } from './lib/db';
 
 // Helper to hash a PIN synchronously using a custom salted polynomial hash
@@ -720,6 +720,10 @@ export default function App() {
             await upsertMedicalRecord(item.payload as MedicalRecord);
             break;
 
+          case 'delete_medical_record':
+            await deleteMedicalRecord(item.payload as string);
+            break;
+
           // ── Inventory: new item added while offline ───────────────────────
           case 'add_inventory':
             await upsertInventoryItem(item.payload as InventoryItem);
@@ -949,6 +953,33 @@ export default function App() {
         timestamp: new Date().toISOString()
       };
       setSyncQueue(prev => [...prev, syncItem]);
+    }
+  };
+
+  const handleDeleteRecord = (id: string) => {
+    setRecords(prev => prev.filter(r => r.id !== id));
+    showToast('Medical record permanently deleted.', 'success');
+
+    if (!isOnline) {
+      const syncItem: OfflineSyncItem = {
+        id: `sync-rec-del-${Date.now()}`,
+        action: 'delete_medical_record',
+        collection: 'records',
+        payload: id,
+        timestamp: new Date().toISOString()
+      };
+      setSyncQueue(prev => [...prev, syncItem]);
+    } else {
+      deleteMedicalRecord(id).catch((err) => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-rec-del-${Date.now()}`,
+          action: 'delete_medical_record',
+          collection: 'records',
+          payload: id,
+          timestamp: new Date().toISOString()
+        };
+        setSyncQueue(prev => [...prev, syncItem]);
+      });
     }
   };
 
@@ -1660,6 +1691,7 @@ export default function App() {
                   records={records}
                   isOnline={isOnline}
                   onUpdateRecord={handleUpdateRecord}
+                  onDeleteRecord={handleDeleteRecord}
                   onAddRecord={handleAddEHRRecord => {
                     handleAddRecord(handleAddEHRRecord);
                     const mockAlert: SystemAlert = {

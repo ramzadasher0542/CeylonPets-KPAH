@@ -224,6 +224,15 @@ export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
   }
 }
 
+export async function deleteMedicalRecord(id: string): Promise<void> {
+  try {
+    await supabaseDelete(DB_TABLES.RECORDS, id);
+  } catch (err) {
+    console.warn('[CeylonPets] deleteMedicalRecord offline:', err);
+    throw err;
+  }
+}
+
 // ---------------------------------------------------------------
 // INVOICES
 // ---------------------------------------------------------------
