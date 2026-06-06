@@ -265,9 +265,9 @@ export default function DashboardAnalytics({
       )}
 
       {/* Main KPI metrics bar */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Total Revenue */}
-        <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Gross Sales</p>
@@ -287,7 +287,7 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Net Clinic Profit */}
-        <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-amber-605 font-extrabold uppercase tracking-wider text-emerald-600">Net Profit</p>
@@ -304,7 +304,7 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Clinical Sales */}
-        <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Clinical Care</p>
@@ -321,7 +321,7 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Pet Shop Items Sales */}
-        <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer">
+        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Pet Supplies Shop</p>
@@ -338,7 +338,7 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Under Stock Alarms */}
-        <div className={`bg-white p-5 rounded-2xl border shadow-sm relative overflow-hidden group transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${lowStockItems.length > 0 ? 'border-rose-100 hover:border-rose-300' : 'border-sky-100 hover:border-sky-300'}`}>
+        <div className={`bg-white p-5 w-full h-full flex flex-col justify-between rounded-2xl border shadow-sm relative overflow-hidden group transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${lowStockItems.length > 0 ? 'border-rose-100 hover:border-rose-300' : 'border-sky-100 hover:border-sky-300'}`}>
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Low Stock Warnings</p>
@@ -363,7 +363,7 @@ export default function DashboardAnalytics({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Custom Interactive SVG Chart: Patient consultation volume */}
-        <div className="bg-white p-6 rounded-2xl border border-sky-100 shadow-sm lg:col-span-2 flex flex-col justify-between">
+        <div className="bg-white p-6 w-full h-full rounded-2xl border border-sky-100 shadow-sm lg:col-span-2 flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
             <div>
               <h4 className="text-base font-black text-slate-800">Dynamic Hospital Trend Ledger</h4>
@@ -493,7 +493,7 @@ export default function DashboardAnalytics({
         </div>
 
         {/* POS Sales Share Distribution */}
-        <div className="bg-white p-6 rounded-2xl border border-sky-100 shadow-sm flex flex-col justify-between">
+        <div className="bg-white p-6 w-full h-full rounded-2xl border border-sky-100 shadow-sm flex flex-col justify-between">
           <div className="space-y-4">
             <div>
               <h4 className="text-base font-black text-slate-800">POS Billing Breakdown</h4>
