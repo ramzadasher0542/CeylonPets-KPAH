@@ -47,6 +47,7 @@ export interface SystemConfig {
   selectedReportPrinter: string;
   receiptPaperSize: '58mm' | '80mm' | 'A4';
   connectionType: 'usb' | 'network' | 'bluetooth';
+  autoPrintReceipt?: boolean;
   localAutosaveInterval: number; // in mins
   cloudEndpoint: string;
   cloudBackupSchedule?: 'daily' | 'hourly' | 'manual';
@@ -1232,122 +1233,52 @@ export default function SystemSettings({
           {activeTab === 'printers' && (
             <div className="space-y-6 animate-fade-in text-xs">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Physical Hardware Spoolers & Printers setup</h3>
-                <p className="text-slate-400 mt-1">Configure active ESC/POS thermal printers, report size drivers, and print margins parameters.</p>
+                <h3 className="text-base font-extrabold text-slate-800">Receipt & Print Preferences</h3>
+                <p className="text-slate-400 mt-1">Configure automated web printing behavior and default document formats.</p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* Inputs Setup Area */}
-                <div className="space-y-5 bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
-                  <span className="font-extrabold text-slate-800 block text-xs underline">Hardware Connection Config</span>
+              <div className="max-w-xl space-y-5 bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
+                <span className="font-extrabold text-slate-800 block text-xs underline">Web Printing Configuration</span>
 
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Active Receipt Printer Model (ESC/POS)</label>
-                    <select
-                      value={config.selectedReceiptPrinter}
-                      onChange={(e) => setConfigValue('selectedReceiptPrinter', e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                    >
-                      <option value="Epson TM-T88VI Serial COM Port">Epson TM-T88VI Serial COM Port (Standard desk biller)</option>
-                      <option value="Star Micronics TSP143III IP Address 192.168.1.150">Star Micronics TSP143III IP Address 192.168.1.150 (Network)</option>
-                      <option value="Xprinter Bluetooth Pocket Model XP-58">Xprinter Bluetooth Pocket Model XP-58 (Field mobile)</option>
-                      <option value="System Web Default Driver spooled on port LPT1">System Web Default Driver spooled on port LPT1</option>
-                    </select>
+                <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
+                  <div>
+                    <label className="font-bold text-slate-700 block text-[11px]">Automatically print receipt after checkout</label>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Prompt browser print dialog immediately when an invoice is finalized</p>
                   </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Active Diagnostic Report Printer (A4 Format)</label>
-                    <select
-                      value={config.selectedReportPrinter}
-                      onChange={(e) => setConfigValue('selectedReportPrinter', e.target.value)}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                    >
-                      <option value="HP LaserJet Enterprise MFP M528">HP LaserJet Enterprise MFP M528 (High speed black/white)</option>
-                      <option value="Canon Pixma G6020 Color Inkjet Office">Canon Pixma G6020 Color Inkjet Office (CBC diagnostic charts)</option>
-                      <option value="Save as Virtual PDF Document on Local Drive">Save as Virtual PDF Document on Local Drive</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Connection physical Interface</label>
-                      <select
-                        value={config.connectionType}
-                        onChange={(e: any) => setConfigValue('connectionType', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
-                      >
-                        <option value="usb">USB 2.0 / 3.0 Spool</option>
-                        <option value="network">Ethernet Network (TCP/IP)</option>
-                        <option value="bluetooth">Bluetooth Wireless</option>
-                      </select>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Receipt Paper roll size</label>
-                      <select
-                        value={config.receiptPaperSize}
-                        onChange={(e: any) => setConfigValue('receiptPaperSize', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
-                      >
-                        <option value="58mm">58mm (Handheld portable size)</option>
-                        <option value="80mm">80mm (Desktop standard receipt)</option>
-                        <option value="A4">A4 Full size (Invoices & Labs)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Calibration tools helper */}
-                  <div className="pt-3 border-t space-y-3">
-                    <span className="font-bold text-slate-700 block text-[10px]">Reseller Calibration testing:</span>
-                    
-                    <div className="grid grid-cols-2 gap-3 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => triggerTestSpool('receipt')}
-                        className="py-2 px-3.5 bg-slate-800 hover:bg-slate-900 border text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                      >
-                        <Printer className="h-4 w-4 text-emerald-400" />
-                        <span>Spool Test Receipt</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => triggerTestSpool('report')}
-                        className="py-2 px-3.5 bg-slate-800 hover:bg-slate-900 border text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                      >
-                        <FileText className="h-4 w-4 text-sky-400" />
-                        <span>Spool Test Lab Report</span>
-                      </button>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Print driver information panel */}
-                <div className="bg-slate-900 text-slate-300 p-5 rounded-2xl font-mono text-[10px] flex flex-col justify-between space-y-4">
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center text-sky-400 font-bold border-b border-sky-900/50 pb-2">
-                      <span>HARDWARE COUPLING DRIVER LOGS</span>
-                      <span className="bg-indigo-900 text-white font-black px-1.5 py-0.5 rounded text-[8px]">ACTIVE</span>
-                    </div>
-
-                    <div className="space-y-1.5 leading-relaxed text-slate-400">
-                      <p className="text-emerald-400">[PORT LPT1 INITIATION]: Linking to {config.selectedReceiptPrinter}...</p>
-                      <p>[COM PORT SPEED]: 9600 Baudrate, Parity None, Stopbits 1</p>
-                      <p>[ESC/POS SYSTEM PROTOCOLS]: Load layout size index '{config.receiptPaperSize}'...</p>
-                      <p>[SPOOL CALIBRATION]: Margins left 1.5mm, Margins right 1.5mm. Cutter active code: GS V 66 0</p>
-                      <p className="text-pink-400">[DVM DIAGNOSTICS DISPATCH]: {config.selectedReportPrinter} linked on port 9100 RAW.</p>
-                      <p className="text-sky-400">[CONNECTION]: Secured {config.connectionType.toUpperCase()} virtual handshake passed.</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-slate-800 rounded-xl space-y-1 border border-slate-700/60 text-[10px] leading-relaxed">
-                    <span className="font-extrabold text-amber-400 block uppercase">No hardware connected?</span>
-                    Click the <strong className="font-bold underline text-white">Spool Test</strong> button. CeylonPets builds an interactive thermal device mockup showing your branded invoices!
+                  <div 
+                    onClick={() => setConfigValue('autoPrintReceipt', !config.autoPrintReceipt)}
+                    className={`w-11 h-6 rounded-full flex items-center p-1 cursor-pointer transition-colors ${config.autoPrintReceipt ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${config.autoPrintReceipt ? 'translate-x-5' : 'translate-x-0'}`} />
                   </div>
                 </div>
 
+                <div className="space-y-1">
+                  <label className="font-bold text-slate-700 block text-[10px]">Default Receipt Format</label>
+                  <select
+                    value={config.receiptPaperSize}
+                    onChange={(e: any) => setConfigValue('receiptPaperSize', e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                  >
+                    <option value="80mm">80mm Thermal Receipt</option>
+                    <option value="A4">Standard A4/Letter Document</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 border-t space-y-3">
+                  <span className="font-bold text-slate-700 block text-[10px]">Browser Print Testing:</span>
+                  
+                  <div className="flex gap-3 text-xs">
+                    <button
+                      type="button"
+                      onClick={() => window.print()}
+                      className="py-2 px-4 bg-slate-800 hover:bg-slate-900 border text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                    >
+                      <Printer className="h-4 w-4 text-emerald-400" />
+                      <span>Test Print Receipt</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
