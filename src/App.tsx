@@ -1687,8 +1687,10 @@ export default function App() {
               <div className="pt-4 border-t border-slate-100 space-y-4">
                 <form onSubmit={handlePinSubmit} className="space-y-3">
                   <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Select Staff Member</label>
+                    <label htmlFor="login-username" className="font-bold text-slate-700 block text-[10px]">Select Staff Member</label>
                     <select
+                      id="login-username"
+                      name="username"
                       value={selectedUsername}
                       onChange={(e) => setSelectedUsername(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-sky-500 text-xs font-semibold text-slate-700"
@@ -1707,11 +1709,13 @@ export default function App() {
 
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <label className="font-bold text-slate-700 block text-[10px]">Enter 4-Digit Passcode PIN</label>
+                      <label htmlFor="login-pin" className="font-bold text-slate-700 block text-[10px]">Enter 4-Digit Passcode PIN</label>
                       {pinError && <span className="text-[10px] text-rose-600 font-semibold animate-pulse">Incorrect passcode pin.</span>}
                     </div>
                     <div className="flex gap-2">
                       <input
+                        id="login-pin"
+                        name="pin"
                         type="password"
                         maxLength={4}
                         placeholder="••••"
