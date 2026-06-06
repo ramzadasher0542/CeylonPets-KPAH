@@ -1231,53 +1231,56 @@ export default function SystemSettings({
 
           {/* TAB 3: RECEIPT AND REPORT PRINTER SETUP */}
           {activeTab === 'printers' && (
-            <div className="space-y-6 animate-fade-in text-xs">
+            <div className="w-full max-w-3xl space-y-6">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Receipt & Print Preferences</h3>
-                <p className="text-slate-400 mt-1">Configure automated web printing behavior and default document formats.</p>
+                <h2 className="text-2xl font-bold text-gray-800">Receipt & Print Preferences</h2>
+                <p className="text-gray-500 mt-1">Configure how CeylonPets handles receipts for this specific browser.</p>
               </div>
 
-              <div className="max-w-xl space-y-5 bg-slate-50/50 p-5 rounded-2xl border border-slate-100">
-                <span className="font-extrabold text-slate-800 block text-xs underline">Web Printing Configuration</span>
-
-                <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
+              <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+                {/* Auto-print Toggle */}
+                <div className="flex items-center justify-between">
                   <div>
-                    <label className="font-bold text-slate-700 block text-[11px]">Automatically print receipt after checkout</label>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Prompt browser print dialog immediately when an invoice is finalized</p>
+                    <h3 className="font-semibold text-gray-800">Automatic Printing</h3>
+                    <p className="text-sm text-gray-500">Instantly open the print dialog after a successful checkout.</p>
                   </div>
-                  <div 
-                    onClick={() => setConfigValue('autoPrintReceipt', !config.autoPrintReceipt)}
-                    className={`w-11 h-6 rounded-full flex items-center p-1 cursor-pointer transition-colors ${config.autoPrintReceipt ? 'bg-emerald-500' : 'bg-slate-300'}`}
-                  >
-                    <div className={`w-4 h-4 bg-white rounded-full shadow-sm transition-transform ${config.autoPrintReceipt ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer" 
+                      checked={config.autoPrintReceipt} 
+                      onChange={(e) => setConfigValue('autoPrintReceipt', e.target.checked)} 
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="font-bold text-slate-700 block text-[10px]">Default Receipt Format</label>
-                  <select
+                <hr className="border-gray-100" />
+
+                {/* Paper Size Dropdown */}
+                <div className="flex flex-col space-y-2">
+                  <label className="font-semibold text-gray-800">Default Receipt Format</label>
+                  <select 
                     value={config.receiptPaperSize}
                     onChange={(e: any) => setConfigValue('receiptPaperSize', e.target.value)}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                    className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
                   >
-                    <option value="80mm">80mm Thermal Receipt</option>
-                    <option value="A4">Standard A4/Letter Document</option>
+                    <option value="80mm">80mm Thermal Receipt (Standard POS)</option>
+                    <option value="A4">Standard A4 / Letter Document</option>
                   </select>
                 </div>
 
-                <div className="pt-4 border-t space-y-3">
-                  <span className="font-bold text-slate-700 block text-[10px]">Browser Print Testing:</span>
-                  
-                  <div className="flex gap-3 text-xs">
-                    <button
-                      type="button"
-                      onClick={() => window.print()}
-                      className="py-2 px-4 bg-slate-800 hover:bg-slate-900 border text-white rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                    >
-                      <Printer className="h-4 w-4 text-emerald-400" />
-                      <span>Test Print Receipt</span>
-                    </button>
-                  </div>
+                <hr className="border-gray-100" />
+
+                {/* Test Button */}
+                <div>
+                  <button 
+                    onClick={() => window.print()} 
+                    className="bg-gray-800 hover:bg-gray-900 text-white font-medium py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    Test Print Receipt
+                  </button>
                 </div>
               </div>
             </div>
