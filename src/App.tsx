@@ -1691,6 +1691,7 @@ export default function App() {
                     <select
                       id="login-username"
                       name="username"
+                      autoComplete="username"
                       value={selectedUsername}
                       onChange={(e) => setSelectedUsername(e.target.value)}
                       className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-sky-500 text-xs font-semibold text-slate-700"
@@ -1717,6 +1718,7 @@ export default function App() {
                         id="login-pin"
                         name="pin"
                         type="password"
+                        autoComplete="current-password"
                         maxLength={4}
                         placeholder="••••"
                         value={enteredPin}
