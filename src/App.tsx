@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { db } from './lib/localDb';
 import { 
   HeartHandshake, 
   LayoutDashboard, 
@@ -141,9 +142,7 @@ export default function App() {
 
   // Offline / Connectivity States
   const [isOnline, setIsOnline] = useState<boolean>(true);
-  const [syncQueue, setSyncQueue] = useState<OfflineSyncItem[]>(() => {
-    return safeGetLocalStorage('ceylon_sync_queue_v2', []);
-  });
+  const [syncQueue, setSyncQueue] = useState<OfflineSyncItem[]>([]);
 
   // Sync Progress Indicators
   const [isSyncing, setIsSyncing] = useState(false);
@@ -349,9 +348,6 @@ export default function App() {
     invoices.forEach(inv => upsertInvoice(inv).catch(() => {}));
   }, [invoices]);
 
-  useEffect(() => {
-    localStorage.setItem('ceylon_sync_queue_v2', JSON.stringify(syncQueue));
-  }, [syncQueue]);
 
   // User state sync removed for security (forces login on refresh)
 
@@ -377,6 +373,13 @@ export default function App() {
     fetchInvoices().then(data => { setInvoices(data); });
     fetchNotifications().then(data => { setNotifications(data); });
     fetchAlerts().then(data => { setAlerts(data); });
+    
+    // Hydrate offline sync queue from IndexedDB
+    db.getItem('sync_queue').then((savedQueue: unknown) => {
+      if (savedQueue && Array.isArray(savedQueue)) {
+        setSyncQueue(savedQueue as OfflineSyncItem[]);
+      }
+    });
   }, []); // runs once on mount
 
   // ─── Auto-sync: listen for real browser connectivity changes ───────────────
@@ -675,27 +678,43 @@ export default function App() {
   // Processes every item in syncQueue against the correct Supabase table.
   // Called automatically when the browser fires the 'online' event, and also
   // manually when the user clicks the connectivity toggle button.
-  const triggerAutoSynchronize = async () => {
-    if (syncQueue.length === 0) {
-      setIsOnline(true);
-      return;
+  const pushToOfflineQueue = async (item: OfflineSyncItem) => {
+    try {
+      const currentQueue: OfflineSyncItem[] = (await db.getItem('sync_queue')) || [];
+      const offlineRecord = { ...item, _queued_at: new Date().toISOString() };
+      currentQueue.push(offlineRecord);
+      await db.setItem('sync_queue', currentQueue);
+      setSyncQueue(currentQueue);
+      console.log('Transaction safely stored in IndexedDB offline queue.');
+    } catch (error) {
+      console.error('CRITICAL: Failed to write to local storage!', error);
     }
+  };
+
+  const triggerAutoSynchronize = async () => {
+    try {
+      const queue: OfflineSyncItem[] = (await db.getItem('sync_queue')) || [];
+      if (queue.length === 0) {
+        setIsOnline(true);
+        return;
+      }
 
     setIsSyncing(true);
     setSyncProgress(10);
     setSyncStepDescription('Connecting to Supabase cloud database...');
 
-    // Take a snapshot of the queue at the moment sync starts
-    const queueSnapshot = [...syncQueue];
-    const total = queueSnapshot.length;
-    let processed = 0;
-    const failed: OfflineSyncItem[] = [];
+      // Take a snapshot of the queue at the moment sync starts
+      const queueSnapshot = [...queue];
+      const total = queueSnapshot.length;
+      let processed = 0;
+      const failed: OfflineSyncItem[] = [];
 
-    setSyncProgress(20);
-    setSyncStepDescription(`Processing ${total} queued offline change${total !== 1 ? 's' : ''}...`);
+      setSyncProgress(20);
+      setSyncStepDescription(`Processing ${total} queued offline change${total !== 1 ? 's' : ''}...`);
 
-    for (const item of queueSnapshot) {
-      try {
+      for (let i = 0; i < queueSnapshot.length; i++) {
+        const item = queueSnapshot[i];
+        try {
         switch (item.action) {
 
           // ── Invoices / POS Sales ─────────────────────────────────────────
@@ -746,6 +765,15 @@ export default function App() {
             await upsertInvoice(item.payload as Invoice);
             break;
 
+          // ── Alerts & Notifications ────────────────────────────────────────
+          case 'create_alert':
+            await upsertAlert(item.payload as SystemAlert);
+            break;
+
+          case 'create_notification':
+            await upsertNotification(item.payload as ClientNotification);
+            break;
+
           default:
             console.warn('[CeylonPets] Unknown sync action, skipping:', item.action);
         }
@@ -757,13 +785,23 @@ export default function App() {
           `Synced ${processed} / ${total}: ${item.collection} (${item.action})`
         );
 
-      } catch (err) {
-        console.error('[CeylonPets] Failed to sync item:', item.id, err);
-        failed.push(item); // keep failed items in the queue for the next attempt
+        } catch (err) {
+          console.error('Sync failed on item:', item, err);
+          failed.push(item);
+          // Preserve the failed item and all items after it for chronological integrity
+          const remainingQueue = queueSnapshot.slice(i);
+          await db.setItem('sync_queue', remainingQueue);
+          setSyncQueue(remainingQueue);
+          throw new Error('Supabase rejection. Halting sync queue.');
+        }
       }
-    }
 
-    // ── Finalize ────────────────────────────────────────────────────────────
+      // If loop completes successfully without throwing
+      await db.removeItem('sync_queue');
+      setSyncQueue([]);
+      console.log('Sync complete. Queue emptied.');
+
+      // ── Finalize ────────────────────────────────────────────────────────────
     setSyncProgress(90);
     setSyncStepDescription('Finalising & updating clinic alert log...');
 
@@ -780,13 +818,17 @@ export default function App() {
       read: false
     };
 
-    setAlerts(prev => [completionAlert, ...prev]);
+      setAlerts(prev => [completionAlert, ...prev]);
 
-    // Only clear the items that succeeded; keep failed ones for next attempt
-    setSyncQueue(failed);
-    setIsOnline(true);
-    setIsSyncing(false);
-    setSyncProgress(failed.length === 0 ? 100 : 0);
+      setIsOnline(true);
+      setIsSyncing(false);
+      setSyncProgress(100);
+    } catch (error) {
+      console.error('Sync process interrupted. Will retry later.', error);
+      setIsOnline(true);
+      setIsSyncing(false);
+      setSyncProgress(0);
+    }
   };
 
   // Connectivity Toggler
@@ -812,16 +854,30 @@ export default function App() {
         payload: product,
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertInventoryItem(product).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-${Date.now()}`,
+          action: 'add_inventory',
+          collection: 'inventory',
+          payload: product,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
     }
   };
 
   const handleUpdateStock = (itemId: string, qtyDelta: number) => {
+    const currentItem = inventory.find(i => i.id === itemId);
+    if (!currentItem) return;
+    const newStock = Math.max(0, currentItem.stock + qtyDelta);
+    const updatedItem = { ...currentItem, stock: newStock };
+
     setInventory(prev => 
       prev.map(item => {
         if (item.id === itemId) {
-          const newStock = Math.max(0, item.stock + qtyDelta);
-          // Auto fire system warning alerts if critical inventory diminishes
           if (newStock <= item.minStock && item.category !== 'service') {
             const lowStockAlert: SystemAlert = {
               id: `al-${Date.now()}-${itemId}`,
@@ -832,9 +888,31 @@ export default function App() {
               read: false
             };
             setAlerts(prev => [lowStockAlert, ...prev]);
+            
+            if (isOnline) {
+              upsertAlert(lowStockAlert).catch(() => {
+                const syncItemAlert: OfflineSyncItem = {
+                  id: `sync-alert-${Date.now()}`,
+                  action: 'create_alert',
+                  collection: 'alerts',
+                  payload: lowStockAlert,
+                  timestamp: new Date().toISOString()
+                };
+                pushToOfflineQueue(syncItemAlert);
+              });
+            } else {
+              const syncItemAlert: OfflineSyncItem = {
+                id: `sync-alert-${Date.now()}`,
+                action: 'create_alert',
+                collection: 'alerts',
+                payload: lowStockAlert,
+                timestamp: new Date().toISOString()
+              };
+              pushToOfflineQueue(syncItemAlert);
+            }
           }
           showToast(`Stock updated: ${item.name} (${newStock} remaining).`);
-          return { ...item, stock: newStock };
+          return updatedItem;
         }
         return item;
       })
@@ -848,15 +926,52 @@ export default function App() {
         payload: { itemId, qtyDelta },
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertInventoryItem(updatedItem).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-${Date.now()}-${itemId}`,
+          action: 'update_stock',
+          collection: 'inventory',
+          payload: { itemId, qtyDelta },
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
     }
   };
 
   const handleUpdatePrice = (id: string, newPrice: number) => {
+    const currentItem = inventory.find(i => i.id === id);
+    if (!currentItem) return;
+    const updatedItem = { ...currentItem, price: newPrice };
+
     setInventory(prev => 
-      prev.map(item => item.id === id ? { ...item, price: newPrice } : item)
+      prev.map(item => item.id === id ? updatedItem : item)
     );
     showToast(`Price updated for item.`);
+
+    if (!isOnline) {
+      const syncItem: OfflineSyncItem = {
+        id: `sync-price-${Date.now()}-${id}`,
+        action: 'add_inventory',
+        collection: 'inventory',
+        payload: updatedItem,
+        timestamp: new Date().toISOString()
+      };
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertInventoryItem(updatedItem).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-price-${Date.now()}-${id}`,
+          action: 'add_inventory',
+          collection: 'inventory',
+          payload: updatedItem,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
+    }
   };
 
   const handleAddAppointment = (appointment: Appointment) => {
@@ -879,26 +994,42 @@ export default function App() {
     setNotifications(prev => [emailNotif, ...prev]);
 
     if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-${Date.now()}`,
+      const syncItemApt: OfflineSyncItem = {
+        id: `sync-apt-${Date.now()}`,
         action: 'create_appointment',
         collection: 'appointments',
         payload: appointment,
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItemApt);
+    } else {
+      upsertAppointment(appointment).catch(() => {
+        const syncItemApt: OfflineSyncItem = {
+          id: `sync-apt-${Date.now()}`,
+          action: 'create_appointment',
+          collection: 'appointments',
+          payload: appointment,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItemApt);
+      });
+      upsertNotification(emailNotif).catch(console.warn);
     }
   };
 
   const handleUpdateAppointmentStatus = (id: string, status: AppointmentStatus) => {
+    const aptDetails = appointments.find(a => a.id === id);
+    if (!aptDetails) return;
+    const updatedApt = { ...aptDetails, status };
+
     setAppointments(prev => 
-      prev.map(apt => apt.id === id ? { ...apt, status } : apt)
+      prev.map(apt => apt.id === id ? updatedApt : apt)
     );
 
     // If status checked in, automatically trigger notification for vaccination reviews in EHR
-    const aptDetails = appointments.find(a => a.id === id);
-    if (status === 'in-progress' && aptDetails) {
-      const checkAlert: SystemAlert = {
+    let checkAlert: SystemAlert | null = null;
+    if (status === 'in-progress') {
+      checkAlert = {
         id: `al-check-${Date.now()}`,
         severity: 'info',
         category: 'appointment',
@@ -918,7 +1049,40 @@ export default function App() {
         payload: { id, status },
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
+      if (checkAlert) {
+        const syncAlert: OfflineSyncItem = {
+          id: `sync-al-${Date.now()}`,
+          action: 'create_alert',
+          collection: 'alerts',
+          payload: checkAlert,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncAlert);
+      }
+    } else {
+      upsertAppointment(updatedApt).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-status-${Date.now()}`,
+          action: 'create_appointment',
+          collection: 'appointments',
+          payload: { id, status },
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
+      if (checkAlert) {
+        upsertAlert(checkAlert).catch(() => {
+          const syncAlert: OfflineSyncItem = {
+            id: `sync-al-${Date.now()}`,
+            action: 'create_alert',
+            collection: 'alerts',
+            payload: checkAlert,
+            timestamp: new Date().toISOString()
+          };
+          pushToOfflineQueue(syncAlert);
+        });
+      }
     }
   };
 
@@ -934,7 +1098,18 @@ export default function App() {
         payload: newRec,
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertMedicalRecord(newRec).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-rec-${Date.now()}`,
+          action: 'update_medical_record',
+          collection: 'records',
+          payload: newRec,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
     }
   };
 
@@ -952,7 +1127,18 @@ export default function App() {
         payload: updated,
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertMedicalRecord(updated).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-rec-upd-${Date.now()}`,
+          action: 'update_medical_record',
+          collection: 'records',
+          payload: updated,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
     }
   };
 
@@ -968,7 +1154,7 @@ export default function App() {
         payload: id,
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
     } else {
       deleteMedicalRecord(id).catch((err) => {
         const syncItem: OfflineSyncItem = {
@@ -978,7 +1164,7 @@ export default function App() {
           payload: id,
           timestamp: new Date().toISOString()
         };
-        setSyncQueue(prev => [...prev, syncItem]);
+        pushToOfflineQueue(syncItem);
       });
     }
   };
@@ -1001,52 +1187,142 @@ export default function App() {
         payload: invoice,
         timestamp: new Date().toISOString()
       };
-      setSyncQueue(prev => [...prev, syncItem]);
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertInvoice(invoice).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-inv-${Date.now()}`,
+          action: 'create_invoice',
+          collection: 'invoices',
+          payload: invoice,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
     }
   };
 
   const handleVoidInvoice = (invoiceId: string) => {
-    setInvoices(prev =>
-      prev.map(inv => {
-        if (inv.id === invoiceId) {
-          if (inv.paymentStatus === 'void') return inv;
+    const targetInvoice = invoices.find(inv => inv.id === invoiceId);
+    if (!targetInvoice || targetInvoice.paymentStatus === 'void') return;
 
-          // Revert stock for retail/medication items
-          inv.items.forEach(item => {
-            if (item.category !== 'service') {
-              // Add stock back: call handleUpdateStock with positive quantity
-              handleUpdateStock(item.itemId, item.quantity);
-            }
-          });
+    const voidAlert: SystemAlert = {
+      id: `al-void-${Date.now()}-${invoiceId}`,
+      severity: 'warning',
+      category: 'system',
+      message: `TRANSACTION VOIDED: Invoice ${invoiceId} has been successfully voided. Inventory stock levels reinstated.`,
+      timestamp: new Date().toISOString(),
+      read: false
+    };
 
-          // Create a system alert for the void operation
-          const voidAlert: SystemAlert = {
-            id: `al-void-${Date.now()}-${invoiceId}`,
-            severity: 'warning',
-            category: 'system',
-            message: `TRANSACTION VOIDED: Invoice ${invoiceId} has been successfully voided. Inventory stock levels reinstated.`,
-            timestamp: new Date().toISOString(),
-            read: false
-          };
-          setAlerts(prevAlerts => [voidAlert, ...prevAlerts]);
+    setAlerts(prevAlerts => [voidAlert, ...prevAlerts]);
 
-          return { ...inv, paymentStatus: 'void' };
-        }
-        return inv;
-      })
-    );
+    targetInvoice.items.forEach(item => {
+      if (item.category !== 'service') {
+        handleUpdateStock(item.itemId, item.quantity);
+      }
+    });
+
+    const updatedInvoice = { ...targetInvoice, paymentStatus: 'void' as const };
+    setInvoices(prev => prev.map(inv => inv.id === invoiceId ? updatedInvoice : inv));
+
+    if (!isOnline) {
+      const syncInv: OfflineSyncItem = {
+        id: `sync-inv-void-${Date.now()}`,
+        action: 'create_invoice',
+        collection: 'invoices',
+        payload: updatedInvoice,
+        timestamp: new Date().toISOString()
+      };
+      const syncAlert: OfflineSyncItem = {
+        id: `sync-al-void-${Date.now()}`,
+        action: 'create_alert',
+        collection: 'alerts',
+        payload: voidAlert,
+        timestamp: new Date().toISOString()
+      };
+      pushToOfflineQueue(syncInv);
+      pushToOfflineQueue(syncAlert);
+    } else {
+      upsertInvoice(updatedInvoice).catch(() => {
+        const syncInv: OfflineSyncItem = {
+          id: `sync-inv-void-${Date.now()}`,
+          action: 'create_invoice',
+          collection: 'invoices',
+          payload: updatedInvoice,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncInv);
+      });
+      upsertAlert(voidAlert).catch(() => {
+        const syncAlert: OfflineSyncItem = {
+          id: `sync-al-void-${Date.now()}`,
+          action: 'create_alert',
+          collection: 'alerts',
+          payload: voidAlert,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncAlert);
+      });
+    }
   };
 
   const handleDismissAlert = (id: string) => {
-    setAlerts(prev => 
-      prev.map(a => a.id === id ? { ...a, read: true } : a)
-    );
+    const alert = alerts.find(a => a.id === id);
+    if (!alert) return;
+    const updatedAlert = { ...alert, read: true };
+    setAlerts(prev => prev.map(a => a.id === id ? updatedAlert : a));
+
+    if (!isOnline) {
+      const syncItem: OfflineSyncItem = {
+        id: `sync-alert-dismiss-${Date.now()}`,
+        action: 'create_alert',
+        collection: 'alerts',
+        payload: updatedAlert,
+        timestamp: new Date().toISOString()
+      };
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertAlert(updatedAlert).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-alert-dismiss-${Date.now()}`,
+          action: 'create_alert',
+          collection: 'alerts',
+          payload: updatedAlert,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
+    }
   };
 
   const handleSendNotification = (id: string) => {
-    setNotifications(prev => 
-      prev.map(n => n.id === id ? { ...n, status: 'sent' } : n)
-    );
+    const notif = notifications.find(n => n.id === id);
+    if (!notif) return;
+    const updatedNotif = { ...notif, status: 'sent' as const };
+    setNotifications(prev => prev.map(n => n.id === id ? updatedNotif : n));
+
+    if (!isOnline) {
+      const syncItem: OfflineSyncItem = {
+        id: `sync-notif-${Date.now()}`,
+        action: 'create_notification', // mock action
+        collection: 'notifications',
+        payload: updatedNotif,
+        timestamp: new Date().toISOString()
+      };
+      pushToOfflineQueue(syncItem);
+    } else {
+      upsertNotification(updatedNotif).catch(() => {
+        const syncItem: OfflineSyncItem = {
+          id: `sync-notif-${Date.now()}`,
+          action: 'create_notification',
+          collection: 'notifications',
+          payload: updatedNotif,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItem);
+      });
+    }
   };
 
   const handleRestoreSnapshot = (snapshot: any) => {
@@ -1058,6 +1334,51 @@ export default function App() {
     if (snapshot.records) setRecords(snapshot.records);
     if (snapshot.alerts) setAlerts(snapshot.alerts);
     if (snapshot.notifications) setNotifications(snapshot.notifications);
+  };
+
+  const handleForceCloudSync = async () => {
+    setIsSyncing(true);
+    setSyncProgress(10);
+    setSyncStepDescription("Discarding local offline changes...");
+    
+    // Wipe local sync queue completely
+    setSyncQueue([]);
+    await db.removeItem('sync_queue');
+
+    setSyncProgress(30);
+    setSyncStepDescription("Downloading cloud inventory...");
+    const cloudInventory = await fetchInventory();
+    setInventory(cloudInventory);
+
+    setSyncProgress(50);
+    setSyncStepDescription("Downloading cloud appointments...");
+    const cloudAppointments = await fetchAppointments();
+    setAppointments(cloudAppointments);
+
+    setSyncProgress(65);
+    setSyncStepDescription("Downloading cloud invoices...");
+    const cloudInvoices = await fetchInvoices();
+    setInvoices(cloudInvoices);
+
+    setSyncProgress(80);
+    setSyncStepDescription("Downloading remaining cloud data...");
+    const cloudRecords = await fetchMedicalRecords();
+    setRecords(cloudRecords);
+    
+    const cloudAlerts = await fetchAlerts();
+    setAlerts(cloudAlerts);
+    
+    const cloudNotifications = await fetchNotifications();
+    setNotifications(cloudNotifications);
+
+    setSyncProgress(100);
+    setSyncStepDescription("Cloud synchronization complete.");
+    
+    setTimeout(() => {
+      setIsSyncing(false);
+      setSyncProgress(0);
+      setSyncStepDescription("");
+    }, 2000);
   };
 
   const handlePurgeDatabases = async () => {
@@ -1092,6 +1413,7 @@ export default function App() {
       setNotifications([]);
       setAlerts([]);
       setSyncQueue([]);
+      await db.removeItem('sync_queue');
 
       setSyncProgress(100);
       setSyncStepDescription("Database purge completed!");
@@ -1756,6 +2078,7 @@ export default function App() {
                     config={safeSystemConfig}
                     onChangeConfig={setSystemConfig}
                     users={users.map(({ pin, ...safeU }) => safeU)}
+                    onForceCloudSync={handleForceCloudSync}
                     onAddUser={(user) => {
                       const { pin, ...safeUser } = user;
                       if (pin) {

@@ -23,6 +23,7 @@ import {
   Eye,
   AlertTriangle,
   Sparkles,
+  Cloud,
   Smartphone
 } from 'lucide-react';
 import { User, UserRole, InventoryItem, Invoice } from '../types';
@@ -94,6 +95,7 @@ interface SystemSettingsProps {
   onUpdateInventory?: (newInventory: InventoryItem[]) => void;
   onRestoreSnapshot?: (snapshot: any) => void;
   onPurgeDatabases?: () => void;
+  onForceCloudSync?: () => void;
   onHardReboot?: () => void;
 }
 
@@ -109,6 +111,7 @@ export default function SystemSettings({
   onUpdateInventory,
   onRestoreSnapshot,
   onPurgeDatabases,
+  onForceCloudSync,
   onHardReboot
 }: SystemSettingsProps) {
   const rolePermissions = {
@@ -1634,6 +1637,19 @@ export default function SystemSettings({
                       >
                         <Trash2 className="h-4 w-4 shrink-0" />
                         <span>Purge Data</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm("Are you sure you want to FORCE OVERWRITE local storage with Cloud data? All unsynced offline changes will be destroyed and replaced!")) {
+                            onForceCloudSync?.();
+                          }
+                        }}
+                        className="py-2.5 px-3 col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Cloud className="h-4 w-4 shrink-0" />
+                        <span>Force Overwrite from Cloud</span>
                       </button>
                     </div>
                   </div>

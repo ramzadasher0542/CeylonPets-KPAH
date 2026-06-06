@@ -445,6 +445,7 @@ export default function MedicalRecordsManager({
                         <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{activeRecord.treatmentNotes}</p>
                       </div>
 
+                      <div className="flex justify-end pt-4">
                         <button
                           onClick={() => {
                             setEditSymptoms(activeRecord.symptoms);

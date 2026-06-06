@@ -139,8 +139,8 @@ export interface SystemAlert {
 
 export interface OfflineSyncItem {
   id: string;
-  action: 'create_appointment' | 'create_invoice' | 'update_medical_record' | 'checkout_pos' | 'update_stock' | 'add_inventory';
-  collection: 'appointments' | 'invoices' | 'records' | 'inventory';
+  action: 'create_appointment' | 'create_invoice' | 'update_medical_record' | 'delete_medical_record' | 'checkout_pos' | 'update_stock' | 'add_inventory' | 'create_alert' | 'create_notification';
+  collection: 'appointments' | 'invoices' | 'records' | 'inventory' | 'alerts' | 'notifications';
   payload: any;
   timestamp: string;
 }

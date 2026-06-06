@@ -6,7 +6,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in AI Studio: https://ai.studio/apps/499b1435-0de5-485c-8522-8fc6ea1f339a
+View your live deployed app here: https://ceylon-pets-cloud-pos.vercel.app/
 
 ## Run Locally
 
