@@ -86,6 +86,22 @@ export default function POSRegister({
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [showCheckoutModal]);
+
+  useEffect(() => {
+    const handleSuccessKeyDown = (e: KeyboardEvent) => {
+      if (checkoutSuccess) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handlePrintReceipt(checkoutSuccess);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          setCheckoutSuccess(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleSuccessKeyDown);
+    return () => window.removeEventListener('keydown', handleSuccessKeyDown);
+  }, [checkoutSuccess]);
   const [amountReceived, setAmountReceived] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
 
@@ -1106,13 +1122,13 @@ export default function POSRegister({
                 onClick={() => handlePrintReceipt(checkoutSuccess)}
                 className="flex-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer"
               >
-                <Printer className="h-4 w-4" /> Print Receipt
+                <Printer className="h-4 w-4" /> Print Receipt <span className="text-[9px] opacity-75 font-normal ml-0.5">(Enter)</span>
               </button>
               <button
                 onClick={() => setCheckoutSuccess(null)}
-                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl cursor-pointer"
+                className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl cursor-pointer flex items-center justify-center"
               >
-                Close Panel
+                Close Panel <span className="text-[9px] text-slate-400 font-normal ml-1">(Esc)</span>
               </button>
             </div>
           </div>
