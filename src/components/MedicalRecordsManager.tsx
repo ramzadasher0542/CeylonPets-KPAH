@@ -88,6 +88,7 @@ export default function MedicalRecordsManager({
   const [newVacDueDate, setNewVacDueDate] = useState('');
   const [newVacStatus, setNewVacStatus] = useState<'active' | 'overdue' | 'due-soon'>('active');
   const [editVaccineIndex, setEditVaccineIndex] = useState<number | null>(null);
+  const [editLabIndex, setEditLabIndex] = useState<number | null>(null);
 
   // New Lab entry states
   const [showAddLab, setShowAddLab] = useState(false);
@@ -235,7 +236,7 @@ export default function MedicalRecordsManager({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="ehr-manager-portal">
       
       {/* Sidebar List - Search & Selection (4 Cols) */}
-      <div className="lg:col-span-4 bg-white p-4 rounded-2xl border border-sky-100 shadow-sm flex flex-col h-[35rem] text-xs">
+      <div className="lg:col-span-4 bg-white p-4 rounded-2xl border border-sky-100 shadow-sm flex flex-col h-[35rem] text-xs print:hidden">
         <div className="space-y-3 pb-3 border-b border-slate-100 flex items-center justify-between">
           <div className="relative flex-1 mr-2">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
@@ -311,11 +312,11 @@ export default function MedicalRecordsManager({
                 {/* HIPAA compliance sync shield */}
                 <div className="flex flex-col gap-2 items-end">
                   <button
-                    onClick={triggerEHRCloudSynchronization}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                    onClick={() => window.print()}
+                    className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs print:hidden"
                   >
-                    <ShieldCheck className="h-4 w-4" />
-                    <span>HIPAA External Sync</span>
+                    <Printer className="h-4 w-4" />
+                    <span>Print Full Medical Record</span>
                   </button>
                   <button
                     onClick={openEditPatientForm}
@@ -371,7 +372,7 @@ export default function MedicalRecordsManager({
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-700 block text-[10px]">Chief Symptoms</label>
+                          <label className="font-bold text-slate-700 block text-[10px]">Subjective & Objective Findings</label>
                           <textarea
                             rows={3}
                             value={editSymptoms}
@@ -380,7 +381,7 @@ export default function MedicalRecordsManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-700 block text-[10px]">Clinical Diagnosis</label>
+                          <label className="font-bold text-slate-700 block text-[10px]">Assessment</label>
                           <textarea
                             rows={3}
                             value={editDiagnosis}
@@ -391,7 +392,7 @@ export default function MedicalRecordsManager({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Treatment Summary & Instructions</label>
+                        <label className="font-bold text-slate-700 block text-[10px]">Treatment Plan & Prescriptions</label>
                         <textarea
                           rows={3}
                           value={editTreatmentNotes}
@@ -429,17 +430,17 @@ export default function MedicalRecordsManager({
                     <>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                          <span className="text-[10px] font-mono text-slate-400 block font-bold uppercase tracking-wider mb-1">Chief Symptoms</span>
+                          <span className="text-[10px] font-mono text-slate-400 block font-bold uppercase tracking-wider mb-1">Subjective & Objective Findings</span>
                           <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{activeRecord.symptoms}</p>
                         </div>
                         <div className="p-4 bg-teal-50/40 border border-teal-100 rounded-xl">
-                          <span className="text-[10px] font-mono text-teal-600 block font-bold uppercase tracking-wider mb-1">Clinical Diagnosis</span>
+                          <span className="text-[10px] font-mono text-teal-600 block font-bold uppercase tracking-wider mb-1">Assessment</span>
                           <p className="text-teal-950 font-bold leading-relaxed whitespace-pre-wrap">{activeRecord.diagnosis}</p>
                         </div>
                       </div>
 
                       <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-2">
-                        <span className="text-[10px] font-mono text-slate-400 block font-bold uppercase tracking-wider">Treatment Summary & Instructions</span>
+                        <span className="text-[10px] font-mono text-slate-400 block font-bold uppercase tracking-wider">Treatment Plan & Prescriptions</span>
                         <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{activeRecord.treatmentNotes}</p>
                       </div>
 
@@ -609,7 +610,19 @@ export default function MedicalRecordsManager({
                         <div className="space-y-0.5">
                           <span className="font-bold text-slate-800 text-sm">{vac.name}</span>
                           <span className="text-slate-400 font-medium block">Administered: {vac.dateAdministered}</span>
-                          <div className="hidden group-hover:flex items-center gap-2 pt-1">
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right space-y-1">
+                            <span className="text-slate-500 font-mono font-bold block text-[11px]">Due: {vac.nextDueDate}</span>
+                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                              vac.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
+                              vac.status === 'due-soon' ? 'bg-amber-100 text-amber-800' :
+                              'bg-rose-100 text-rose-800 animate-pulse'
+                            }`}>
+                              {vac.status === 'active' ? 'Current Active' : vac.status === 'due-soon' ? 'Due Soon' : 'Booster Overdue'}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => {
                                 setNewVacName(vac.name);
@@ -619,11 +632,11 @@ export default function MedicalRecordsManager({
                                 setEditVaccineIndex(idx);
                                 setShowAddVaccine(true);
                               }}
-                              className="text-[10px] text-sky-600 hover:text-sky-800 font-bold cursor-pointer"
+                              className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg cursor-pointer"
+                              title="Edit"
                             >
-                              Edit
+                              ✏️
                             </button>
-                            <span className="text-slate-200 text-[10px]">|</span>
                             <button
                               onClick={() => {
                                 if(window.confirm('Are you sure you want to remove this vaccination record?')) {
@@ -632,25 +645,21 @@ export default function MedicalRecordsManager({
                                   onUpdateRecord({ ...activeRecord, vaccinations: updated });
                                 }
                               }}
-                              className="text-[10px] text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                              title="Remove"
                             >
-                              Remove
+                              <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
-                        </div>
-                        <div className="text-right space-y-1">
-                          <span className="text-slate-500 font-mono font-bold block text-[11px]">Due: {vac.nextDueDate}</span>
-                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                            vac.status === 'active' ? 'bg-emerald-100 text-emerald-800' :
-                            vac.status === 'due-soon' ? 'bg-amber-100 text-amber-800' :
-                            'bg-rose-100 text-rose-800 animate-pulse'
-                          }`}>
-                            {vac.status === 'active' ? 'Current Active' : vac.status === 'due-soon' ? 'Due Soon' : 'Booster Overdue'}
-                          </span>
                         </div>
                       </div>
                     ))}
                   </div>
+                  {activeRecord.vaccinations.length === 0 && (
+                    <div className="text-center text-slate-400 py-12">
+                      No records found. Click + to add a new entry.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -767,9 +776,19 @@ export default function MedicalRecordsManager({
                               showToast('Lab test name is required', 'success');
                               return;
                             }
-                            const updatedLabs = [
-                              ...activeRecord.labResults,
-                              {
+                            let updatedLabs = [...activeRecord.labResults];
+                            if (editLabIndex !== null) {
+                              updatedLabs[editLabIndex] = {
+                                ...updatedLabs[editLabIndex],
+                                testName: newLabTestName,
+                                resultDate: newLabDate,
+                                status: newLabStatus,
+                                value: newLabValue,
+                                referenceRange: newLabRefRange,
+                                notes: newLabNotes
+                              };
+                            } else {
+                              updatedLabs.push({
                                 id: `lab-entry-${Date.now()}`,
                                 testName: newLabTestName,
                                 requestDate: new Date().toISOString().split('T')[0],
@@ -778,13 +797,14 @@ export default function MedicalRecordsManager({
                                 value: newLabValue,
                                 referenceRange: newLabRefRange,
                                 notes: newLabNotes
-                              }
-                            ];
+                              });
+                            }
                             onUpdateRecord({
                               ...activeRecord,
                               labResults: updatedLabs
                             });
                             setShowAddLab(false);
+                            setEditLabIndex(null);
                           }}
                           className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-lg text-[11px]"
                         >
@@ -794,25 +814,58 @@ export default function MedicalRecordsManager({
                     </div>
                   )}
 
-                  {activeRecord.labResults.map(lab => (
+                  {activeRecord.labResults.map((lab, idx) => (
                     <div 
                       key={lab.id} 
-                      className={`p-4 border rounded-xl space-y-2 ${
+                      className={`p-4 border rounded-xl space-y-2 group relative ${
                         lab.status === 'urgent' ? 'border-rose-200 bg-rose-50/20' : 'border-slate-100 bg-slate-50/50'
                       }`}
                     >
-                      <div className="flex justify-between items-center text-xs">
+                      <div className="flex justify-between items-start text-xs">
                         <div>
                           <span className="font-black text-slate-800 text-sm block">{lab.testName}</span>
                           <span className="text-slate-400 font-medium font-mono text-[10px] block">Released Date: {lab.resultDate || 'Pending Workup'}</span>
                         </div>
-                        <span className={`text-[9px] font-bold px-2.5 py-1 rounded-lg ${
-                          lab.status === 'urgent' ? 'bg-rose-600 text-white animate-pulse' :
-                          lab.status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                          'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {lab.status.toUpperCase()}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[9px] font-bold px-2.5 py-1 rounded-lg ${
+                            lab.status === 'urgent' ? 'bg-rose-600 text-white animate-pulse' :
+                            lab.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                            'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {lab.status.toUpperCase()}
+                          </span>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setNewLabTestName(lab.testName);
+                                setNewLabDate(lab.resultDate || '');
+                                setNewLabStatus(lab.status as any);
+                                setNewLabValue(lab.value || '');
+                                setNewLabRefRange(lab.referenceRange || '');
+                                setNewLabNotes(lab.notes || '');
+                                setEditLabIndex(idx);
+                                setShowAddLab(true);
+                              }}
+                              className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg cursor-pointer bg-white/50"
+                              title="Edit"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => {
+                                if(window.confirm('Are you sure you want to remove this lab record?')) {
+                                  const updated = [...activeRecord.labResults];
+                                  updated.splice(idx, 1);
+                                  onUpdateRecord({ ...activeRecord, labResults: updated });
+                                }
+                              }}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer bg-white/50"
+                              title="Remove"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 pt-2 border-t text-xs">
@@ -834,8 +887,8 @@ export default function MedicalRecordsManager({
                     </div>
                   ))}
                   {activeRecord.labResults.length === 0 && (
-                    <div className="text-center py-12 text-slate-400">
-                      No bloodwork or cytological lab scans registered for this pet in recent visits.
+                    <div className="text-center text-slate-400 py-12">
+                      No records found. Click + to add a new entry.
                     </div>
                   )}
                 </div>
