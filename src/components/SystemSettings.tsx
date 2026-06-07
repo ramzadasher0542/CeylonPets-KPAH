@@ -1288,139 +1288,60 @@ export default function SystemSettings({
 
           {/* TAB 4: AUTOMATED EMAIL REPORTING DIGEST */}
           {activeTab === 'email' && (
-            <div className="space-y-6 animate-fade-in text-xs">
+            <div className="w-full max-w-3xl space-y-6">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Automated Financial & Stock Reports Dispatched by Email</h3>
-                <p className="text-slate-400 mt-1">Configure reporting frequencies and deliver automated sales ledger digests to client office administrators.</p>
+                <h2 className="text-2xl font-bold text-gray-800">End of Day Reporting</h2>
+                <p className="text-gray-500 mt-1">Configure where daily Z-reports, gross sales, and low-stock summaries are sent during shift closure.</p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* SMTP Setup Card */}
-                <div className="space-y-4">
-                  <div className="p-5 bg-slate-50/60 rounded-2xl border border-slate-100 space-y-4">
-                    <span className="font-extrabold text-slate-800 block text-xs underline">SMTP Dispatch Configurations</span>
-
-                    <div className="space-y-1.5">
-                      <label className="font-bold text-slate-600 block text-[10px]">Report Outgoing Mode</label>
-                      <div className="flex gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setConfigValue('emailDigestEnabled', true)}
-                          className={`flex-1 py-1.5 px-3 rounded-lg font-bold border transition-all text-center cursor-pointer ${
-                            config.emailDigestEnabled 
-                              ? 'bg-indigo-600 text-white border-indigo-600' 
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          Send Automated Digests
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfigValue('emailDigestEnabled', false)}
-                          className={`flex-1 py-1.5 px-3 rounded-lg font-bold border transition-all text-center cursor-pointer ${
-                            !config.emailDigestEnabled 
-                              ? 'bg-rose-600 text-white border-rose-600' 
-                              : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                          }`}
-                        >
-                          Manual Action Only
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-600 block text-[10px]">Digest Dispatch Interval</label>
-                      <select
-                        value={config.digestSchedule}
-                        onChange={(e: any) => setConfigValue('digestSchedule', e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                      >
-                        <option value="daily_end">Every Evening at 10:00 PM (Closing Sales Digest)</option>
-                        <option value="weekly">Every Sunday midnight (Weekly Financial Summary)</option>
-                        <option value="monthly_end">Final hours of every month (Full patient + inventory stock checks)</option>
-                      </select>
-                    </div>
-
-                    {/* Email Recipient Management */}
-                    <div className="space-y-2 border-t pt-3">
-                      <span className="font-bold text-slate-700 block text-[10px]">Client Manager Email Recipients list</span>
-                      
-                      {/* Email tags */}
-                      <div className="flex flex-wrap gap-1.5">
-                        {config.recipientEmails.length === 0 ? (
-                          <span className="text-[10px] text-rose-500 font-bold bg-rose-50 px-2 py-1 rounded">No notification recipient registered yet!</span>
-                        ) : (
-                          config.recipientEmails.map((em, idx) => (
-                            <span key={idx} className="px-2 py-1 bg-indigo-50 border border-indigo-100 text-indigo-805 font-bold rounded-lg flex items-center gap-1">
-                              {em}
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveEmail(idx)}
-                                className="text-indigo-400 hover:text-rose-605 font-sans font-black ml-1 scale-105 cursor-pointer"
-                              >
-                                ✕
-                              </button>
-                            </span>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Add email input */}
-                      <form onSubmit={handleAddEmail} className="flex gap-1.5 pt-1.5">
-                        <input
-                          type="email"
-                          placeholder="manager@clientsite.com"
-                          value={newEmail}
-                          onChange={(e) => setNewEmail(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 text-xs"
-                        />
-                        <button
-                          type="submit"
-                          className="px-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer"
-                        >
-                          Add
-                        </button>
-                      </form>
-                    </div>
+              <div className="bg-white p-6 rounded-xl border shadow-sm space-y-6">
+                {/* Recipient List */}
+                <div>
+                  <h3 className="font-semibold text-gray-800 mb-2">Management Email Recipients</h3>
+                  <p className="text-sm text-gray-500 mb-4">These addresses will receive the daily sales ledger when the register is closed.</p>
+                  
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {config.recipientEmails.map((em, idx) => (
+                      <span key={idx} className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full flex items-center gap-2">
+                        {em} 
+                        <button type="button" onClick={() => handleRemoveEmail(idx)} className="hover:text-blue-900 font-bold">&times;</button>
+                      </span>
+                    ))}
                   </div>
+                  
+                  <form onSubmit={handleAddEmail} className="flex gap-2">
+                    <input 
+                      type="email" 
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="Add new management email..." 
+                      className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5" 
+                    />
+                    <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition-colors">Add</button>
+                  </form>
                 </div>
 
-                {/* Email Dispatch Simulated Screen */}
-                <div className="p-5 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl border border-indigo-950 flex flex-col justify-between">
-                  <div className="space-y-4">
-                    <span className="font-mono text-[9px] text-indigo-300 font-black tracking-widest block uppercase">SIMULATE DIRECT MAIL ENGINE</span>
-                    
-                    <div>
-                      <h4 className="text-sm font-black text-white leading-none">Instant PDF Reporting spooled</h4>
-                      <p className="text-white/60 text-[10px] mt-1 leading-relaxed font-semibold">
-                        Resellers can test the automated SMTP reporting system. This emails immediate financial metrics, inventory shortages, and appointment statuses to your manager emails.
-                      </p>
-                    </div>
+                <hr className="border-gray-100" />
 
-                    <button
-                      type="button"
-                      onClick={handleTriggerEmailSimulation}
-                      disabled={isSendingEmail}
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-indigo-600 hover:from-emerald-600 hover:to-indigo-700 text-white text-xs font-bold rounded-xl shadow-md cursor-pointer disabled:opacity-50"
-                    >
-                      {isSendingEmail ? 'Spooling PDF & Dispatching...' : 'Dispatch Simulated Daily Digest Now'}
-                    </button>
-
-                    {emailStatusMessage && (
-                      <div className="p-3 bg-white/10 rounded-2xl border border-white/10 space-y-1.5 animate-pulse text-[10px] text-sky-305 font-mono">
-                        <p className="font-bold text-white uppercase text-[8px] tracking-wide">SMTP Logs Output:</p>
-                        <p className="text-emerald-300 font-semibold">{emailStatusMessage}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-3.5 bg-white/5 rounded-2xl text-[9px] leading-relaxed text-white/50 font-sans border border-white/5 mt-4">
-                    <strong className="text-white font-bold block">Digital Ledger Contents:</strong>
-                    "Daily CeylonPets end-of-day digest: total transactions: {invoices.length}, registered active stock items: {inventory.length}, low-stock security reorders warnings: {inventory.filter(i => i.stock <= i.minStock).length}."
-                  </div>
+                {/* Manual Trigger */}
+                <div>
+                   <h3 className="font-semibold text-gray-800 mb-2">Shift Closure Dispatch</h3>
+                   <p className="text-sm text-gray-500 mb-4">Compile today's financial metrics and dispatch them immediately. Use this at the end of the working day.</p>
+                  <button 
+                    type="button"
+                    onClick={handleTriggerEmailSimulation}
+                    disabled={isSendingEmail}
+                    className="bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 px-5 rounded-lg flex items-center justify-center gap-2 transition-colors w-full shadow-sm disabled:opacity-50"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                    {isSendingEmail ? 'Generating & Sending...' : 'Generate & Send Z-Report Digest'}
+                  </button>
+                  {emailStatusMessage && (
+                    <p className="mt-3 text-center text-sm font-semibold text-emerald-600 animate-pulse">
+                      {emailStatusMessage}
+                    </p>
+                  )}
                 </div>
-
               </div>
             </div>
           )}
