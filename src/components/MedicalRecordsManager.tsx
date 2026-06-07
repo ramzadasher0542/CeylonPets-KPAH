@@ -1240,7 +1240,7 @@ export default function MedicalRecordsManager({
       {activeRecord && (
         <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:bg-white print:text-black print:z-50 print:p-8">
           <div className="text-center border-b-2 border-black pb-4 mb-6">
-            <h1 className="text-2xl font-black uppercase">CeylonPets Animal Hospital - Official Patient Medical Record</h1>
+            <h1 className="text-2xl font-black uppercase">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'} - Official Patient Medical Record</h1>
             <p className="text-sm font-semibold mt-1">Generated: {new Date().toLocaleDateString()}</p>
           </div>
 
@@ -1323,7 +1323,7 @@ export default function MedicalRecordsManager({
           )}
 
           <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold uppercase">
-            This document confirms clinical records on file at CeylonPets. Verified Secure Clinical EHR Record.
+            This document confirms clinical records on file at {systemConfig?.hospitalName || 'CeylonPets'}. Verified Secure Clinical EHR Record.
           </div>
         </div>
       )}

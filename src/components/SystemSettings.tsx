@@ -139,6 +139,9 @@ export default function SystemSettings({
 
   // CSV Import States
   const [csvText, setCsvText] = useState('');
+  
+  // Branding UI states
+  const [mockupView, setMockupView] = useState<'receipt' | 'a4'>('receipt');
   const [csvImportMode, setCsvImportMode] = useState<'merge' | 'replace'>('merge');
   const [csvValidationErrors, setCsvValidationErrors] = useState<string[]>([]);
   const [csvValidationSuccess, setCsvValidationSuccess] = useState<string[]>([]);
@@ -557,7 +560,7 @@ export default function SystemSettings({
                 }`}
               >
                 <Building className="h-4.5 w-4.5" />
-                <span>Invoice Branding</span>
+                <span>Global Clinic Identity</span>
               </button>
 
               <button
@@ -654,87 +657,87 @@ export default function SystemSettings({
           {activeTab === 'branding' && (
             <div className="space-y-6 animate-fade-in text-xs">
               <div>
-                <h3 className="text-base font-extrabold text-slate-800">Hospital Software Labeling</h3>
+                <h3 className="text-base font-extrabold text-slate-800">Global Clinic Identity</h3>
                 <p className="text-slate-400 mt-1">Set how the clinic interface labels, medical records, and invoice templates are customized.</p>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                 
                 {/* Inputs area */}
-                <div className="space-y-4">
-                  <span className="font-extrabold text-slate-800 block text-xs underline">Branding Parameters</span>
+                <div className="space-y-6">
                   
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Title / Software App Name</label>
-                    <input
-                      type="text"
-                      value={config.appName}
-                      onChange={(e) => setConfigValue('appName', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Client Hospital/Clinic Name</label>
-                    <input
-                      type="text"
-                      value={config.hospitalName}
-                      onChange={(e) => setConfigValue('hospitalName', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold font-sans"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Office Address</label>
-                    <input
-                      type="text"
-                      value={config.hospitalAddress}
-                      onChange={(e) => setConfigValue('hospitalAddress', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
+                  {/* Card 1: Core Clinic Master Data */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Building className="h-4 w-4 text-indigo-500"/> Core Clinic Master Data</h4>
+                    
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Office Telephone No.</label>
+                      <label className="font-bold text-slate-700 block text-[10px]">Client Hospital/Clinic Name</label>
                       <input
                         type="text"
-                        value={config.hospitalPhone}
-                        onChange={(e) => setConfigValue('hospitalPhone', e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono font-semibold"
+                        value={config.hospitalName}
+                        onChange={(e) => setConfigValue('hospitalName', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold font-sans"
                       />
                     </div>
+
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Office Contact Email</label>
+                      <label className="font-bold text-slate-700 block text-[10px]">Office Address</label>
                       <input
-                        type="email"
-                        value={config.hospitalEmail}
-                        onChange={(e) => setConfigValue('hospitalEmail', e.target.value)}
+                        type="text"
+                        value={config.hospitalAddress}
+                        onChange={(e) => setConfigValue('hospitalAddress', e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                       />
                     </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block text-[10px]">Office Telephone No.</label>
+                        <input
+                          type="text"
+                          value={config.hospitalPhone}
+                          onChange={(e) => setConfigValue('hospitalPhone', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono font-semibold"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block text-[10px]">Office Contact Email</label>
+                        <input
+                          type="email"
+                          value={config.hospitalEmail}
+                          onChange={(e) => setConfigValue('hospitalEmail', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block text-[10px]">Currency Sign</label>
+                        <input
+                          type="text"
+                          value={config.currencySymbol}
+                          onChange={(e) => setConfigValue('currencySymbol', e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-center font-bold text-indigo-700 rounded-lg"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="font-bold text-slate-700 block text-[10px]">Tax Rate (%)</label>
+                        <input
+                          type="number"
+                          step={0.5}
+                          value={config.taxRate * 100}
+                          onChange={(e) => setConfigValue('taxRate', parseFloat(e.target.value) / 100)}
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-center rounded-lg font-bold"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Currency Sign</label>
-                      <input
-                        type="text"
-                        value={config.currencySymbol}
-                        onChange={(e) => setConfigValue('currencySymbol', e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-center font-bold text-indigo-700 rounded-lg"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Tax Rate (%)</label>
-                      <input
-                        type="number"
-                        step={0.5}
-                        value={config.taxRate * 100}
-                        onChange={(e) => setConfigValue('taxRate', parseFloat(e.target.value) / 100)}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-center rounded-lg font-bold"
-                      />
-                    </div>
+                  {/* Card 2: Document-Specific Configurations */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><FileText className="h-4 w-4 text-indigo-500"/> Document-Specific Configurations</h4>
+                    
                     <div className="space-y-1">
                       <label className="font-bold text-slate-700 block text-[10px]">Logo Emoji</label>
                       <select
@@ -749,74 +752,92 @@ export default function SystemSettings({
                         <option value="☘️">☘️ Green care</option>
                       </select>
                     </div>
-                  </div>
 
-                  <div className="space-y-1">
-                    <label className="font-bold text-slate-700 block text-[10px]">Custom Receipt Footer Message</label>
-                    <textarea
-                      rows={2}
-                      value={config.invoiceFooterMessage}
-                      onChange={(e) => setConfigValue('invoiceFooterMessage', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
-                    />
-                    <label className="font-bold text-slate-700 block text-[10px]">Receipt Official Footer Subtext</label>
-                    <input
-                      type="text"
-                      value={config.invoiceSubFooterMessage || ''}
-                      onChange={(e) => setConfigValue('invoiceSubFooterMessage', e.target.value)}
-                      placeholder="* CEYLONPETS OFFICIAL RECEIPT *"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
-                    />
-                    <label className="font-bold text-slate-700 block text-[10px]">Optional Bottom Footer (e.g. Powered By text)</label>
-                    <input
-                      type="text"
-                      value={config.invoiceExtraFooterMessage || ''}
-                      onChange={(e) => setConfigValue('invoiceExtraFooterMessage', e.target.value)}
-                      placeholder="Optional extra message at the very bottom"
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-100">
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label className="font-bold text-slate-700 block text-[10px]">Login Screen Graphic Logo</label>
-                        {config.loginLogoUrl && (
-                          <button type="button" onClick={() => setConfigValue('loginLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
-                        )}
-                      </div>
-                      {!config.loginLogoUrl ? (
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => handleLogoUpload(e, 'loginLogoUrl')}
-                          className="w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
-                        />
-                      ) : (
-                        <div className="text-[10px] bg-emerald-50 text-emerald-700 font-bold py-1.5 px-3 rounded-md border border-emerald-100 flex items-center justify-between">
-                          <span>✓ Logo is active</span>
-                        </div>
-                      )}
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 block text-[10px]">Custom Receipt Footer Message</label>
+                      <textarea
+                        rows={2}
+                        value={config.invoiceFooterMessage}
+                        onChange={(e) => setConfigValue('invoiceFooterMessage', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
+                      />
+                      <label className="font-bold text-slate-700 block text-[10px]">Receipt Official Footer Subtext</label>
+                      <input
+                        type="text"
+                        value={config.invoiceSubFooterMessage || ''}
+                        onChange={(e) => setConfigValue('invoiceSubFooterMessage', e.target.value)}
+                        placeholder="* CEYLONPETS OFFICIAL RECEIPT *"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
+                      />
                     </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label className="font-bold text-slate-700 block text-[10px]">Thermal Receipt Logo (BMP Only)</label>
-                        {config.posLogoUrl && (
-                          <button type="button" onClick={() => setConfigValue('posLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <label className="font-bold text-slate-700 block text-[10px]">Primary Web Logo</label>
+                          {config.loginLogoUrl && (
+                            <button type="button" onClick={() => setConfigValue('loginLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+                          )}
+                        </div>
+                        {!config.loginLogoUrl ? (
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleLogoUpload(e, 'loginLogoUrl')}
+                            className="w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
+                          />
+                        ) : (
+                          <div className="text-[10px] bg-emerald-50 text-emerald-700 font-bold py-1.5 px-3 rounded-md border border-emerald-100 flex items-center justify-between">
+                            <span>✓ Active</span>
+                          </div>
                         )}
                       </div>
-                      {!config.posLogoUrl ? (
-                        <input
-                          type="file"
-                          accept=".bmp,image/bmp"
-                          onChange={(e) => handleLogoUpload(e, 'posLogoUrl')}
-                          className="w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
-                        />
-                      ) : (
-                        <div className="text-[10px] bg-emerald-50 text-emerald-700 font-bold py-1.5 px-3 rounded-md border border-emerald-100 flex items-center justify-between">
-                          <span>✓ Logo is active</span>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <label className="font-bold text-slate-700 block text-[10px]">Thermal BMP Logo</label>
+                          {config.posLogoUrl && (
+                            <button type="button" onClick={() => setConfigValue('posLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
+                          )}
                         </div>
-                      )}
+                        {!config.posLogoUrl ? (
+                          <input
+                            type="file"
+                            accept=".bmp,image/bmp"
+                            onChange={(e) => handleLogoUpload(e, 'posLogoUrl')}
+                            className="w-full text-[10px] text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-sky-50 file:text-sky-700 hover:file:bg-sky-100 cursor-pointer"
+                          />
+                        ) : (
+                          <div className="text-[10px] bg-emerald-50 text-emerald-700 font-bold py-1.5 px-3 rounded-md border border-emerald-100 flex items-center justify-between">
+                            <span>✓ Active</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: System Whitelabeling */}
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Sparkles className="h-4 w-4 text-indigo-500"/> System Whitelabeling</h4>
+                    
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 block text-[10px]">Title / Software App Name</label>
+                      <input
+                        type="text"
+                        value={config.appName}
+                        onChange={(e) => setConfigValue('appName', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                      />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 block text-[10px]">Official System Footer (Powered By text)</label>
+                      <input
+                        type="text"
+                        value={config.invoiceExtraFooterMessage || ''}
+                        onChange={(e) => setConfigValue('invoiceExtraFooterMessage', e.target.value)}
+                        placeholder="Optional extra message at the very bottom"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                      />
                     </div>
                   </div>
                 </div>
@@ -826,77 +847,108 @@ export default function SystemSettings({
                   <div className="space-y-3">
                     <div className="flex justify-between items-center border-b pb-2">
                       <span className="font-black text-indigo-900 tracking-tight text-xs uppercase flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Dynamic Live Checkout Mockup
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Dynamic Live Mockup
                       </span>
-                      <span className="px-2 py-0.5 bg-yellow-100 text-yellow-850 font-bold tracking-tight rounded-md text-[8px] uppercase">
-                        Real-time Template
-                      </span>
+                      <div className="flex bg-white rounded-lg p-0.5 border border-slate-200">
+                        <button
+                          onClick={() => setMockupView('receipt')}
+                          className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase transition-colors ${mockupView === 'receipt' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          Thermal Receipt
+                        </button>
+                        <button
+                          onClick={() => setMockupView('a4')}
+                          className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase transition-colors ${mockupView === 'a4' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}
+                        >
+                          A4 EHR Document
+                        </button>
+                      </div>
                     </div>
 
                     {/* Paper thermal receipt receipt illustration */}
-                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-150 text-slate-700 space-y-4 font-mono text-[9px] relative mx-auto w-full max-w-[280px]">
-                      
-                      {/* Thermal receipt jagged top */}
-                      <div className="text-center space-y-1">
-                        {config.posLogoUrl ? (
-                          <img src={config.posLogoUrl} alt="Logo" className="max-h-12 w-auto mx-auto grayscale block" />
-                        ) : (
-                          <span className="text-lg block select-none leading-none">{config.invoiceLogo}</span>
-                        )}
-                        <h4 className="text-xs font-black tracking-tighter text-slate-800 leading-tight block">{config.hospitalName || "Pet Hospital"}</h4>
-                        <p className="text-[8px] text-slate-400 font-medium whitespace-pre-wrap">{config.hospitalAddress}</p>
-                        <p className="text-[8px] text-slate-400 font-medium">PH: {config.hospitalPhone} • {config.hospitalEmail}</p>
-                      </div>
+                    {mockupView === 'receipt' ? (
+                      <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-150 text-slate-700 space-y-4 font-mono text-[9px] relative mx-auto w-full max-w-[280px]">
+                        
+                        {/* Thermal receipt jagged top */}
+                        <div className="text-center space-y-1">
+                          {config.posLogoUrl ? (
+                            <img src={config.posLogoUrl} alt="Logo" className="max-h-12 w-auto mx-auto grayscale block" />
+                          ) : (
+                            <span className="text-lg block select-none leading-none">{config.invoiceLogo}</span>
+                          )}
+                          <h4 className="text-xs font-black tracking-tighter text-slate-800 leading-tight block">{config.hospitalName || "Pet Hospital"}</h4>
+                          <p className="text-[8px] text-slate-400 font-medium whitespace-pre-wrap">{config.hospitalAddress}</p>
+                          <p className="text-[8px] text-slate-400 font-medium">PH: {config.hospitalPhone} • {config.hospitalEmail}</p>
+                        </div>
 
-                      <div className="border-t border-dashed border-slate-200 my-2 pt-2 space-y-1 text-[8px]">
-                        <div className="flex justify-between">
-                          <span>Date: May 23, 2026</span>
-                          <span>Time: 11:24 AM</span>
+                        <div className="border-t border-dashed border-slate-200 my-2 pt-2 space-y-1 text-[8px]">
+                          <div className="flex justify-between">
+                            <span>Date: May 23, 2026</span>
+                            <span>Time: 11:24 AM</span>
+                          </div>
+                          <div className="flex justify-between font-bold">
+                            <span>Patient: Coco (Goldendoodle)</span>
+                            <span>Owner: Isabella Bennett</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between font-bold">
-                          <span>Patient: Coco (Goldendoodle)</span>
-                          <span>Owner: Isabella Bennett</span>
-                        </div>
-                      </div>
 
-                      <div className="border-t border-dashed border-slate-200 py-1.5 space-y-1 text-[8px]">
-                        <div className="flex justify-between font-bold text-slate-800 text-[9px]">
-                          <span>DHPP Core Vaccine Shot</span>
-                          <span>{config.currencySymbol}35.00</span>
+                        <div className="border-t border-dashed border-slate-200 py-1.5 space-y-1 text-[8px]">
+                          <div className="flex justify-between font-bold text-slate-800 text-[9px]">
+                            <span>DHPP Core Vaccine Shot</span>
+                            <span>{config.currencySymbol}35.00</span>
+                          </div>
+                          <div className="flex justify-between font-bold text-slate-800 text-[9px]">
+                            <span>Apoquel Flea Allergy 30 tabs</span>
+                            <span>{config.currencySymbol}89.00</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between font-bold text-slate-800 text-[9px]">
-                          <span>Apoquel Flea Allergy 30 tabs</span>
-                          <span>{config.currencySymbol}89.00</span>
-                        </div>
-                      </div>
 
-                      <div className="border-t border-dashed border-slate-200 mt-2 pt-1.5 space-y-0.5 text-right text-[8px]">
-                        <div className="flex justify-between">
-                          <span>Subtotal:</span>
-                          <span>{config.currencySymbol}124.00</span>
+                        <div className="border-t border-dashed border-slate-200 mt-2 pt-1.5 space-y-0.5 text-right text-[8px]">
+                          <div className="flex justify-between">
+                            <span>Subtotal:</span>
+                            <span>{config.currencySymbol}124.00</span>
+                          </div>
+                          <div className="flex justify-between text-[8px]">
+                            <span>Total custom Tax:</span>
+                            <span>{config.currencySymbol}{(124.00 * config.taxRate).toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between text-[9px] font-black text-indigo-700 border-t pt-1 font-mono">
+                            <span>TOTAL SECURE DUE:</span>
+                            <span>{config.currencySymbol}{(124.00 + (124.00 * config.taxRate)).toFixed(2)}</span>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-[8px]">
-                          <span>Total custom Tax:</span>
-                          <span>{config.currencySymbol}{(124.00 * config.taxRate).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between text-[9px] font-black text-indigo-700 border-t pt-1 font-mono">
-                          <span>TOTAL SECURE DUE:</span>
-                          <span>{config.currencySymbol}{(124.00 + (124.00 * config.taxRate)).toFixed(2)}</span>
-                        </div>
-                      </div>
 
-                      <div className="text-center pt-3 border-t border-dashed text-slate-400 text-[8px] leading-relaxed">
-                        {config.invoiceFooterMessage || "Thank you for trusting CeylonPets!"}
-                        <span className="block mt-1.5 text-[6px] tracking-widest text-[#72a1e3]">
-                          {config.invoiceSubFooterMessage || `* ${config.appName.toUpperCase()} OFFICIAL RECEIPT *`}
-                        </span>
-                        {config.invoiceExtraFooterMessage && (
-                          <span className="block mt-1.5 text-[5px] tracking-widest text-slate-400 uppercase">
-                            {config.invoiceExtraFooterMessage}
+                        <div className="text-center pt-3 border-t border-dashed text-slate-400 text-[8px] leading-relaxed">
+                          {config.invoiceFooterMessage || "Thank you for trusting CeylonPets!"}
+                          <span className="block mt-1.5 text-[6px] tracking-widest text-[#72a1e3]">
+                            {config.invoiceSubFooterMessage || `* ${config.appName.toUpperCase()} OFFICIAL RECEIPT *`}
                           </span>
-                        )}
+                          {config.invoiceExtraFooterMessage && (
+                            <span className="block mt-1.5 text-[5px] tracking-widest text-slate-400 uppercase">
+                              {config.invoiceExtraFooterMessage}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="bg-white p-6 rounded-sm shadow-md border border-slate-200 text-slate-800 space-y-6 font-sans text-[9px] relative mx-auto w-full aspect-[1/1.4]">
+                        <div className="text-center border-b-2 border-black pb-4 mb-4">
+                          <h1 className="text-sm font-black uppercase">{config.hospitalName || 'CeylonPets Animal Hospital'} - Official Patient Medical Record</h1>
+                          <p className="text-[9px] font-semibold mt-1">Generated: {new Date().toLocaleDateString()}</p>
+                        </div>
+                        <div className="mb-4">
+                          <h2 className="text-[10px] font-bold mb-2 uppercase border-b border-gray-300 pb-1">Patient Demographics</h2>
+                          <div className="grid grid-cols-2 gap-2 border border-black p-2 text-[8px]">
+                            <div><span className="font-bold">Name:</span> Coco</div>
+                            <div><span className="font-bold">Species:</span> Canine</div>
+                            <div><span className="font-bold">Breed:</span> Goldendoodle</div>
+                            <div><span className="font-bold">Age:</span> 3 Years</div>
+                            <div><span className="font-bold">Weight:</span> 15.5 kg</div>
+                            <div><span className="font-bold">Owner:</span> Isabella Bennett ({config.hospitalPhone || '555-0192'})</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <p className="text-[10px] text-zinc-550 italic leading-relaxed text-center mt-3 text-slate-500 font-semibold p-2 bg-indigo-50/50 rounded-xl">
