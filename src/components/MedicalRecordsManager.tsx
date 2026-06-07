@@ -1239,8 +1239,18 @@ export default function MedicalRecordsManager({
       {/* Dedicated Print View Template */}
       {activeRecord && (
         <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:bg-white print:text-black print:z-50 print:p-8">
-          <div className="text-center border-b-2 border-black pb-4 mb-6">
-            <h1 className="text-2xl font-black uppercase">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'} - Official Patient Medical Record</h1>
+          {/* Letterhead */}
+          <div className="text-center pb-6">
+            {systemConfig?.loginLogoUrl && (
+              <img src={systemConfig.loginLogoUrl} alt="Clinic Logo" className="max-h-24 w-auto mx-auto mb-4" />
+            )}
+            <h1 className="text-3xl font-black uppercase leading-tight">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'}</h1>
+            <p className="text-sm text-slate-600 mt-2">{systemConfig?.hospitalAddress}</p>
+            <p className="text-sm text-slate-600">Ph: {systemConfig?.hospitalPhone} | {systemConfig?.hospitalEmail}</p>
+          </div>
+
+          <div className="text-center border-y-2 border-black py-4 mb-8">
+            <h2 className="text-xl font-black uppercase tracking-widest">Official Patient Medical Record</h2>
             <p className="text-sm font-semibold mt-1">Generated: {new Date().toLocaleDateString()}</p>
           </div>
 
@@ -1325,6 +1335,13 @@ export default function MedicalRecordsManager({
           <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold uppercase">
             This document confirms clinical records on file at {systemConfig?.hospitalName || 'CeylonPets'}. Verified Secure Clinical EHR Record.
           </div>
+
+          {/* System Whitelabel Footer */}
+          {systemConfig?.invoiceExtraFooterMessage && (
+            <div className="mt-12 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 uppercase tracking-widest">
+              {systemConfig.invoiceExtraFooterMessage}
+            </div>
+          )}
         </div>
       )}
     </div>

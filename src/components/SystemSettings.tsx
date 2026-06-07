@@ -931,14 +931,26 @@ export default function SystemSettings({
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-white p-6 rounded-sm shadow-md border border-slate-200 text-slate-800 space-y-6 font-sans text-[9px] relative mx-auto w-full aspect-[1/1.4]">
-                        <div className="text-center border-b-2 border-black pb-4 mb-4">
-                          <h1 className="text-sm font-black uppercase">{config.hospitalName || 'CeylonPets Animal Hospital'} - Official Patient Medical Record</h1>
-                          <p className="text-[9px] font-semibold mt-1">Generated: {new Date().toLocaleDateString()}</p>
+                      <div className="bg-white p-6 rounded-sm shadow-md border border-slate-200 text-slate-800 space-y-4 font-sans text-[9px] relative mx-auto w-full aspect-[1/1.4] flex flex-col">
+                        
+                        {/* Letterhead */}
+                        <div className="text-center">
+                          {config.loginLogoUrl && (
+                            <img src={config.loginLogoUrl} alt="Clinic Logo" className="max-h-8 w-auto mx-auto mb-1.5" />
+                          )}
+                          <h1 className="text-[11px] font-black uppercase leading-tight">{config.hospitalName || 'CeylonPets Animal Hospital'}</h1>
+                          <p className="text-[7px] text-slate-600 mt-0.5">{config.hospitalAddress}</p>
+                          <p className="text-[7px] text-slate-600">Ph: {config.hospitalPhone} | {config.hospitalEmail}</p>
                         </div>
-                        <div className="mb-4">
-                          <h2 className="text-[10px] font-bold mb-2 uppercase border-b border-gray-300 pb-1">Patient Demographics</h2>
-                          <div className="grid grid-cols-2 gap-2 border border-black p-2 text-[8px]">
+
+                        <div className="text-center border-y-2 border-black py-2">
+                          <h2 className="text-[9px] font-black uppercase tracking-widest">Official Patient Medical Record</h2>
+                          <p className="text-[7px] font-semibold mt-0.5">Generated: {new Date().toLocaleDateString()}</p>
+                        </div>
+                        
+                        <div className="flex-1">
+                          <h2 className="text-[8px] font-bold mb-1.5 uppercase border-b border-gray-300 pb-0.5">Patient Demographics</h2>
+                          <div className="grid grid-cols-2 gap-1.5 border border-black p-1.5 text-[7px]">
                             <div><span className="font-bold">Name:</span> Coco</div>
                             <div><span className="font-bold">Species:</span> Canine</div>
                             <div><span className="font-bold">Breed:</span> Goldendoodle</div>
@@ -947,6 +959,13 @@ export default function SystemSettings({
                             <div><span className="font-bold">Owner:</span> Isabella Bennett ({config.hospitalPhone || '555-0192'})</div>
                           </div>
                         </div>
+
+                        {/* System Whitelabel Footer */}
+                        {config.invoiceExtraFooterMessage && (
+                          <div className="mt-auto pt-2 border-t border-slate-200 text-center text-[5px] text-slate-400 uppercase tracking-widest">
+                            {config.invoiceExtraFooterMessage}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
