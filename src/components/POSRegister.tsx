@@ -87,6 +87,9 @@ export default function POSRegister({
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [showCheckoutModal]);
 
+  const [amountReceived, setAmountReceived] = useState('');
+  const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
+
   useEffect(() => {
     const handleSuccessKeyDown = (e: KeyboardEvent) => {
       if (checkoutSuccess) {
@@ -102,8 +105,6 @@ export default function POSRegister({
     window.addEventListener('keydown', handleSuccessKeyDown);
     return () => window.removeEventListener('keydown', handleSuccessKeyDown);
   }, [checkoutSuccess]);
-  const [amountReceived, setAmountReceived] = useState('');
-  const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
 
   // Ledger and Passcode states
   const [ledgerSearchQuery, setLedgerSearchQuery] = useState('');
