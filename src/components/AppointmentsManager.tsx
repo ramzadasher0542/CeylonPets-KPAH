@@ -100,24 +100,37 @@ export default function AppointmentsManager({
       status: 'booked'
     };
 
+    onAddAppointment(newApt);
+    setShowAddModal(false);
+
+    // Clear state
+    setPetName('');
+    setBreed('');
+    setOwnerName('');
+    setOwnerPhone('');
+    setOwnerEmail('');
+    setReason('');
+  };
+
+  const handleCheckIn = (apt: Appointment) => {
     // Check if patient exists in Unified Patient State (records)
-    const normalizedPhone = ownerPhone.replace(/\D/g, '');
-    const patientExists = records.some(r => r.ownerPhone.replace(/\D/g, '') === normalizedPhone && r.petName.toLowerCase() === petName.toLowerCase());
+    const normalizedPhone = apt.ownerPhone.replace(/\D/g, '');
+    const patientExists = records.some(r => r.ownerPhone.replace(/\D/g, '') === normalizedPhone && r.petName.toLowerCase() === apt.petName.toLowerCase());
     
     if (!patientExists) {
-      const newPatientId = `${petName}_${normalizedPhone}`;
+      const newPatientId = `${apt.petName}_${normalizedPhone}`;
       const newRecord: MedicalRecord = {
         id: `rec-${Date.now()}`,
         patientId: newPatientId,
-        petName,
-        petType,
-        breed: breed || 'Mixed breed',
+        petName: apt.petName,
+        petType: apt.petType,
+        breed: apt.breed || 'Mixed breed',
         age: 'Unknown',
         weight: 0,
-        ownerName,
-        ownerPhone,
-        ownerEmail: ownerEmail || 'not-provided@example.com',
-        visitDate: date,
+        ownerName: apt.ownerName,
+        ownerPhone: apt.ownerPhone,
+        ownerEmail: apt.ownerEmail || 'not-provided@example.com',
+        visitDate: apt.date,
         symptoms: '',
         diagnosis: '',
         treatmentNotes: '',
@@ -129,16 +142,8 @@ export default function AppointmentsManager({
       onAddRecord(newRecord);
     }
 
-    onAddAppointment(newApt);
-    setShowAddModal(false);
-
-    // Clear state
-    setPetName('');
-    setBreed('');
-    setOwnerName('');
-    setOwnerPhone('');
-    setOwnerEmail('');
-    setReason('');
+    // Change status to in-progress
+    onUpdateStatus(apt.id, 'in-progress');
   };
 
   return (
@@ -240,7 +245,7 @@ export default function AppointmentsManager({
               {apt.status === 'booked' && (
                 <>
                   <button
-                    onClick={() => onUpdateStatus(apt.id, 'in-progress')}
+                    onClick={() => handleCheckIn(apt)}
                     className="flex-1 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-lg cursor-pointer text-[11px] text-center"
                   >
                     Check-In Clinic
