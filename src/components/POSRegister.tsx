@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ShoppingBag, 
   Search, 
@@ -68,7 +68,24 @@ export default function POSRegister({
 
   // Checkout modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const cashInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (showCheckoutModal && paymentMethod === 'cash') {
+      setTimeout(() => cashInputRef.current?.focus(), 50);
+    }
+  }, [showCheckoutModal, paymentMethod]);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (showCheckoutModal && e.key === 'Escape') {
+        setShowCheckoutModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showCheckoutModal]);
   const [amountReceived, setAmountReceived] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
 
@@ -965,20 +982,11 @@ export default function POSRegister({
             {/* Payment Method Picker */}
             <div className="space-y-2">
               <span className="font-bold text-slate-700 block">Collection System</span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
-                    paymentMethod === 'card' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <CreditCard className="h-4 w-4" /> Credit Card
-                </button>
+              <div className="grid grid-cols-3 gap-2">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('cash')}
-                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
+                  className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
                     paymentMethod === 'cash' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -986,17 +994,17 @@ export default function POSRegister({
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPaymentMethod('e_wallet')}
-                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
-                    paymentMethod === 'e_wallet' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  onClick={() => setPaymentMethod('card')}
+                  className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+                    paymentMethod === 'card' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
-                  <QrCode className="h-4 w-4" /> Quick QR Code
+                  <CreditCard className="h-4 w-4" /> Credit Card
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('bank_transfer')}
-                  className={`p-3 border rounded-xl flex items-center gap-2 font-bold cursor-pointer transition-all ${
+                  className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
                     paymentMethod === 'bank_transfer' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -1011,17 +1019,31 @@ export default function POSRegister({
                 <span className="font-semibold text-teal-800 block">Cash Received calculator</span>
                 <div className="flex gap-2">
                   <input
+                    ref={cashInputRef}
                     type="number"
                     placeholder={`Enter cash amount (${currencySign})`}
                     value={amountReceived}
                     onChange={(e) => setAmountReceived(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCheckoutSubmit();
+                        setShowCheckoutModal(false);
+                      }
+                    }}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs font-bold"
                   />
                 </div>
-                {amountReceived && parseFloat(amountReceived) >= total && (
-                  <div className="text-xs font-bold text-teal-800 flex justify-between pt-1 font-mono">
-                    <span>Change to Return:</span>
-                    <span>{currencySign}{(parseFloat(amountReceived) - total).toFixed(2)}</span>
+                {amountReceived && (
+                  <div className="pt-1 flex justify-between items-center font-mono">
+                    {parseFloat(amountReceived) < total ? (
+                      <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{(total - parseFloat(amountReceived)).toFixed(2)}</span>
+                    ) : (
+                      <>
+                        <span className="text-sm font-bold text-teal-800">Change Due:</span>
+                        <span className="text-emerald-600 font-bold text-lg">{currencySign}{(parseFloat(amountReceived) - total).toFixed(2)}</span>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
