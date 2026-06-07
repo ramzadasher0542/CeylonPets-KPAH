@@ -468,9 +468,9 @@ export default function POSRegister({
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6" id="pos-register-view">
       
       {/* Left Columns - Inventory selection (7 Cols) */}
-      <div className="lg:col-span-7 space-y-4">
+      <div className="lg:col-span-7 h-[calc(100vh-140px)] flex flex-col space-y-4">
         {/* Search and Tabs Controller */}
-        <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
+        <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3 flex-none">
           {activeTab !== 'ledger' ? (
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
@@ -595,9 +595,9 @@ export default function POSRegister({
         </div>
 
         {activeTab !== 'ledger' ? (
-          <>
+          <div className="flex-1 overflow-y-auto min-h-0 pb-4 pr-2 custom-scrollbar flex flex-col gap-4">
             {/* Dynamic Catalog Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[38rem] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredProducts.map(product => {
                 const isLowStock = product.stock <= product.minStock && product.category !== 'service';
                 return (
@@ -647,7 +647,7 @@ export default function POSRegister({
             </div>
 
             {/* Custom Quick Item Form */}
-            <form onSubmit={addCustomCharge} className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3">
+            <form onSubmit={addCustomCharge} className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm space-y-3 shrink-0">
               <div className="flex items-center gap-1 text-slate-700 font-bold text-xs">
                 <Sparkles className="h-4 w-4 text-amber-500" />
                 Quick Service / Custom Retail Addition
@@ -692,7 +692,7 @@ export default function POSRegister({
                 </div>
               </div>
             </form>
-          </>
+          </div>
         ) : (
           /* TRANSACTION LEDGER PANEL */
           <div className="bg-white p-5 rounded-2xl border border-sky-100 shadow-sm space-y-4">
