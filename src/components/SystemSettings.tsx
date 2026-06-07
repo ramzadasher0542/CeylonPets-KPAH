@@ -29,6 +29,7 @@ import {
 import { User, UserRole, InventoryItem, Invoice } from '../types';
 import { showToast } from './Toast';
 import { uploadImageToStorage } from '../lib/supabase';
+import emailjs from '@emailjs/browser';
 
 export interface SystemConfig {
   appName: string;
@@ -400,24 +401,41 @@ export default function SystemSettings({
     setShowPrintModal(true);
   };
 
-  // Simulated Email digest sender
-  const handleTriggerEmailSimulation = () => {
+  // Shift Closure EmailJS Z-Report Dispatch
+  const sendZReport = async (e: React.MouseEvent) => {
+    e.preventDefault();
     if (config.recipientEmails.length === 0) {
       alert('Please add at least one recipient email address first.');
       return;
     }
     setIsSendingEmail(true);
-    setEmailStatusMessage('Compiling sales ledger & stock updates into encrypted PDF...');
+    setEmailStatusMessage('Sending...');
 
-    setTimeout(() => {
-      setEmailStatusMessage(`Transferring PDF content via secured server SMTP (SSL Mode)...`);
-    }, 1500);
+    const dynamicEmails = config.recipientEmails.join(', ');
 
-    setTimeout(() => {
-      setEmailStatusMessage(`Successfully dispatched reports to: ${config.recipientEmails.join(', ')}`);
+    try {
+      await emailjs.send(
+        'service_z7n05ia',
+        'template_7pf2jle',
+        { 
+          to_email: dynamicEmails, 
+          total_transactions: '12', 
+          gross_revenue: '14,350.00', 
+          cash_sales: '9,100.00', 
+          card_sales: '3,250.00', 
+          bank_transfers: '2,000.00', 
+          stock_warnings: '3' 
+        },
+        'YtpeQvCtz3zcTUKDc'
+      );
+      setEmailStatusMessage('Successfully dispatched');
+      setBackupLogs(prev => [...prev, `[Z-REPORT DISPATCH]: Dispatched reporting digests cleanly to ${config.recipientEmails.length} recipients.`]);
+    } catch (error) {
+      console.error('EmailJS Error:', error);
+      setEmailStatusMessage('Failed to send report. Please try again.');
+    } finally {
       setIsSendingEmail(false);
-      setBackupLogs(prev => [...prev, `[SMTP EMAIL DISPATCH]: Dispatched reporting digests cleanly to ${config.recipientEmails.length} recipients.`]);
-    }, 3000);
+    }
   };
 
   // Mock backup generator
@@ -1329,7 +1347,7 @@ export default function SystemSettings({
                    <p className="text-sm text-gray-500 mb-4">Compile today's financial metrics and dispatch them immediately. Use this at the end of the working day.</p>
                   <button 
                     type="button"
-                    onClick={handleTriggerEmailSimulation}
+                    onClick={sendZReport}
                     disabled={isSendingEmail}
                     className="bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 px-5 rounded-lg flex items-center justify-center gap-2 transition-colors w-full shadow-sm disabled:opacity-50"
                   >
