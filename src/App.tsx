@@ -1993,6 +1993,7 @@ export default function App() {
                   <POSRegister
                     inventory={inventory}
                     appointments={appointments}
+                    records={records}
                     isOnline={isOnline}
                     currentUser={currentUser}
                     invoices={invoices}
@@ -2008,9 +2009,11 @@ export default function App() {
               {activeView === 'appointments' && isViewPermitted('appointments', currentUser) && (
                 <AppointmentsManager
                   appointments={appointments}
+                  records={records}
                   isOnline={isOnline}
                   onAddAppointment={handleAddAppointment}
                   onUpdateStatus={handleUpdateAppointmentStatus}
+                  onAddRecord={handleAddRecord}
                 />
               )}
 

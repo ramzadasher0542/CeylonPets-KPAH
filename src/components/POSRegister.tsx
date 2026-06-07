@@ -26,12 +26,13 @@ import {
   HeartPulse,
   Printer
 } from 'lucide-react';
-import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser } from '../types';
+import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord } from '../types';
 import { showToast } from './Toast';
 
 interface POSProps {
   inventory: InventoryItem[];
   appointments: Appointment[];
+  records: MedicalRecord[];
   isOnline: boolean;
   currentUser: StaffUser;
   invoices: Invoice[];
@@ -45,6 +46,7 @@ interface POSProps {
 export default function POSRegister({ 
   inventory, 
   appointments, 
+  records,
   isOnline, 
   currentUser,
   invoices,
@@ -319,8 +321,8 @@ export default function POSRegister({
   const discount = discountVal;
   const total = Math.max(0, subtotal + tax - discount);
 
-  // Active appointment / patient details
-  const selectedApt = appointments.find(a => a.id === selectedPetId);
+  // 1. Process Checkout
+  let selectedRecord = records.find(r => r.id === selectedPetId);
 
   // Trigger Checkout
   const handleCheckoutSubmit = () => {
@@ -339,11 +341,11 @@ export default function POSRegister({
 
     const invoiceObj: Invoice = {
       id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
-      appointmentId: selectedPetId !== 'walkin' ? selectedPetId : undefined,
-      patientId: selectedApt ? `${selectedApt.petName}_${selectedApt.ownerPhone.replace(/\D/g,'')}` : 'anonymous_walkin',
-      petName: selectedApt ? selectedApt.petName : 'Walk-in Pet / Guest',
-      ownerName: selectedApt ? selectedApt.ownerName : 'General Guest',
-      ownerPhone: selectedApt ? selectedApt.ownerPhone : 'N/A',
+      appointmentId: undefined, // Detached from appointment as requested
+      patientId: selectedRecord ? selectedRecord.patientId : 'anonymous_walkin',
+      petName: selectedRecord ? selectedRecord.petName : 'Walk-in Pet / Guest',
+      ownerName: selectedRecord ? selectedRecord.ownerName : 'General Guest',
+      ownerPhone: selectedRecord ? selectedRecord.ownerPhone : 'N/A',
       date: new Date().toISOString().split('T')[0],
       items: newInvItems,
       subtotal: parseFloat(subtotal.toFixed(2)),
@@ -353,7 +355,7 @@ export default function POSRegister({
       paymentMethod: paymentMethod,
       paymentStatus: 'paid',
       createdBy: currentUser?.name || 'Unknown',
-      notes: selectedPetId !== 'walkin' ? `Check out from scheduled visit reason: ${selectedApt?.reason}` : 'Quick shop checkout'
+      notes: selectedRecord ? `General clinical checkout for patient profile: ${selectedRecord.patientId}` : 'Quick shop checkout'
     };
 
     // Apply stock deduction to state
@@ -858,11 +860,9 @@ export default function POSRegister({
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
               >
                 <option value="walkin">Walk-in Pet Shop Customer (No Clinical EHR link)</option>
-                {appointments
-                  .filter(apt => apt.status !== 'cancelled')
-                  .map(apt => (
-                    <option key={apt.id} value={apt.id}>
-                      {apt.petName} ({apt.petType}) - Owner: {apt.ownerName} [{apt.reason.slice(0, 24)}...]
+                {records.map(rec => (
+                    <option key={rec.id} value={rec.id}>
+                      {rec.petName} ({rec.petType}) - Owner: {rec.ownerName} [{rec.ownerPhone}]
                     </option>
                   ))}
               </select>

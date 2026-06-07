@@ -19,21 +19,25 @@ import {
   Bookmark,
   Stethoscope
 } from 'lucide-react';
-import { Appointment, AppointmentStatus } from '../types';
+import { Appointment, AppointmentStatus, MedicalRecord } from '../types';
 import { showToast } from './Toast';
 
 interface AppointmentsProps {
   appointments: Appointment[];
+  records: MedicalRecord[];
   isOnline: boolean;
   onAddAppointment: (appointment: Appointment) => void;
   onUpdateStatus: (id: string, status: AppointmentStatus) => void;
+  onAddRecord: (record: MedicalRecord) => void;
 }
 
 export default function AppointmentsManager({ 
-  appointments, 
+  appointments,
+  records,
   isOnline, 
   onAddAppointment, 
-  onUpdateStatus 
+  onUpdateStatus,
+  onAddRecord
 }: AppointmentsProps) {
   // Filters
   const [searchFilter, setSearchFilter] = useState('');
@@ -95,6 +99,35 @@ export default function AppointmentsManager({
       reason,
       status: 'booked'
     };
+
+    // Check if patient exists in Unified Patient State (records)
+    const normalizedPhone = ownerPhone.replace(/\D/g, '');
+    const patientExists = records.some(r => r.ownerPhone.replace(/\D/g, '') === normalizedPhone && r.petName.toLowerCase() === petName.toLowerCase());
+    
+    if (!patientExists) {
+      const newPatientId = `${petName}_${normalizedPhone}`;
+      const newRecord: MedicalRecord = {
+        id: `rec-${Date.now()}`,
+        patientId: newPatientId,
+        petName,
+        petType,
+        breed: breed || 'Mixed breed',
+        age: 'Unknown',
+        weight: 0,
+        ownerName,
+        ownerPhone,
+        ownerEmail: ownerEmail || 'not-provided@example.com',
+        visitDate: date,
+        symptoms: '',
+        diagnosis: '',
+        treatmentNotes: '',
+        prescribedMeds: [],
+        vaccinations: [],
+        labResults: [],
+        createdDate: new Date().toISOString().split('T')[0]
+      };
+      onAddRecord(newRecord);
+    }
 
     onAddAppointment(newApt);
     setShowAddModal(false);
