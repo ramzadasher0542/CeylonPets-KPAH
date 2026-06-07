@@ -65,6 +65,9 @@ export default function PatientPortal({
         <head>
           <title>Vaccine Passport: ${pet.petName}</title>
           <style>
+            @media print {
+              .no-print { display: none !important; }
+            }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
               padding: 30px;
@@ -153,6 +156,10 @@ export default function PatientPortal({
           </style>
         </head>
         <body>
+          <div class="no-print" style="position: fixed; top: 24px; right: 24px; display: flex; gap: 12px; z-index: 1000;">
+            <button onclick="window.close()" style="padding: 10px 16px; border-radius: 8px; border: 1px solid #cbd5e1; background: white; color: #475569; font-weight: 600; cursor: pointer; font-family: sans-serif; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">Back to EHR</button>
+            <button onclick="window.print()" style="padding: 10px 16px; border-radius: 8px; border: none; background: #4f46e5; color: white; font-weight: 600; cursor: pointer; font-family: sans-serif; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">Print Document</button>
+          </div>
           <div class="header">
             <span style="font-size: 32px;">${logoEmoji}</span>
             <div class="subtitle">Official Healthcare Certificate</div>

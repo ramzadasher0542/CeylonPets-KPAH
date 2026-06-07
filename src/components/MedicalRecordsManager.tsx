@@ -159,9 +159,7 @@ export default function MedicalRecordsManager({
       diagnosis: newDiagnosis,
       treatmentNotes: newTreatmentNotes,
       prescribedMeds: [],
-      vaccinations: [
-        { name: 'Rabies Booster', dateAdministered: new Date().toISOString().split('T')[0], nextDueDate: '2027-05-21', status: 'active' }
-      ],
+      vaccinations: [],
       labResults: [],
       createdDate: new Date().toISOString().split('T')[0]
     };
