@@ -23,25 +23,29 @@ import {
   Printer,
   Trash2
 } from 'lucide-react';
-import { MedicalRecord, Vaccination, LabResult } from '../types';
+import { MedicalRecord, Vaccination, LabResult, InventoryItem, User as StaffUser } from '../types';
 import { showToast } from './Toast';
 
 interface EHRProps {
   records: MedicalRecord[];
+  inventory: InventoryItem[];
   isOnline: boolean;
   onUpdateRecord: (updated: MedicalRecord) => void;
   onDeleteRecord?: (id: string) => void;
   onAddRecord: (newRec: MedicalRecord) => void;
   systemConfig?: any;
+  currentUser?: StaffUser;
 }
 
 export default function MedicalRecordsManager({ 
   records, 
+  inventory,
   isOnline, 
   onUpdateRecord, 
   onDeleteRecord,
   onAddRecord,
-  systemConfig
+  systemConfig,
+  currentUser
 }: EHRProps) {
   const [selectedRecordId, setSelectedRecordId] = useState<string>(records[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,7 +89,7 @@ export default function MedicalRecordsManager({
 
   // New Vaccination entry states
   const [showAddVaccine, setShowAddVaccine] = useState(false);
-  const [newVacName, setNewVacName] = useState('');
+  const [newVacItemId, setNewVacItemId] = useState('');
   const [newVacDate, setNewVacDate] = useState('');
   const [newVacDueDate, setNewVacDueDate] = useState('');
   const [newVacStatus, setNewVacStatus] = useState<'active' | 'overdue' | 'due-soon'>('active');
@@ -497,7 +501,7 @@ export default function MedicalRecordsManager({
                     </div>
                     <button
                       onClick={() => {
-                        setNewVacName('');
+                        setNewVacItemId('');
                         setNewVacDate(new Date().toISOString().split('T')[0]);
                         setNewVacDueDate(new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
                         setNewVacStatus('active');
@@ -516,14 +520,19 @@ export default function MedicalRecordsManager({
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-600 block text-[10px]">Vaccine Name / Description</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. DHPP Core Parvovirus Booster"
-                            value={newVacName}
-                            onChange={(e) => setNewVacName(e.target.value)}
+                          <label className="font-bold text-slate-600 block text-[10px]">Vaccine Catalog Item</label>
+                          <select
+                            value={newVacItemId}
+                            onChange={(e) => setNewVacItemId(e.target.value)}
                             className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-850"
-                          />
+                          >
+                            <option value="">-- Select a Vaccine --</option>
+                            {inventory.filter(i => i.category === 'vaccine').map(vac => (
+                              <option key={vac.id} value={vac.id}>
+                                {vac.name} ({systemConfig?.currencySymbol || '$'}{vac.price.toFixed(2)})
+                              </option>
+                            ))}
+                          </select>
                         </div>
                         <div className="space-y-1">
                           <label className="font-bold text-slate-650 block text-[10px]">Active Status Check</label>
@@ -571,21 +580,31 @@ export default function MedicalRecordsManager({
                         <button
                           type="button"
                           onClick={() => {
-                            if (!newVacName.trim()) {
-                              showToast('Vaccine name is required', 'error');
+                            if (!newVacItemId) {
+                              showToast('A vaccine item from inventory is required', 'error');
                               return;
                             }
+                            
+                            const selectedVacItem = inventory.find(i => i.id === newVacItemId);
+                            if (!selectedVacItem) return;
+
                             let updatedVaccinations = [...activeRecord.vaccinations];
                             if (editVaccineIndex !== null) {
                               updatedVaccinations[editVaccineIndex] = {
-                                name: newVacName,
+                                itemId: selectedVacItem.id,
+                                name: selectedVacItem.name,
+                                price: selectedVacItem.price,
+                                billed: false,
                                 dateAdministered: newVacDate,
                                 nextDueDate: newVacDueDate,
                                 status: newVacStatus
                               };
                             } else {
                               updatedVaccinations.push({
-                                name: newVacName,
+                                itemId: selectedVacItem.id,
+                                name: selectedVacItem.name,
+                                price: selectedVacItem.price,
+                                billed: false,
                                 dateAdministered: newVacDate,
                                 nextDueDate: newVacDueDate,
                                 status: newVacStatus
@@ -627,7 +646,7 @@ export default function MedicalRecordsManager({
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button
                               onClick={() => {
-                                setNewVacName(vac.name);
+                                setNewVacItemId(vac.itemId);
                                 setNewVacDate(vac.dateAdministered);
                                 setNewVacDueDate(vac.nextDueDate);
                                 setNewVacStatus(vac.status as any);

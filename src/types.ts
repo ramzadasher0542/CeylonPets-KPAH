@@ -14,7 +14,7 @@ export interface User {
   pin?: string;
 }
 
-export type ItemCategory = 'service' | 'retail' | 'medication';
+export type ItemCategory = 'service' | 'retail' | 'medication' | 'vaccine' | 'prescription' | 'lab_service';
 
 export interface InventoryItem {
   id: string;
@@ -47,7 +47,10 @@ export interface Appointment {
 }
 
 export interface Vaccination {
+  itemId: string;
   name: string;
+  price: number;
+  billed: boolean;
   dateAdministered: string;
   nextDueDate: string;
   status: 'active' | 'overdue' | 'due-soon';

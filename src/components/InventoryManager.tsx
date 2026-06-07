@@ -212,8 +212,8 @@ export default function InventoryManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex bg-slate-50 border rounded-xl p-1">
-            {['all', 'service', 'medication', 'retail'].map(cat => (
+          <div className="flex bg-slate-50 border rounded-xl p-1 overflow-x-auto whitespace-nowrap">
+            {['all', 'service', 'vaccine', 'lab_service', 'prescription', 'retail'].map(cat => (
               <button
                 key={cat}
                 type="button"
@@ -224,7 +224,12 @@ export default function InventoryManager({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {cat === 'all' ? 'All Inventory' : cat === 'service' ? 'Clinical' : cat === 'medication' ? 'Pharmacy' : 'Pet Shop'}
+                {cat === 'all' ? 'All Inventory' : 
+                 cat === 'service' ? 'Clinical' : 
+                 cat === 'vaccine' ? 'Vaccines' : 
+                 cat === 'lab_service' ? 'Labs' : 
+                 cat === 'prescription' ? 'Pharmacy' : 
+                 'Pet Shop'}
               </button>
             ))}
           </div>
@@ -307,10 +312,14 @@ export default function InventoryManager({
                     <td className="py-3.5 px-4 capitalize">
                       <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
                         item.category === 'service' ? 'bg-sky-100 text-sky-800' :
-                        item.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
+                        item.category === 'vaccine' ? 'bg-fuchsia-100 text-fuchsia-800' :
+                        item.category === 'lab_service' ? 'bg-purple-100 text-purple-800' :
+                        item.category === 'prescription' ? 'bg-emerald-100 text-emerald-800' :
                         'bg-amber-100 text-amber-800'
                       }`}>
-                        {item.category === 'service' ? 'Clinical' : item.category}
+                        {item.category === 'service' ? 'Clinical' : 
+                         item.category === 'lab_service' ? 'Lab Service' : 
+                         item.category}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold">
@@ -493,7 +502,9 @@ export default function InventoryManager({
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                   >
                     <option value="retail">Pet Retail product</option>
-                    <option value="medication">Prescription Medicine</option>
+                    <option value="prescription">Prescription Medicine</option>
+                    <option value="vaccine">Vaccine</option>
+                    <option value="lab_service">Lab Service</option>
                     <option value="service">Clinical Core Service</option>
                   </select>
                 </div>
@@ -637,7 +648,9 @@ export default function InventoryManager({
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                   >
                     <option value="retail">Pet Retail product</option>
-                    <option value="medication">Prescription Medicine</option>
+                    <option value="prescription">Prescription Medicine</option>
+                    <option value="vaccine">Vaccine</option>
+                    <option value="lab_service">Lab Service</option>
                     <option value="service">Clinical Core Service</option>
                   </select>
                 </div>

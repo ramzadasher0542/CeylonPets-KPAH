@@ -199,7 +199,14 @@ export default function POSRegister({
 
   // Filter items based on active tab and search query
   const filteredProducts = inventory.filter(item => {
-    const matchesTab = item.category === activeTab;
+    let itemTab: string = item.category;
+    if (item.category === 'vaccine' || item.category === 'lab_service') {
+      itemTab = 'service';
+    } else if (item.category === 'prescription') {
+      itemTab = 'medication';
+    }
+
+    const matchesTab = itemTab === activeTab;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.sku.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
@@ -646,6 +653,9 @@ export default function POSRegister({
                     <div className="space-y-1">
                       <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
                         product.category === 'service' ? 'bg-sky-100 text-sky-800' :
+                        product.category === 'vaccine' ? 'bg-fuchsia-100 text-fuchsia-800' :
+                        product.category === 'lab_service' ? 'bg-purple-100 text-purple-800' :
+                        product.category === 'prescription' ? 'bg-emerald-100 text-emerald-800' :
                         product.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
                         'bg-amber-100 text-amber-800'
                       }`}>

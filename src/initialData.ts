@@ -32,19 +32,19 @@ export const DEFAULT_USERS: User[] = [
 export const INITIAL_INVENTORY: InventoryItem[] = [
   // Services
   { id: 'inv-1', sku: 'SV-001', name: 'General Medical Consultation', category: 'service', price: 45.00, cost: 0, stock: 9999, minStock: 0, unit: 'visit' },
-  { id: 'inv-2', sku: 'SV-002', name: 'Rabies Vaccine Administration', category: 'service', price: 25.00, cost: 8.00, stock: 153, minStock: 20, unit: 'dose' },
-  { id: 'inv-3', sku: 'SV-003', name: 'DHPP Core Vaccine Shot', category: 'service', price: 35.00, cost: 12.00, stock: 85, minStock: 15, unit: 'dose' },
-  { id: 'inv-4', sku: 'SV-004', name: 'Complete Blood Count (CBC) Lab', category: 'service', price: 65.00, cost: 15.00, stock: 50, minStock: 5, unit: 'test' },
+  { id: 'inv-2', sku: 'SV-002', name: 'Rabies Vaccine Administration', category: 'vaccine', price: 25.00, cost: 8.00, stock: 153, minStock: 20, unit: 'dose' },
+  { id: 'inv-3', sku: 'SV-003', name: 'DHPP Core Vaccine Shot', category: 'vaccine', price: 35.00, cost: 12.00, stock: 85, minStock: 15, unit: 'dose' },
+  { id: 'inv-4', sku: 'SV-004', name: 'Complete Blood Count (CBC) Lab', category: 'lab_service', price: 65.00, cost: 15.00, stock: 50, minStock: 5, unit: 'test' },
   { id: 'inv-5', sku: 'SV-005', name: 'Dental Scaling & Polishing', category: 'service', price: 150.00, cost: 25.00, stock: 9999, minStock: 0, unit: 'session' },
   { id: 'inv-6', sku: 'SV-006', name: 'Spay & Neuter Surgery Package', category: 'service', price: 220.00, cost: 40.00, stock: 9999, minStock: 0, unit: 'surgery' },
-  { id: 'inv-7', sku: 'SV-007', name: 'Diagnostic Abdomen X-Ray', category: 'service', price: 110.00, cost: 5.00, stock: 9999, minStock: 0, unit: 'session' },
+  { id: 'inv-7', sku: 'SV-007', name: 'Diagnostic Abdomen X-Ray', category: 'lab_service', price: 110.00, cost: 5.00, stock: 9999, minStock: 0, unit: 'session' },
 
   // Medications
-  { id: 'inv-8', sku: 'MD-001', name: 'Amoxicillin Trihydrate Drops 15ml', category: 'medication', price: 18.50, cost: 6.20, stock: 45, minStock: 10, unit: 'vial' },
-  { id: 'inv-9', sku: 'MD-002', name: 'Apoquel Flea Allergy 16mg (30 tabs)', category: 'medication', price: 89.00, cost: 48.00, stock: 24, minStock: 5, unit: 'box' },
-  { id: 'inv-10', sku: 'MD-003', name: 'Heartgard Plus Chewables Medium Dog', category: 'medication', price: 54.00, cost: 28.50, stock: 32, minStock: 8, unit: 'box' },
-  { id: 'inv-11', sku: 'MD-004', name: 'Carprofen Caplets 75mg Pain Relief', category: 'medication', price: 42.00, cost: 20.00, stock: 3, minStock: 10, unit: 'bottle' }, // Trigger warning
-  { id: 'inv-12', sku: 'MD-005', name: 'Otomax Ear Drops for Otitis', category: 'medication', price: 29.90, cost: 12.40, stock: 20, minStock: 5, unit: 'bottle' },
+  { id: 'inv-8', sku: 'MD-001', name: 'Amoxicillin Trihydrate Drops 15ml', category: 'prescription', price: 18.50, cost: 6.20, stock: 45, minStock: 10, unit: 'vial' },
+  { id: 'inv-9', sku: 'MD-002', name: 'Apoquel Flea Allergy 16mg (30 tabs)', category: 'prescription', price: 89.00, cost: 48.00, stock: 24, minStock: 5, unit: 'box' },
+  { id: 'inv-10', sku: 'MD-003', name: 'Heartgard Plus Chewables Medium Dog', category: 'prescription', price: 54.00, cost: 28.50, stock: 32, minStock: 8, unit: 'box' },
+  { id: 'inv-11', sku: 'MD-004', name: 'Carprofen Caplets 75mg Pain Relief', category: 'prescription', price: 42.00, cost: 20.00, stock: 3, minStock: 10, unit: 'bottle' }, // Trigger warning
+  { id: 'inv-12', sku: 'MD-005', name: 'Otomax Ear Drops for Otitis', category: 'prescription', price: 29.90, cost: 12.40, stock: 20, minStock: 5, unit: 'bottle' },
 
   // Retail Items
   { id: 'inv-13', sku: 'RT-001', name: 'Royal Canin Vet Diet Gastrointestinal Dog 5kg', category: 'retail', price: 68.00, cost: 42.00, stock: 12, minStock: 4, unit: 'bag' },
@@ -147,9 +147,9 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
     treatmentNotes: 'Booked dental scaling under anesthesia. Scheduled for next visit.',
     prescribedMeds: [],
     vaccinations: [
-      { name: 'Rabies (3-Year)', dateAdministered: '2025-05-15', nextDueDate: '2028-05-15', status: 'active' },
-      { name: 'DHPP Parvovirus', dateAdministered: '2025-05-15', nextDueDate: '2026-05-15', status: 'overdue' }, // Trigger warning
-      { name: 'Bordetella Kennel Cough', dateAdministered: '2025-11-20', nextDueDate: '2026-11-20', status: 'active' }
+      { itemId: 'inv-2', name: 'Rabies (3-Year)', price: 25.00, billed: true, dateAdministered: '2025-05-15', nextDueDate: '2028-05-15', status: 'active' },
+      { itemId: 'inv-3', name: 'DHPP Parvovirus', price: 35.00, billed: true, dateAdministered: '2025-05-15', nextDueDate: '2026-05-15', status: 'overdue' }, // Trigger warning
+      { itemId: 'mock-1', name: 'Bordetella Kennel Cough', price: 20.00, billed: true, dateAdministered: '2025-11-20', nextDueDate: '2026-11-20', status: 'active' }
     ],
     labResults: [
       { id: 'lab-1', testName: 'Fecal Flotation Parasite Scan', requestDate: '2026-03-15', resultDate: '2026-03-15', status: 'completed', value: 'Negative', referenceRange: 'Negative', notes: 'No cysts or ova seen.' }
@@ -175,8 +175,8 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
       { itemId: 'inv-12', name: 'Otomax Ear Drops for Otitis', dosage: '4 drops twice daily into right ear canal', quantity: 1 }
     ],
     vaccinations: [
-      { name: 'FVRCP Cat Respiratory Trio', dateAdministered: '2025-08-20', nextDueDate: '2026-08-20', status: 'active' },
-      { name: 'Feline Leukemia (FeLV)', dateAdministered: '2025-08-20', nextDueDate: '2026-08-20', status: 'active' }
+      { itemId: 'mock-2', name: 'FVRCP Cat Respiratory Trio', price: 30.00, billed: true, dateAdministered: '2025-08-20', nextDueDate: '2026-08-20', status: 'active' },
+      { itemId: 'mock-3', name: 'Feline Leukemia (FeLV)', price: 28.00, billed: true, dateAdministered: '2025-08-20', nextDueDate: '2026-08-20', status: 'active' }
     ],
     labResults: [
       { id: 'lab-2', testName: 'Ear Swab Cytology Screen', requestDate: '2026-05-22', resultDate: '2026-05-22', status: 'completed', value: 'High Malassezia Spores (Yeast)', referenceRange: 'None to Light Genus', notes: 'Confirming high yeast infection count.' }
@@ -202,8 +202,8 @@ export const INITIAL_MEDICAL_RECORDS: MedicalRecord[] = [
       { itemId: 'inv-9', name: 'Apoquel Flea Allergy 16mg (30 tabs)', dosage: '1 tablet daily for 30 days', quantity: 1 }
     ],
     vaccinations: [
-      { name: 'Rabies (3-Year)', dateAdministered: '2024-04-12', nextDueDate: '2027-04-12', status: 'active' },
-      { name: 'DHPP Parvovirus', dateAdministered: '2026-05-21', nextDueDate: '2027-05-21', status: 'active' }
+      { itemId: 'inv-2', name: 'Rabies (3-Year)', price: 25.00, billed: true, dateAdministered: '2024-04-12', nextDueDate: '2027-04-12', status: 'active' },
+      { itemId: 'inv-3', name: 'DHPP Parvovirus', price: 35.00, billed: true, dateAdministered: '2026-05-21', nextDueDate: '2027-05-21', status: 'active' }
     ],
     labResults: [],
     createdDate: '2026-05-21'
