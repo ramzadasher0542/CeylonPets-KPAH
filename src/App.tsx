@@ -1778,7 +1778,7 @@ export default function App() {
       {currentUser && (
         <>
           {/* Header Bar */}
-          <header className="bg-white border-b border-sky-100 sticky top-0 z-40 px-6 py-3 shadow-xs">
+          <header className="bg-white border-b border-sky-100 sticky top-0 z-40 px-6 py-3 shadow-xs print:hidden">
             <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
               
               {/* Title & Logo */}
@@ -1858,7 +1858,7 @@ export default function App() {
             
             {/* Primary Navigation Hub (Staff Navigation Tabs) *) */}
             {currentUser?.role === 'dummy_admin' ? (
-              <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 text-xs font-sans">
+              <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 text-xs font-sans print:hidden">
                 <button
                   onClick={() => setActiveView('settings')}
                   className="px-4 py-2 rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer bg-indigo-600 text-white border-indigo-650 shadow-sm"
@@ -1868,7 +1868,7 @@ export default function App() {
                 </button>
               </nav>
             ) : (
-              <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-sky-100 text-xs">
+              <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-sky-100 text-xs print:hidden">
                 {isViewPermitted('dashboard', currentUser) && (
                   <button
                     onClick={() => setActiveView('dashboard')}
@@ -2111,7 +2111,7 @@ export default function App() {
           </main>
 
           {/* Footer branding */}
-          <footer className="py-6 border-t border-sky-100 bg-white mt-12 text-center text-slate-400 text-xs">
+          <footer className="py-6 border-t border-sky-100 bg-white mt-12 text-center text-slate-400 text-xs print:hidden">
             <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
               <p className="font-medium">
                 © 2026 {systemConfig.hospitalName} Systems Inc. All diagnostic & ledger databases conform fully to HIPAA security provisions.

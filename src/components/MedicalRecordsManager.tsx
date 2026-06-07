@@ -295,7 +295,7 @@ export default function MedicalRecordsManager({
       {/* Main EHR Chart details Card (8 Cols) */}
       <div className="lg:col-span-8">
         {activeRecord ? (
-          <div className="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden flex flex-col justify-between h-[35rem] text-xs">
+          <div className="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden flex flex-col justify-between h-[35rem] text-xs print:w-full print:absolute print:top-0 print:left-0 print:m-0 print:p-0 print:shadow-none print:border-none print:h-auto print:overflow-visible">
             
             {/* Chart Banner */}
             <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-white border-b border-sky-100">
@@ -322,7 +322,7 @@ export default function MedicalRecordsManager({
                   </button>
                   <button
                     onClick={openEditPatientForm}
-                    className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-xs text-[10px]"
+                    className="px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-xs text-[10px] print:hidden"
                   >
                     ✏️ Edit Patient Details
                   </button>
@@ -330,7 +330,7 @@ export default function MedicalRecordsManager({
               </div>
 
               {/* Patient EHR sub-tabs */}
-              <div className="flex gap-2 mt-5">
+              <div className="flex gap-2 mt-5 print:hidden">
                 <button
                   onClick={() => setActiveEHRSubTab('details')}
                   className={`px-4 py-1.5 rounded-lg font-bold cursor-pointer transition-all ${
@@ -362,7 +362,7 @@ export default function MedicalRecordsManager({
             </div>
 
             {/* Sub-tab scrollable viewport */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-4">
+            <div className="flex-1 p-6 overflow-y-auto print:overflow-visible space-y-4">
                          {/* DETAILS CLINICAL REPORT */}
               {activeEHRSubTab === 'details' && (
                 <div className="space-y-4">
@@ -446,7 +446,7 @@ export default function MedicalRecordsManager({
                         <p className="text-slate-700 font-medium leading-relaxed whitespace-pre-wrap">{activeRecord.treatmentNotes}</p>
                       </div>
 
-                      <div className="flex justify-end pt-4">
+                      <div className="flex justify-end pt-4 print:hidden">
                         <button
                           onClick={() => {
                             setEditSymptoms(activeRecord.symptoms);
@@ -460,7 +460,7 @@ export default function MedicalRecordsManager({
                         </button>
                       </div>
                       
-                      <div className="mt-8 pt-4 border-t border-rose-100">
+                      <div className="mt-8 pt-4 border-t border-rose-100 print:hidden">
                         <button
                           onClick={handleDeletePatient}
                           className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 font-bold rounded-lg transition-colors cursor-pointer text-[10px]"
