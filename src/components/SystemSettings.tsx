@@ -761,14 +761,6 @@ export default function SystemSettings({
                         onChange={(e) => setConfigValue('invoiceFooterMessage', e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
                       />
-                      <label className="font-bold text-slate-700 block text-[10px]">Receipt Official Footer Subtext</label>
-                      <input
-                        type="text"
-                        value={config.invoiceSubFooterMessage || ''}
-                        onChange={(e) => setConfigValue('invoiceSubFooterMessage', e.target.value)}
-                        placeholder="* CEYLONPETS OFFICIAL RECEIPT *"
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold mb-3"
-                      />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 pt-2">
@@ -825,6 +817,17 @@ export default function SystemSettings({
                         type="text"
                         value={config.appName}
                         onChange={(e) => setConfigValue('appName', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-slate-700 block text-[10px]">System Provider Name (e.g., Powered By)</label>
+                      <input
+                        type="text"
+                        value={config.invoiceSubFooterMessage || ''}
+                        onChange={(e) => setConfigValue('invoiceSubFooterMessage', e.target.value)}
+                        placeholder="POWERED BY ASH POINT SOLUTIONS"
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                       />
                     </div>
@@ -936,36 +939,42 @@ export default function SystemSettings({
                         {/* Letterhead */}
                         <div className="text-center">
                           {config.loginLogoUrl && (
-                            <img src={config.loginLogoUrl} alt="Clinic Logo" className="max-h-8 w-auto mx-auto mb-1.5" />
+                            <img src={config.loginLogoUrl} alt="Clinic Logo" className="h-10 w-auto object-contain mx-auto mb-1.5" />
                           )}
-                          <h1 className="text-[11px] font-black uppercase leading-tight">{config.hospitalName || 'CeylonPets Animal Hospital'}</h1>
-                          <p className="text-[7px] text-slate-600 mt-0.5">{config.hospitalAddress}</p>
-                          <p className="text-[7px] text-slate-600">Ph: {config.hospitalPhone} | {config.hospitalEmail}</p>
+                          <h1 className="text-lg font-extrabold tracking-tight text-gray-900 leading-tight">{config.hospitalName || 'CeylonPets Animal Hospital'}</h1>
+                          <p className="text-[8px] text-gray-500 mt-0.5">{config.hospitalAddress}</p>
+                          <p className="text-[8px] text-gray-500">Ph: {config.hospitalPhone} | {config.hospitalEmail}</p>
                         </div>
 
-                        <div className="text-center border-y-2 border-black py-2">
-                          <h2 className="text-[9px] font-black uppercase tracking-widest">Official Patient Medical Record</h2>
-                          <p className="text-[7px] font-semibold mt-0.5">Generated: {new Date().toLocaleDateString()}</p>
+                        <div className="text-center border-b-2 border-blue-900 pb-2 mb-4 mt-2">
+                          <h2 className="text-[10px] font-bold text-blue-900 uppercase tracking-widest">Official Patient Medical Record</h2>
+                          <p className="text-[7px] font-semibold mt-0.5 text-gray-500">Generated: {new Date().toLocaleDateString()}</p>
                         </div>
                         
                         <div className="flex-1">
-                          <h2 className="text-[8px] font-bold mb-1.5 uppercase border-b border-gray-300 pb-0.5">Patient Demographics</h2>
-                          <div className="grid grid-cols-2 gap-1.5 border border-black p-1.5 text-[7px]">
-                            <div><span className="font-bold">Name:</span> Coco</div>
-                            <div><span className="font-bold">Species:</span> Canine</div>
-                            <div><span className="font-bold">Breed:</span> Goldendoodle</div>
-                            <div><span className="font-bold">Age:</span> 3 Years</div>
-                            <div><span className="font-bold">Weight:</span> 15.5 kg</div>
-                            <div><span className="font-bold">Owner:</span> Isabella Bennett ({config.hospitalPhone || '555-0192'})</div>
+                          <div className="bg-gray-50 rounded-lg p-2 mb-4 border border-gray-200">
+                            <h2 className="text-[8px] font-bold mb-1.5 uppercase text-gray-500">Patient Demographics</h2>
+                            <div className="grid grid-cols-2 gap-1.5 text-[8px] text-gray-900 font-semibold">
+                              <div><span className="text-[7px] font-bold text-gray-500 uppercase mr-1">Name:</span> Coco</div>
+                              <div><span className="text-[7px] font-bold text-gray-500 uppercase mr-1">Species:</span> Canine</div>
+                              <div><span className="text-[7px] font-bold text-gray-500 uppercase mr-1">Breed:</span> Goldendoodle</div>
+                              <div><span className="text-[7px] font-bold text-gray-500 uppercase mr-1">Age:</span> 3 Years</div>
+                              <div><span className="text-[7px] font-bold text-gray-500 uppercase mr-1">Weight:</span> 15.5 kg</div>
+                              <div><span className="text-[7px] font-bold text-gray-500 uppercase mr-1">Owner:</span> Isabella B. ({config.hospitalPhone || '555-0192'})</div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <h2 className="text-[8px] font-bold text-gray-700 uppercase border-b border-gray-200 pb-0.5 mb-1">Subjective & Objective Findings</h2>
+                            <p className="text-[8px] text-gray-800 leading-relaxed mb-3">Patient presented with mild lethargy and decreased appetite for 24 hours.</p>
                           </div>
                         </div>
 
                         {/* System Whitelabel Footer */}
-                        {config.invoiceExtraFooterMessage && (
-                          <div className="mt-auto pt-2 border-t border-slate-200 text-center text-[5px] text-slate-400 uppercase tracking-widest">
-                            {config.invoiceExtraFooterMessage}
-                          </div>
-                        )}
+                        <div className="mt-auto pt-2 border-t border-gray-200 text-center text-[5px] text-gray-400 font-semibold uppercase tracking-widest">
+                          {config.invoiceSubFooterMessage || 'POWERED BY ASH POINT SOLUTIONS'} 
+                          {config.invoiceExtraFooterMessage && ` | ${config.invoiceExtraFooterMessage}`}
+                        </div>
                       </div>
                     )}
                   </div>

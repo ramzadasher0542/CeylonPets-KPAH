@@ -1244,63 +1244,63 @@ export default function MedicalRecordsManager({
             {systemConfig?.loginLogoUrl && (
               <img src={systemConfig.loginLogoUrl} alt="Clinic Logo" className="w-auto h-16 object-contain mb-4 mx-auto" />
             )}
-            <h1 className="text-3xl font-black uppercase leading-tight">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'}</h1>
-            <p className="text-sm text-slate-600 mt-2">{systemConfig?.hospitalAddress}</p>
-            <p className="text-sm text-slate-600">Ph: {systemConfig?.hospitalPhone} | {systemConfig?.hospitalEmail}</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'}</h1>
+            <p className="text-sm text-gray-500 mt-1">{systemConfig?.hospitalAddress}</p>
+            <p className="text-sm text-gray-500">Ph: {systemConfig?.hospitalPhone} | {systemConfig?.hospitalEmail}</p>
           </div>
 
-          <div className="text-center border-y-2 border-black py-4 mb-8">
-            <h2 className="text-xl font-black uppercase tracking-widest">Official Patient Medical Record</h2>
-            <p className="text-sm font-semibold mt-1">Generated: {new Date().toLocaleDateString()}</p>
+          <div className="text-center border-b-2 border-blue-900 pb-2 mb-6 mt-4">
+            <h2 className="text-lg font-bold text-blue-900 uppercase tracking-widest">Official Patient Medical Record</h2>
+            <p className="text-sm font-semibold mt-1 text-gray-500">Generated: {new Date().toLocaleDateString()}</p>
           </div>
 
-          <div className="mb-6">
-            <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Patient Demographics</h2>
-            <div className="grid grid-cols-2 gap-4 border border-black p-4">
-              <div><span className="font-bold">Name:</span> {activeRecord.petName}</div>
-              <div><span className="font-bold">Species:</span> {activeRecord.petType}</div>
-              <div><span className="font-bold">Breed:</span> {activeRecord.breed}</div>
-              <div><span className="font-bold">Age:</span> {activeRecord.age}</div>
-              <div><span className="font-bold">Weight:</span> {activeRecord.weight} kg</div>
-              <div><span className="font-bold">Owner:</span> {activeRecord.ownerName} ({activeRecord.ownerPhone})</div>
+          <div className="mb-8">
+            <h2 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Patient Demographics</h2>
+            <div className="grid grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Name:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.petName}</span></div>
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Species:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.petType}</span></div>
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Breed:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.breed}</span></div>
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Age:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.age}</span></div>
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Weight:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.weight} kg</span></div>
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Owner:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.ownerName} ({activeRecord.ownerPhone})</span></div>
             </div>
           </div>
 
           <div className="mb-6">
-            <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Clinical Encounter (SOAP)</h2>
+            <h2 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Clinical Encounter (SOAP)</h2>
             <div className="space-y-4">
               <div>
-                <h3 className="font-bold text-sm uppercase">Subjective & Objective Findings</h3>
-                <p className="whitespace-pre-wrap mt-1 text-sm">{activeRecord.symptoms}</p>
+                <h3 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Subjective & Objective Findings</h3>
+                <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{activeRecord.symptoms}</p>
               </div>
               <div>
-                <h3 className="font-bold text-sm uppercase">Assessment</h3>
-                <p className="whitespace-pre-wrap mt-1 text-sm">{activeRecord.diagnosis}</p>
+                <h3 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Assessment</h3>
+                <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{activeRecord.diagnosis}</p>
               </div>
               <div>
-                <h3 className="font-bold text-sm uppercase">Treatment Plan & Prescriptions</h3>
-                <p className="whitespace-pre-wrap mt-1 text-sm">{activeRecord.treatmentNotes}</p>
+                <h3 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Treatment Plan & Prescriptions</h3>
+                <p className="whitespace-pre-wrap text-sm text-gray-800 leading-relaxed">{activeRecord.treatmentNotes}</p>
               </div>
             </div>
           </div>
 
           {activeRecord.vaccinations.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Immunization History</h2>
-              <table className="w-full text-left border-collapse border border-black text-sm">
+              <h2 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Immunization History</h2>
+              <table className="w-full text-left border-collapse border border-gray-200 text-sm">
                 <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-black p-2">Vaccine Name</th>
-                    <th className="border border-black p-2">Date Administered</th>
-                    <th className="border border-black p-2">Next Due Date</th>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-200 p-2 text-xs font-bold text-gray-500 uppercase">Vaccine Name</th>
+                    <th className="border border-gray-200 p-2 text-xs font-bold text-gray-500 uppercase">Date Administered</th>
+                    <th className="border border-gray-200 p-2 text-xs font-bold text-gray-500 uppercase">Next Due Date</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeRecord.vaccinations.map((vac, i) => (
                     <tr key={i}>
-                      <td className="border border-black p-2">{vac.name}</td>
-                      <td className="border border-black p-2">{vac.dateAdministered}</td>
-                      <td className="border border-black p-2">{vac.nextDueDate}</td>
+                      <td className="border border-gray-200 p-2 text-sm font-semibold text-gray-900">{vac.name}</td>
+                      <td className="border border-gray-200 p-2 text-sm text-gray-800">{vac.dateAdministered}</td>
+                      <td className="border border-gray-200 p-2 text-sm text-gray-800">{vac.nextDueDate}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1310,21 +1310,21 @@ export default function MedicalRecordsManager({
 
           {activeRecord.labResults.length > 0 && (
             <div className="mb-6">
-              <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Diagnostic Labs</h2>
-              <table className="w-full text-left border-collapse border border-black text-sm">
+              <h2 className="text-sm font-bold text-gray-700 uppercase border-b border-gray-200 pb-1 mb-2">Diagnostic Labs</h2>
+              <table className="w-full text-left border-collapse border border-gray-200 text-sm">
                 <thead>
-                  <tr className="bg-gray-100">
-                    <th className="border border-black p-2">Test Name</th>
-                    <th className="border border-black p-2">Result</th>
-                    <th className="border border-black p-2">Status</th>
+                  <tr className="bg-gray-50">
+                    <th className="border border-gray-200 p-2 text-xs font-bold text-gray-500 uppercase">Test Name</th>
+                    <th className="border border-gray-200 p-2 text-xs font-bold text-gray-500 uppercase">Result</th>
+                    <th className="border border-gray-200 p-2 text-xs font-bold text-gray-500 uppercase">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activeRecord.labResults.map((lab, i) => (
                     <tr key={i}>
-                      <td className="border border-black p-2">{lab.testName}</td>
-                      <td className="border border-black p-2">{lab.value || 'Pending'} {lab.referenceRange ? `(${lab.referenceRange})` : ''}</td>
-                      <td className="border border-black p-2 uppercase">{lab.status}</td>
+                      <td className="border border-gray-200 p-2 text-sm font-semibold text-gray-900">{lab.testName}</td>
+                      <td className="border border-gray-200 p-2 text-sm text-gray-800">{lab.value || 'Pending'} {lab.referenceRange ? `(${lab.referenceRange})` : ''}</td>
+                      <td className="border border-gray-200 p-2 text-sm text-gray-800 uppercase">{lab.status}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1332,16 +1332,15 @@ export default function MedicalRecordsManager({
             </div>
           )}
 
-          <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold uppercase">
+          <div className="mt-8 pt-4 border-t-2 border-gray-200 text-center text-xs font-bold uppercase text-gray-500">
             This document confirms clinical records on file at {systemConfig?.hospitalName || 'CeylonPets'}. Verified Secure Clinical EHR Record.
           </div>
 
           {/* System Whitelabel Footer */}
-          {systemConfig?.invoiceExtraFooterMessage && (
-            <div className="mt-12 pt-4 border-t border-slate-200 text-center text-[10px] text-slate-400 uppercase tracking-widest">
-              {systemConfig.invoiceExtraFooterMessage}
-            </div>
-          )}
+          <div className="mt-12 pt-4 border-t border-gray-200 text-center text-xs text-gray-400 font-semibold tracking-widest uppercase">
+            {systemConfig?.invoiceSubFooterMessage || 'POWERED BY ASH POINT SOLUTIONS'}
+            {systemConfig?.invoiceExtraFooterMessage && ` | ${systemConfig.invoiceExtraFooterMessage}`}
+          </div>
         </div>
       )}
     </div>
