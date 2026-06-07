@@ -19,7 +19,9 @@ import {
   TrendingDown,
   RefreshCcw,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Printer,
+  Trash2
 } from 'lucide-react';
 import { MedicalRecord, Vaccination, LabResult } from '../types';
 import { showToast } from './Toast';
