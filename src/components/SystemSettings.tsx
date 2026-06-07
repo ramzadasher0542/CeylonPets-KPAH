@@ -938,8 +938,8 @@ export default function SystemSettings({
                         
                         {/* Letterhead */}
                         <div className="text-center">
-                          {config.loginLogoUrl && (
-                            <img src={config.loginLogoUrl} alt="Clinic Logo" className="h-10 w-auto object-contain mx-auto mb-1.5" />
+                          {config.posLogoUrl && (
+                            <img src={config.posLogoUrl} alt="Clinic Logo" className="h-10 w-auto object-contain mx-auto mb-1.5" />
                           )}
                           <h1 className="text-lg font-extrabold tracking-tight text-gray-900 leading-tight">{config.hospitalName || 'CeylonPets Animal Hospital'}</h1>
                           <p className="text-[8px] text-gray-500 mt-0.5">{config.hospitalAddress}</p>

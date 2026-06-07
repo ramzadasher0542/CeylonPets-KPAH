@@ -1241,8 +1241,8 @@ export default function MedicalRecordsManager({
         <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:bg-white print:text-black print:z-50 print:p-8">
           {/* Letterhead */}
           <div className="text-center pb-6">
-            {systemConfig?.loginLogoUrl && (
-              <img src={systemConfig.loginLogoUrl} alt="Clinic Logo" className="w-auto h-16 object-contain mb-4 mx-auto" />
+            {systemConfig?.posLogoUrl && (
+              <img src={systemConfig.posLogoUrl} alt="Clinic Logo" className="w-auto h-16 object-contain mb-4 mx-auto" />
             )}
             <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'}</h1>
             <p className="text-sm text-gray-500 mt-1">{systemConfig?.hospitalAddress}</p>
