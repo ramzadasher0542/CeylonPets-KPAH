@@ -88,7 +88,7 @@ export default function POSRegister({
     service: { bg: 'bg-sky-50 text-sky-800 border-sky-300', active: 'bg-sky-500 text-white border-sky-500 shadow-sm' },
     medication: { bg: 'bg-emerald-50 text-emerald-800 border-emerald-300', active: 'bg-emerald-600 text-white border-emerald-600 shadow-sm' },
     retail: { bg: 'bg-amber-50 text-amber-800 border-amber-300', active: 'bg-amber-500 text-white border-amber-500 shadow-sm' },
-    ledger: { bg: 'bg-indigo-50 text-indigo-800 border-indigo-300', active: 'bg-indigo-650 text-white border-indigo-650 shadow-sm' }
+    ledger: { bg: 'bg-slate-50 text-slate-700 border-slate-300', active: 'bg-blue-50 text-blue-700 border-blue-500 shadow-sm' }
   };
 
   // Synchronous custom salted polynomial hash matching App.tsx security
