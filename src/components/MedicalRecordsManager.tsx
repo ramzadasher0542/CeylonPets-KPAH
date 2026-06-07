@@ -527,7 +527,7 @@ export default function MedicalRecordsManager({
                             className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-850"
                           >
                             <option value="">-- Select a Vaccine --</option>
-                            {inventory.filter(i => i.category === 'vaccine').map(vac => (
+                            {(inventory || []).filter(i => i.category === 'vaccine').map(vac => (
                               <option key={vac.id} value={vac.id}>
                                 {vac.name} ({systemConfig?.currencySymbol || '$'}{vac.price.toFixed(2)})
                               </option>
@@ -585,7 +585,7 @@ export default function MedicalRecordsManager({
                               return;
                             }
                             
-                            const selectedVacItem = inventory.find(i => i.id === newVacItemId);
+                            const selectedVacItem = (inventory || []).find(i => i.id === newVacItemId);
                             if (!selectedVacItem) return;
 
                             let updatedVaccinations = [...activeRecord.vaccinations];
