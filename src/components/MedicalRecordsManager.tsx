@@ -295,7 +295,7 @@ export default function MedicalRecordsManager({
       {/* Main EHR Chart details Card (8 Cols) */}
       <div className="lg:col-span-8">
         {activeRecord ? (
-          <div className="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden flex flex-col justify-between h-[35rem] text-xs print:w-full print:absolute print:top-0 print:left-0 print:m-0 print:p-0 print:shadow-none print:border-none print:h-auto print:overflow-visible">
+          <div className="bg-white rounded-2xl border border-sky-100 shadow-sm overflow-hidden flex flex-col justify-between h-[35rem] text-xs print:hidden">
             
             {/* Chart Banner */}
             <div className="p-5 bg-gradient-to-r from-sky-500/10 via-sky-500/5 to-white border-b border-sky-100">
@@ -1236,6 +1236,97 @@ export default function MedicalRecordsManager({
         </div>
       )}
 
+      {/* Dedicated Print View Template */}
+      {activeRecord && (
+        <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:bg-white print:text-black print:z-50 print:p-8">
+          <div className="text-center border-b-2 border-black pb-4 mb-6">
+            <h1 className="text-2xl font-black uppercase">CeylonPets Animal Hospital - Official Patient Medical Record</h1>
+            <p className="text-sm font-semibold mt-1">Generated: {new Date().toLocaleDateString()}</p>
+          </div>
+
+          <div className="mb-6">
+            <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Patient Demographics</h2>
+            <div className="grid grid-cols-2 gap-4 border border-black p-4">
+              <div><span className="font-bold">Name:</span> {activeRecord.petName}</div>
+              <div><span className="font-bold">Species:</span> {activeRecord.petType}</div>
+              <div><span className="font-bold">Breed:</span> {activeRecord.breed}</div>
+              <div><span className="font-bold">Age:</span> {activeRecord.age}</div>
+              <div><span className="font-bold">Weight:</span> {activeRecord.weight} kg</div>
+              <div><span className="font-bold">Owner:</span> {activeRecord.ownerName} ({activeRecord.ownerPhone})</div>
+            </div>
+          </div>
+
+          <div className="mb-6">
+            <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Clinical Encounter (SOAP)</h2>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-bold text-sm uppercase">Subjective & Objective Findings</h3>
+                <p className="whitespace-pre-wrap mt-1 text-sm">{activeRecord.symptoms}</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm uppercase">Assessment</h3>
+                <p className="whitespace-pre-wrap mt-1 text-sm">{activeRecord.diagnosis}</p>
+              </div>
+              <div>
+                <h3 className="font-bold text-sm uppercase">Treatment Plan & Prescriptions</h3>
+                <p className="whitespace-pre-wrap mt-1 text-sm">{activeRecord.treatmentNotes}</p>
+              </div>
+            </div>
+          </div>
+
+          {activeRecord.vaccinations.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Immunization History</h2>
+              <table className="w-full text-left border-collapse border border-black text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-black p-2">Vaccine Name</th>
+                    <th className="border border-black p-2">Date Administered</th>
+                    <th className="border border-black p-2">Next Due Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeRecord.vaccinations.map((vac, i) => (
+                    <tr key={i}>
+                      <td className="border border-black p-2">{vac.name}</td>
+                      <td className="border border-black p-2">{vac.dateAdministered}</td>
+                      <td className="border border-black p-2">{vac.nextDueDate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeRecord.labResults.length > 0 && (
+            <div className="mb-6">
+              <h2 className="text-lg font-bold mb-2 uppercase border-b border-gray-300 pb-1">Diagnostic Labs</h2>
+              <table className="w-full text-left border-collapse border border-black text-sm">
+                <thead>
+                  <tr className="bg-gray-100">
+                    <th className="border border-black p-2">Test Name</th>
+                    <th className="border border-black p-2">Result</th>
+                    <th className="border border-black p-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeRecord.labResults.map((lab, i) => (
+                    <tr key={i}>
+                      <td className="border border-black p-2">{lab.testName}</td>
+                      <td className="border border-black p-2">{lab.value || 'Pending'} {lab.referenceRange ? `(${lab.referenceRange})` : ''}</td>
+                      <td className="border border-black p-2 uppercase">{lab.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs font-bold uppercase">
+            This document confirms clinical records on file at CeylonPets. Verified Secure Clinical EHR Record.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
