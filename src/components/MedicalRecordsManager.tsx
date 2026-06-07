@@ -1242,7 +1242,7 @@ export default function MedicalRecordsManager({
           {/* Letterhead */}
           <div className="text-center pb-6">
             {systemConfig?.loginLogoUrl && (
-              <img src={systemConfig.loginLogoUrl} alt="Clinic Logo" className="max-h-24 w-auto mx-auto mb-4" />
+              <img src={systemConfig.loginLogoUrl} alt="Clinic Logo" className="w-auto h-16 object-contain mb-4 mx-auto" />
             )}
             <h1 className="text-3xl font-black uppercase leading-tight">{systemConfig?.hospitalName || 'CeylonPets Animal Hospital'}</h1>
             <p className="text-sm text-slate-600 mt-2">{systemConfig?.hospitalAddress}</p>
