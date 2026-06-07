@@ -805,7 +805,7 @@ export default function POSRegister({
       {/* Right Column - Active Invoice Cart System (5 Cols) */}
       <div className="lg:col-span-5 flex flex-col justify-between">
         
-        <div className="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 h-full flex flex-col justify-between space-y-4">
+        <div className="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 h-[calc(100vh-140px)] flex flex-col justify-between space-y-4">
           
           {/* Patient checkout linking */}
           <div className="pb-3 border-b border-sky-50">
@@ -834,7 +834,7 @@ export default function POSRegister({
           </div>
 
           {/* Cart Contents list */}
-          <div className="flex-1 max-h-[18rem] overflow-y-auto space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
             {cart.map(cartItem => (
               <div 
                 key={cartItem.item.id}
