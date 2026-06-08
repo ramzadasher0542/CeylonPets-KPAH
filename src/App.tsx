@@ -97,13 +97,11 @@ export default function App() {
   // First Deployment Boot Reboot Utility
   useState(() => {
     try {
-      const booted = localStorage.getItem('ceylon_deployment_final_force_clear_v2');
+      const booted = localStorage.getItem('ceylon_deployment_final_force_clear_v1');
       if (!booted) {
         console.log('[CeylonPets] Force clear trigger detected. Purging all browser local storage databases...');
         localStorage.clear();
-        sessionStorage.clear();
-        localStorage.setItem('ceylon_deployment_final_force_clear_v2', 'true');
-        window.location.reload();
+        localStorage.setItem('ceylon_deployment_final_force_clear_v1', 'true');
       }
     } catch (e) {
       console.error('[CeylonPets] Error during deployment boot initialization:', e);
@@ -212,7 +210,7 @@ export default function App() {
     }
   });
 
-  const initialStaffState = [{ name: 'System Administrator', username: 'admin', role: 'OWNER', pin: '0000' }];
+  const initialStaffState = [{ name: 'System Administrator', username: 'admin', role: 'admin', pin: '5692' }];
 
   // Load users and pins separately from localStorage
   const [pinCache, setPinCache] = useState<Record<string, string>>(() => {
@@ -1682,6 +1680,8 @@ export default function App() {
                       required
                     >
                       <option value="" disabled>-- Choose Staff --</option>
+                      <option value="ashpoint_owner">Service Provider (System Root Admin)</option>
+                      <option value="printer_assistant">Printer Setup Assistant (Hardware Config)</option>
                       {users.map((u) => (
                         <option key={u.id} value={u.username}>
                           {u.name} ({u.role.toUpperCase()})
