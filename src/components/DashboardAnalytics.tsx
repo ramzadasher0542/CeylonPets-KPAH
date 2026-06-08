@@ -120,17 +120,19 @@ export default function DashboardAnalytics({
     return acc;
   }, { service: 0, medication: 0, retail: 0 } as Record<string, number>);
 
-  // Mockup fallback values so the dashboard ALWAYS looks stunning even in a fresh database
+  // Actual values instead of hardcoded mockups
   const finalCategoryRev = {
-    service: categoryRev.service || 520.00,
-    medication: categoryRev.medication || 340.00,
-    retail: categoryRev.retail || 410.00
+    service: categoryRev.service || 0,
+    medication: categoryRev.medication || 0,
+    retail: categoryRev.retail || 0
   };
   const finalTotalRevSum = Object.values(finalCategoryRev).reduce((a, b) => a + b, 0);
 
-  const servicePct = Math.round((finalCategoryRev.service / finalTotalRevSum) * 100);
-  const medicationPct = Math.round((finalCategoryRev.medication / finalTotalRevSum) * 100);
-  const retailPct = 100 - servicePct - medicationPct;
+  const hasData = finalTotalRevSum > 0;
+
+  const servicePct = hasData ? Math.round((finalCategoryRev.service / finalTotalRevSum) * 100) : 0;
+  const medicationPct = hasData ? Math.round((finalCategoryRev.medication / finalTotalRevSum) * 100) : 0;
+  const retailPct = hasData ? 100 - servicePct - medicationPct : 0;
 
   // Doughnut math configuration
   const circ = 251.32; // 2 * pi * r (r=40)
@@ -143,6 +145,7 @@ export default function DashboardAnalytics({
   const retailOffset = serviceDash + medicationDash;
   
   const getSliceDetails = () => {
+    if (!hasData) return { name: 'No Data Yet', rev: 0, pct: 0, color: 'text-slate-400' };
     const label = hoveredSlice || 'total';
     if (label === 'service') return { name: 'Clinical Care', rev: finalCategoryRev.service, pct: servicePct, color: 'text-sky-500' };
     if (label === 'medication') return { name: 'Prescriptions', rev: finalCategoryRev.medication, pct: medicationPct, color: 'text-emerald-500' };
@@ -274,14 +277,18 @@ export default function DashboardAnalytics({
               <h3 className="text-2xl font-bold text-slate-800 mt-1">{currencySign}{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
             </div>
             <div className="p-3 bg-teal-50 rounded-xl text-teal-600 group-hover:bg-teal-100 transition-all duration-300">
-              <DollarSign className="h-5 w-5" />
+              <span className="flex items-center justify-center font-black font-mono h-5 w-5 text-xl">{currencySign}</span>
             </div>
           </div>
           <div className="mt-4 flex gap-2 text-xs text-slate-500">
-            <span className="font-semibold text-emerald-600 flex items-center gap-0.5 animate-pulse">
-              <TrendingUp className="h-3 w-3" /> +14.2%
-            </span>
-            <span>vs last month</span>
+            {totalRevenue > 0 && invoices.length > 0 && (
+              <>
+                <span className="font-semibold text-emerald-600 flex items-center gap-0.5 animate-pulse">
+                  <TrendingUp className="h-3 w-3" /> +14.2%
+                </span>
+                <span>vs last month</span>
+              </>
+            )}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-emerald-400" />
         </div>
@@ -338,24 +345,25 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Under Stock Alarms */}
-        <div className={`bg-white p-5 w-full h-full flex flex-col justify-between rounded-2xl border shadow-sm relative overflow-hidden group transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${lowStockItems.length > 0 ? 'border-rose-100 hover:border-rose-300' : 'border-sky-100 hover:border-sky-300'}`}>
+        <div className={`bg-white p-5 w-full h-full flex flex-col justify-between rounded-2xl border shadow-sm relative overflow-hidden group transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${(inventory.length === 0 || lowStockItems.length > 0) ? 'border-rose-100 hover:border-rose-300' : 'border-sky-100 hover:border-sky-300'}`}>
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Low Stock Warnings</p>
-              <h3 className={`text-2xl font-bold mt-1 ${lowStockItems.length > 0 ? 'text-rose-600 animate-pulse font-black' : 'text-slate-800'}`}>
-                {lowStockItems.length}
+              <h3 className={`text-2xl font-bold mt-1 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'text-rose-600 animate-pulse font-black' : 'text-slate-800'}`}>
+                {inventory.length === 0 ? '0' : lowStockItems.length}
               </h3>
             </div>
-            <div className={`p-3 rounded-xl transition-all duration-300 ${lowStockItems.length > 0 ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+            <div className={`p-3 rounded-xl transition-all duration-300 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
               <AlertTriangle className="h-5 w-5" />
             </div>
           </div>
           <div className="mt-4 text-xs text-rose-700 font-mono truncate font-bold">
-            {lowStockItems.length > 0 
+            {inventory.length === 0 ? 'Inventory is completely empty!' : 
+             lowStockItems.length > 0 
               ? `${lowStockItems.map(i => i.name).slice(0, 1).join(',')} needs reorder!` 
               : 'All supplies optimally stocked'}
           </div>
-          <div className={`absolute bottom-0 left-0 right-0 h-1 ${lowStockItems.length > 0 ? 'bg-gradient-to-r from-rose-400 to-red-600' : 'bg-emerald-400'}`} />
+          <div className={`absolute bottom-0 left-0 right-0 h-1 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'bg-gradient-to-r from-rose-400 to-red-600' : 'bg-emerald-400'}`} />
         </div>
       </div>
 
@@ -559,10 +567,10 @@ export default function DashboardAnalytics({
                     {sliceInfo.name.toUpperCase()}
                   </text>
                   <text x="50" y="56" className={`text-xs font-black font-mono text-center fill-slate-800`} textAnchor="middle">
-                    {currencySign}{sliceInfo.rev.toFixed(0)}
+                    {hasData ? `${currencySign}${sliceInfo.rev.toFixed(0)}` : ''}
                   </text>
                   <text x="50" y="65" className={`text-[9px] font-black text-center ${sliceInfo.color}`} textAnchor="middle">
-                    {sliceInfo.pct}% Share
+                    {hasData ? `${sliceInfo.pct}% Share` : ''}
                   </text>
                 </g>
               </svg>

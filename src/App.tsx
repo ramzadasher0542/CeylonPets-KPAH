@@ -1791,7 +1791,7 @@ export default function App() {
                     {systemConfig.hospitalName}
                     <span className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-100 text-yellow-850 border border-yellow-250 rounded font-sans uppercase">{systemConfig.appName} POS Suite</span>
                   </h1>
-                  <p className="text-[10px] text-slate-400 font-medium">Tablet Field Service Suite • Powered by {systemConfig.resellerName}</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Desktop Clinical POS Suite • Powered by {systemConfig.resellerName}</p>
                 </div>
               </div>
 
