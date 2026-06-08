@@ -40,14 +40,7 @@ import {
   OfflineSyncItem
 } from './types';
 
-import { 
-  DEFAULT_USERS, 
-  INITIAL_INVENTORY, 
-  INITIAL_APPOINTMENTS, 
-  INITIAL_MEDICAL_RECORDS, 
-  INITIAL_NOTIFICATIONS, 
-  INITIAL_ALERTS 
-} from './initialData';
+import { DEFAULT_USERS } from './initialData';
 
 // Modular Sub-components
 import DashboardAnalytics from './components/DashboardAnalytics';
@@ -1406,6 +1399,18 @@ export default function App() {
       setSyncProgress(85);
       setSyncStepDescription("Purging client local caches...");
       
+      // Explicitly remove local storage keys to prevent orphaned data lingering after reload
+      const localKeysToClear = [
+        'ceylon_inventory_v2',
+        'ceylon_appointments_v2',
+        'ceylon_records_v2',
+        'ceylon_invoices_v2',
+        'ceylon_notifications_v2',
+        'ceylon_alerts_v2',
+        'ceylon_sync_queue_v2'
+      ];
+      localKeysToClear.forEach(key => localStorage.removeItem(key));
+
       setInventory([]);
       setAppointments([]);
       setRecords([]);
@@ -1454,7 +1459,7 @@ export default function App() {
         if (error) console.error(`Error deleting table ${table}:`, error);
       }
 
-      // 2. Remove local storage keys ONLY for dynamic data
+      // 2. Remove ALL local storage keys (dynamic data + settings/users)
       const localKeysToClear = [
         'ceylon_inventory_v2',
         'ceylon_appointments_v2',
@@ -1462,7 +1467,9 @@ export default function App() {
         'ceylon_invoices_v2',
         'ceylon_notifications_v2',
         'ceylon_alerts_v2',
-        'ceylon_sync_queue_v2'
+        'ceylon_sync_queue_v2',
+        'ceylon_system_config_v2',
+        'ceylon_users_v2'
       ];
       localKeysToClear.forEach(key => localStorage.removeItem(key));
       
