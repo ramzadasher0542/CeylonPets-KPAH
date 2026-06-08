@@ -925,7 +925,7 @@ export default function POSRegister({
 
             {cart.length === 0 && (
               <div className="flex flex-col items-center justify-center h-48 text-slate-400 text-xs text-center border border-dashed border-sky-100 rounded-xl bg-slate-50/50">
-                <ShoppingBag className="h-8 w-8 text-slate-300 mb-2 stroke-1" />
+                <ShoppingBag className="h-8 w-8 text-slate-300 opacity-50 mb-2 stroke-1" />
                 <p className="font-bold text-slate-500">Cart is empty</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Select clinical check-ups or pet items to begin billing.</p>
               </div>

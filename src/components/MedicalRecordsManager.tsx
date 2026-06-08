@@ -289,8 +289,9 @@ export default function MedicalRecordsManager({
             );
           })}
           {filteredRecords.length === 0 && (
-            <div className="text-center text-slate-400 py-12">
-              No matching EHR medical charts found.
+            <div className="flex flex-col items-center justify-center h-48 text-center text-slate-500 py-12">
+              <FileText className="h-10 w-10 text-slate-300 opacity-50 mb-3" />
+              <span className="font-bold">No matching EHR medical charts found.</span>
             </div>
           )}
         </div>

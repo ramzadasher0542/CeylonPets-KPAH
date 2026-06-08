@@ -1764,7 +1764,7 @@ export default function App() {
       {currentUser && (
         <>
           {/* Header Bar */}
-          <header className="bg-white border-b border-sky-100 sticky top-0 z-40 px-6 py-3 shadow-xs print:hidden">
+          <header className="bg-white border-b border-sky-100 sticky top-0 z-40 px-6 py-2 shadow-sm print:hidden">
             <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
               
               {/* Title & Logo */}
@@ -1777,7 +1777,7 @@ export default function App() {
                     {systemConfig.hospitalName}
                     <span className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-100 text-yellow-850 border border-yellow-250 rounded font-sans uppercase">{systemConfig.appName} POS Suite</span>
                   </h1>
-                  <p className="text-[10px] text-slate-400 font-medium">Desktop Clinical POS Suite • Powered by {systemConfig.resellerName}</p>
+                  <p className="text-[9px] text-slate-400 font-bold tracking-widest uppercase mt-0.5">Desktop Clinical POS Suite • Powered by {systemConfig.resellerName}</p>
                 </div>
               </div>
 
@@ -1787,7 +1787,7 @@ export default function App() {
                 {/* Connection switch button */}
                 <button
                   onClick={handleToggleConnectivity}
-                  className={`px-3 py-1.5 rounded-full border text-[10px] font-bold tracking-tight uppercase flex items-center gap-1.5 cursor-pointer select-none transition-all ${
+                  className={`px-3 py-1 rounded-full border text-[9px] font-bold tracking-wider uppercase inline-flex items-center justify-center gap-1.5 cursor-pointer select-none transition-all ${
                     isOnline 
                       ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100' 
                       : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 animate-pulse'
@@ -2100,18 +2100,6 @@ export default function App() {
             </div>
           </main>
 
-          {/* Footer branding */}
-          <footer className="py-6 border-t border-sky-100 bg-white mt-12 text-center text-slate-400 text-xs print:hidden">
-            <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
-              <p className="font-medium">
-                © 2026 {systemConfig.hospitalName} Systems Inc. All diagnostic & ledger databases conform fully to HIPAA security provisions.
-              </p>
-              <div className="flex gap-4 font-mono font-bold text-[10px] uppercase text-slate-400">
-                <span>Secure Server Port: 3000 Node Encrypted</span>
-                <span>Version 1.4.0 (Tablet Ready)</span>
-              </div>
-            </div>
-          </footer>
         </>
       )}
       <ToastContainer />

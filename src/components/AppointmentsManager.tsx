@@ -280,8 +280,9 @@ export default function AppointmentsManager({
           </div>
         ))}
         {filteredAppointments.length === 0 && (
-          <div className="col-span-full bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center text-slate-400 text-xs">
-            No scheduled veterinary visits match the query filters.
+          <div className="col-span-full flex flex-col items-center justify-center h-48 bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center text-slate-500 text-xs">
+            <Calendar className="h-10 w-10 text-slate-300 opacity-50 mb-3" />
+            <span className="font-bold">No scheduled veterinary visits match the query filters.</span>
           </div>
         )}
       </div>

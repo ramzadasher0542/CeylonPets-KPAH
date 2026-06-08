@@ -690,6 +690,10 @@ export default function SystemSettings({
               Configure the <strong className="font-bold">Branded invoice details</strong> with your clinic's business coordinates. The POS checkouts automatically compute taxes and format totals!
             </p>
           </div>
+
+          <div className="mt-8 text-center text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest pt-4 border-t border-slate-100">
+            Version 1.4.0 (Tablet Ready)
+          </div>
         </div>
 
         {/* Right Tab Contents (9 cols) */}
