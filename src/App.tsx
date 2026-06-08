@@ -40,7 +40,7 @@ import {
   OfflineSyncItem
 } from './types';
 
-import { DEFAULT_USERS } from './initialData';
+
 
 // Modular Sub-components
 import DashboardAnalytics from './components/DashboardAnalytics';
@@ -210,15 +210,17 @@ export default function App() {
     }
   });
 
+  const initialStaffState = [{ name: 'System Administrator', username: 'admin', role: 'OWNER', pin: '0000' }];
+
   // Load users and pins separately from localStorage
   const [pinCache, setPinCache] = useState<Record<string, string>>(() => {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
-      baseUsers = saved ? JSON.parse(saved) : [];
+      baseUsers = saved ? JSON.parse(saved) : initialStaffState;
     } catch (e) {
       console.error('Error parsing ceylon_users_v3:', e);
-      baseUsers = [];
+      baseUsers = initialStaffState;
     }
 
     const cache: Record<string, string> = {};
@@ -239,10 +241,10 @@ export default function App() {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
-      baseUsers = saved ? JSON.parse(saved) : [];
+      baseUsers = saved ? JSON.parse(saved) : initialStaffState;
     } catch (e) {
       console.error('Error parsing ceylon_users_v3:', e);
-      baseUsers = [];
+      baseUsers = initialStaffState;
     }
 
     return baseUsers.map((user: any) => {

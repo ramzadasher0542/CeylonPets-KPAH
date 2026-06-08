@@ -34,8 +34,9 @@ export async function fetchStaffUsers(): Promise<User[]> {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_users_v3', JSON.stringify([]));
-      return [];
+      const initialStaffState = [{ name: 'System Administrator', username: 'admin', role: 'OWNER', pin: '0000' }];
+      localStorage.setItem('ceylon_users_v3', JSON.stringify(initialStaffState));
+      return initialStaffState as any;
     }
 
     // Map snake_case columns → camelCase User interface
