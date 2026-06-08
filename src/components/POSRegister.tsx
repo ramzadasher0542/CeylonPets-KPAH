@@ -69,7 +69,7 @@ export default function POSRegister({
   const [customItemCategory, setCustomItemCategory] = useState<'service' | 'retail'>('service');
   
   // Resolve undeclared variable reference
-  const selectedApt = records.find(r => r.id === selectedPetId) || null;
+  const selectedApt = appointments.find(a => a.id === selectedPetId) || null;
 
   // Checkout modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);

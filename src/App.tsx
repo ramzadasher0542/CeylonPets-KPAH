@@ -210,33 +210,15 @@ export default function App() {
     }
   });
 
-  // Load users and pins separately from localStorage / DEFAULT_USERS
+  // Load users and pins separately from localStorage
   const [pinCache, setPinCache] = useState<Record<string, string>>(() => {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
-      baseUsers = saved ? JSON.parse(saved) : [
-        {
-          id: 'usr-owner',
-          name: 'System Administrator',
-          username: 'admin',
-          role: 'owner',
-          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
-          pin: hashPin('5692')
-        }
-      ];
+      baseUsers = saved ? JSON.parse(saved) : [];
     } catch (e) {
-      console.error('Error parsing ceylon_users_v2:', e);
-      baseUsers = [
-        {
-          id: 'usr-owner',
-          name: 'System Administrator',
-          username: 'admin',
-          role: 'owner',
-          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
-          pin: hashPin('5692')
-        }
-      ];
+      console.error('Error parsing ceylon_users_v3:', e);
+      baseUsers = [];
     }
 
     const cache: Record<string, string> = {};
@@ -257,28 +239,10 @@ export default function App() {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
-      baseUsers = saved ? JSON.parse(saved) : [
-        {
-          id: 'usr-owner',
-          name: 'System Administrator',
-          username: 'admin',
-          role: 'owner',
-          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
-          pin: hashPin('0000')
-        }
-      ];
+      baseUsers = saved ? JSON.parse(saved) : [];
     } catch (e) {
       console.error('Error parsing ceylon_users_v3:', e);
-      baseUsers = [
-        {
-          id: 'usr-owner',
-          name: 'System Administrator',
-          username: 'admin',
-          role: 'owner',
-          avatarColor: 'bg-indigo-600 text-white border-indigo-700',
-          pin: hashPin('0000')
-        }
-      ];
+      baseUsers = [];
     }
 
     return baseUsers.map((user: any) => {
@@ -1410,6 +1374,10 @@ export default function App() {
         'ceylon_sync_queue_v2'
       ];
       localKeysToClear.forEach(key => localStorage.removeItem(key));
+      
+      // Global cache busting for ghost data eradication
+      localStorage.clear();
+      sessionStorage.clear();
 
       setInventory([]);
       setAppointments([]);
@@ -1473,6 +1441,10 @@ export default function App() {
         'ceylon_users_v3'
       ];
       localKeysToClear.forEach(key => localStorage.removeItem(key));
+      
+      // Global cache busting for ghost data eradication
+      localStorage.clear();
+      sessionStorage.clear();
       
       localStorage.setItem('ceylon_deployment_final_force_clear_v1', 'true');
 
