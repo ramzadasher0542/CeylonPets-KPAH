@@ -312,16 +312,19 @@ export default function App() {
   // ─── Supabase: hydrate all state from cloud on app mount ───────────────────
   // Loads instantly from localStorage cache (above), then silently refreshes
   // from Supabase in the background. Works offline (falls back to cache).
-  useEffect(() => {
-    fetchStaffUsers().then(cloudUsers => {
-      const cache: Record<string, string> = {};
-      const safeUsers = cloudUsers.map(({ pin, ...u }) => {
-        if (pin) cache[u.username] = pin;
-        return u;
-      });
-      setPinCache(prev => ({ ...prev, ...cache }));
-      setUsers(safeUsers);
+  const hydrateUsers = async () => {
+    const cloudUsers = await fetchStaffUsers();
+    const cache: Record<string, string> = {};
+    const safeUsers = cloudUsers.map(({ pin, ...u }) => {
+      if (pin) cache[u.username] = pin;
+      return u;
     });
+    setPinCache(prev => ({ ...prev, ...cache }));
+    setUsers(safeUsers);
+  };
+
+  useEffect(() => {
+    hydrateUsers();
     fetchSystemConfig().then(cloudConfig => {
       if (cloudConfig) setSystemConfig(cloudConfig);
     });
@@ -2071,6 +2074,7 @@ export default function App() {
                     onChangeConfig={setSystemConfig}
                     users={users.map(({ pin, ...safeU }) => safeU)}
                     onForceCloudSync={handleForceCloudSync}
+                    onRefreshUsers={hydrateUsers}
                     onAddUser={(user) => {
                       const { pin, ...safeUser } = user;
                       if (pin) {

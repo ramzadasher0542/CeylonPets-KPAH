@@ -29,7 +29,7 @@ import {
 import { User, UserRole, InventoryItem, Invoice } from '../types';
 import { showToast } from './Toast';
 import { uploadImageToStorage } from '../lib/supabase';
-import { upsertSystemConfig } from '../lib/auth';
+import { upsertSystemConfig, deleteStaffUser, upsertStaffUser } from '../lib/auth';
 import emailjs from '@emailjs/browser';
 
 export interface SystemConfig {
@@ -100,6 +100,7 @@ interface SystemSettingsProps {
   onPurgeDatabases?: () => void;
   onForceCloudSync?: () => void;
   onHardReboot?: () => void;
+  onRefreshUsers?: () => Promise<void>;
 }
 
 export default function SystemSettings({
@@ -115,7 +116,8 @@ export default function SystemSettings({
   onRestoreSnapshot,
   onPurgeDatabases,
   onForceCloudSync,
-  onHardReboot
+  onHardReboot,
+  onRefreshUsers
 }: SystemSettingsProps) {
   const rolePermissions = {
     cashier: config.rolePermissions?.cashier || ['pos'],
@@ -137,6 +139,7 @@ export default function SystemSettings({
 
   // Loading states
   const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [isDeletingStaff, setIsDeletingStaff] = useState<string | null>(null);
   const [isUpdatingMasterPin, setIsUpdatingMasterPin] = useState(false);
   const [isUpdatingDummyPin, setIsUpdatingDummyPin] = useState(false);
   const [isSavingAll, setIsSavingAll] = useState(false);
@@ -359,12 +362,36 @@ export default function SystemSettings({
     }
   };
 
+  const handleDeleteStaff = async (staff: User) => {
+    if (staff.role === 'admin' || staff.role === 'dummy_admin') {
+      showToast('System accounts cannot be deleted.', 'error');
+      return;
+    }
+    if (!window.confirm(`Are you sure you want to permanently revoke access for ${staff.name}?`)) return;
+
+    setIsDeletingStaff(staff.id);
+    try {
+      await deleteStaffUser(staff.id);
+      if (onRefreshUsers) await onRefreshUsers();
+      onRemoveUser(staff.id); // Also update locally as fallback
+      showToast('Staff member deleted successfully.', 'success');
+      setBackupLogs(prev => [...prev, `[USER LEVEL AUTH]: Revoked access for ${staff.username}`]);
+    } catch (err) {
+      showToast('Failed to delete staff member.', 'error');
+      console.error(err);
+    } finally {
+      setIsDeletingStaff(null);
+    }
+  };
+
   const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newStaffName || !newStaffUsername || !newStaffPin) return;
+    if (!newStaffName.trim() || !newStaffUsername.trim() || !newStaffPin.trim()) {
+      showToast('Real Name, Username, and PIN are required.', 'error');
+      return;
+    }
 
     setIsAddingStaff(true);
-    await new Promise(r => setTimeout(r, 50));
 
     try {
       const roleColors = {
@@ -383,13 +410,17 @@ export default function SystemSettings({
         avatarColor: roleColors[newStaffRole as keyof typeof roleColors] || roleColors['cashier']
       };
 
-      await Promise.resolve(onAddUser(newUserObj));
-      alert(`Success: Registered ${newStaffName} as ${newStaffRole}! PIN to login is: ${newStaffPin}. (Stored in global hospital user manifest)`);
+      await upsertStaffUser(newUserObj);
+      if (onRefreshUsers) await onRefreshUsers();
       
+      showToast(`Staff member ${newStaffName} added successfully.`, 'success');
       setBackupLogs(prev => [...prev, `[USER LEVEL AUTH]: Added system user ${newStaffUsername} with authorization: ${newStaffRole}`]);
       setNewStaffName('');
       setNewStaffUsername('');
       setNewStaffPin('');
+    } catch (err) {
+      showToast('Failed to add staff member.', 'error');
+      console.error(err);
     } finally {
       setIsAddingStaff(false);
     }
@@ -1040,13 +1071,18 @@ export default function SystemSettings({
                           </div>
 
                           {/* Delete staff if not super admin of reseller */}
-                          {staff.username !== 'drkandy' && staff.username !== 'ashpoint' && (
+                          {staff.role !== 'admin' && staff.role !== 'dummy_admin' && (
                             <button
-                              onClick={() => onRemoveUser(staff.id)}
-                              className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                              onClick={() => handleDeleteStaff(staff)}
+                              disabled={isDeletingStaff === staff.id}
+                              className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
                               title="Delete staff credentials"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              {isDeletingStaff === staff.id ? (
+                                <div className="w-4 h-4 border-2 border-rose-300 border-t-rose-600 rounded-full animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
                             </button>
                           )}
                         </div>
@@ -1121,7 +1157,7 @@ export default function SystemSettings({
                       {isAddingStaff ? (
                         <>
                           <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          Processing...
+                          Authorizing...
                         </>
                       ) : 'Authorize Clinician Access'}
                     </button>
