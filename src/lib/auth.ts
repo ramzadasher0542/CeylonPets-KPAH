@@ -73,7 +73,7 @@ export async function upsertStaffUser(user: User): Promise<void> {
         role:         user.role,
         avatar_color: user.avatarColor,
         pin:          user.pin ?? null,
-      }, { onConflict: 'id' });
+      }, { onConflict: 'username' });
 
     if (error) throw error;
   } catch (err) {

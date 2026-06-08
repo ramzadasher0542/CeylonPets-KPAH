@@ -766,13 +766,13 @@ export default function SystemSettings({
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <label className="font-bold text-slate-700 block text-[10px]">Primary Web Logo</label>
+                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor="primary-web-logo">Primary Web Logo</label>
                           {config.loginLogoUrl && (
                             <button type="button" onClick={() => setConfigValue('loginLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
                           )}
                         </div>
                         {!config.loginLogoUrl ? (
-                          <input name="inputFile732" id="input-file-732"
+                          <input name="primaryWebLogo" id="primary-web-logo"
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleLogoUpload(e, 'loginLogoUrl')}
@@ -786,13 +786,13 @@ export default function SystemSettings({
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <label className="font-bold text-slate-700 block text-[10px]">Thermal BMP Logo</label>
+                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor="thermal-bmp-logo">Thermal BMP Logo</label>
                           {config.posLogoUrl && (
                             <button type="button" onClick={() => setConfigValue('posLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
                           )}
                         </div>
                         {!config.posLogoUrl ? (
-                          <input name="inputFile344" id="input-file-344"
+                          <input name="thermalBmpLogo" id="thermal-bmp-logo"
                             type="file"
                             accept=".bmp,image/bmp"
                             onChange={(e) => handleLogoUpload(e, 'posLogoUrl')}
@@ -1064,6 +1064,7 @@ export default function SystemSettings({
                         <label className="font-bold text-slate-700 block text-[10px]" htmlFor="username">Username</label>
                         <input name="username" id="username"
                           type="text"
+                          autoComplete="username"
                           placeholder="nurse_kandy"
                           value={newStaffUsername}
                           onChange={(e) => setNewStaffUsername(e.target.value)}
@@ -1075,6 +1076,7 @@ export default function SystemSettings({
                         <label className="font-bold text-slate-700 block text-[10px]" htmlFor="login-pass-pin">Login Pass / PIN</label>
                         <input name="loginPassPin" id="login-pass-pin"
                           type="password"
+                          autoComplete="new-password"
                           maxLength={4}
                           placeholder="e.g. 4321"
                           value={newStaffPin}
@@ -1542,7 +1544,7 @@ export default function SystemSettings({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Actions Control</label>
+                        <span className="font-bold text-slate-700 block text-[10px]">Actions Control</span>
                         <button
                           type="button"
                           onClick={triggerCloudBackupSync}
@@ -1671,11 +1673,14 @@ export default function SystemSettings({
                       <input id="current-new-master-pin"
                         type="password"
                         name="ownerPin"
+                        autoComplete="new-password"
                         maxLength={8}
                         placeholder="Enter new Master PIN..."
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-slate-855 font-bold tracking-widest text-center rounded-lg text-sm"
                         required
                       />
+                      {/* Hidden username field for password manager accessibility */}
+                      <input type="text" name="username" autoComplete="username" defaultValue="admin" style={{ display: 'none' }} />
                     </div>
                     <button
                       type="submit"
@@ -1716,11 +1721,14 @@ export default function SystemSettings({
                       <input id="dummy-admin-access-pin"
                         type="password"
                         name="dummyPin"
+                        autoComplete="new-password"
                         maxLength={8}
                         placeholder="Enter new Printer Access PIN..."
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-slate-855 font-bold tracking-widest text-center rounded-lg text-sm"
                         required
                       />
+                      {/* Hidden username field for password manager accessibility */}
+                      <input type="text" name="username" autoComplete="username" defaultValue="printer_assistant" style={{ display: 'none' }} />
                     </div>
                     <button
                       type="submit"
