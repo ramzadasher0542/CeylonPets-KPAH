@@ -134,6 +134,11 @@ export default function SystemSettings({
   const [newStaffPin, setNewStaffPin] = useState('');
   const [newStaffRole, setNewStaffRole] = useState<UserRole>('cashier');
 
+  // Loading states
+  const [isAddingStaff, setIsAddingStaff] = useState(false);
+  const [isUpdatingMasterPin, setIsUpdatingMasterPin] = useState(false);
+  const [isUpdatingDummyPin, setIsUpdatingDummyPin] = useState(false);
+
   // New recipient email state
   const [newEmail, setNewEmail] = useState('');
 
@@ -352,36 +357,40 @@ export default function SystemSettings({
     }
   };
 
-  const handleAddStaffSubmit = (e: React.FormEvent) => {
+  const handleAddStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newStaffName || !newStaffUsername || !newStaffPin) return;
 
-    const roleColors = {
-      admin: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-      veterinarian: 'bg-blue-100 text-blue-800 border-blue-300',
-      cashier: 'bg-amber-100 text-amber-800 border-amber-300',
-      owner: 'bg-indigo-100 text-indigo-800 border-indigo-300'
-    };
+    setIsAddingStaff(true);
+    await new Promise(r => setTimeout(r, 50));
 
-    const newUserObj: User = {
-      id: `usr-${Date.now()}`,
-      name: newStaffName,
-      username: newStaffUsername,
-      role: newStaffRole,
-      pin: hashPin(newStaffPin),
-      avatarColor: roleColors[newStaffRole]
-    };
+    try {
+      const roleColors = {
+        admin: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        veterinarian: 'bg-blue-100 text-blue-800 border-blue-300',
+        cashier: 'bg-amber-100 text-amber-800 border-amber-300',
+        owner: 'bg-indigo-100 text-indigo-800 border-indigo-300'
+      };
 
-    onAddUser(newUserObj);
-    alert(`Success: Registered ${newStaffName} as ${newStaffRole}! PIN to login is: ${newStaffPin}. (Stored in global hospital user manifest)`);
-    
-    // Auto populate PIN into the local memory log if we want
-    // (the app root pinLogins list will receive it by name/roles, but we notify user)
-    
-    setBackupLogs(prev => [...prev, `[USER LEVEL AUTH]: Added system user ${newStaffUsername} with authorization: ${newStaffRole}`]);
-    setNewStaffName('');
-    setNewStaffUsername('');
-    setNewStaffPin('');
+      const newUserObj: User = {
+        id: `usr-${Date.now()}`,
+        name: newStaffName,
+        username: newStaffUsername,
+        role: newStaffRole as UserRole,
+        pin: hashPin(newStaffPin),
+        avatarColor: roleColors[newStaffRole as keyof typeof roleColors] || roleColors['cashier']
+      };
+
+      await Promise.resolve(onAddUser(newUserObj));
+      alert(`Success: Registered ${newStaffName} as ${newStaffRole}! PIN to login is: ${newStaffPin}. (Stored in global hospital user manifest)`);
+      
+      setBackupLogs(prev => [...prev, `[USER LEVEL AUTH]: Added system user ${newStaffUsername} with authorization: ${newStaffRole}`]);
+      setNewStaffName('');
+      setNewStaffUsername('');
+      setNewStaffPin('');
+    } finally {
+      setIsAddingStaff(false);
+    }
   };
 
   const handleAddEmail = (e: React.FormEvent) => {
@@ -766,7 +775,7 @@ export default function SystemSettings({
                     <div className="grid grid-cols-2 gap-3 pt-2">
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor="primary-web-logo">Primary Web Logo</label>
+                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor={!config.loginLogoUrl ? "primary-web-logo" : undefined}>Primary Web Logo</label>
                           {config.loginLogoUrl && (
                             <button type="button" onClick={() => setConfigValue('loginLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
                           )}
@@ -786,7 +795,7 @@ export default function SystemSettings({
                       </div>
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
-                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor="thermal-bmp-logo">Thermal BMP Logo</label>
+                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor={!config.posLogoUrl ? "thermal-bmp-logo" : undefined}>Thermal BMP Logo</label>
                           {config.posLogoUrl && (
                             <button type="button" onClick={() => setConfigValue('posLogoUrl', '')} className="text-[9px] text-rose-500 hover:text-rose-700 font-bold">Remove</button>
                           )}
@@ -1104,9 +1113,15 @@ export default function SystemSettings({
 
                     <button
                       type="submit"
-                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-xs cursor-pointer text-xs"
+                      disabled={isAddingStaff}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-xs cursor-pointer text-xs disabled:opacity-50 flex justify-center items-center gap-2"
                     >
-                      Authorize Clinician Access
+                      {isAddingStaff ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Processing...
+                        </>
+                      ) : 'Authorize Clinician Access'}
                     </button>
                   </form>
                 </div>
@@ -1654,7 +1669,7 @@ export default function SystemSettings({
                     This master PIN grants 100% unrestricted access to System Settings, database resets, and reseller whitelabel configuration parameters. Keeping this safe is
                   </p>
                   <form 
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
                       const form = e.currentTarget;
                       const pin = (form.elements.namedItem('ownerPin') as HTMLInputElement).value;
@@ -1662,9 +1677,16 @@ export default function SystemSettings({
                         alert('Error: PIN must be at least 4 digits long.');
                         return;
                       }
-                      setConfigValue('masterPin', hashPin(pin));
-                      alert('Success: Master Owner PIN has been securely updated! Make sure to use this PIN next time you log in.');
-                      form.reset();
+
+                      setIsUpdatingMasterPin(true);
+                      await new Promise(r => setTimeout(r, 50));
+                      try {
+                        await Promise.resolve(setConfigValue('masterPin', hashPin(pin)));
+                        alert('Success: Master Owner PIN has been securely updated! Make sure to use this PIN next time you log in.');
+                        form.reset();
+                      } finally {
+                        setIsUpdatingMasterPin(false);
+                      }
                     }}
                     className="space-y-3"
                   >
@@ -1684,9 +1706,15 @@ export default function SystemSettings({
                     </div>
                     <button
                       type="submit"
-                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all shadow-xs cursor-pointer text-xs"
+                      disabled={isUpdatingMasterPin}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all shadow-xs cursor-pointer text-xs disabled:opacity-50 flex justify-center items-center gap-2"
                     >
-                      Update Master Password
+                      {isUpdatingMasterPin ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Processing...
+                        </>
+                      ) : 'Update Master Password'}
                     </button>
                   </form>
                 </div>
@@ -1702,7 +1730,7 @@ export default function SystemSettings({
                   </p>
 
                   <form 
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                       e.preventDefault();
                       const form = e.currentTarget;
                       const pin = (form.elements.namedItem('dummyPin') as HTMLInputElement).value;
@@ -1710,9 +1738,16 @@ export default function SystemSettings({
                         alert('Error: PIN must be at least 4 digits long.');
                         return;
                       }
-                      setConfigValue('dummyAdminPin', hashPin(pin));
-                      alert('Success: Dummy Admin Printer PIN has been securely updated!');
-                      form.reset();
+
+                      setIsUpdatingDummyPin(true);
+                      await new Promise(r => setTimeout(r, 50));
+                      try {
+                        await Promise.resolve(setConfigValue('dummyAdminPin', hashPin(pin)));
+                        alert('Success: Dummy Admin Printer PIN has been securely updated!');
+                        form.reset();
+                      } finally {
+                        setIsUpdatingDummyPin(false);
+                      }
                     }}
                     className="space-y-3"
                   >
@@ -1732,9 +1767,15 @@ export default function SystemSettings({
                     </div>
                     <button
                       type="submit"
-                      className="w-full py-2 bg-slate-700 hover:bg-slate-800 text-white font-extrabold rounded-xl transition-all shadow-xs cursor-pointer text-xs"
+                      disabled={isUpdatingDummyPin}
+                      className="w-full py-2 bg-slate-700 hover:bg-slate-800 text-white font-extrabold rounded-xl transition-all shadow-xs cursor-pointer text-xs disabled:opacity-50 flex justify-center items-center gap-2"
                     >
-                      Update Printer Password
+                      {isUpdatingDummyPin ? (
+                        <>
+                          <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Processing...
+                        </>
+                      ) : 'Update Printer Password'}
                     </button>
                   </form>
                 </div>
