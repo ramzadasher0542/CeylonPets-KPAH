@@ -29,6 +29,7 @@ import {
 import { User, UserRole, InventoryItem, Invoice } from '../types';
 import { showToast } from './Toast';
 import { uploadImageToStorage } from '../lib/supabase';
+import { upsertSystemConfig } from '../lib/auth';
 import emailjs from '@emailjs/browser';
 
 export interface SystemConfig {
@@ -138,6 +139,7 @@ export default function SystemSettings({
   const [isAddingStaff, setIsAddingStaff] = useState(false);
   const [isUpdatingMasterPin, setIsUpdatingMasterPin] = useState(false);
   const [isUpdatingDummyPin, setIsUpdatingDummyPin] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
   // New recipient email state
   const [newEmail, setNewEmail] = useState('');
@@ -1679,9 +1681,10 @@ export default function SystemSettings({
                       }
 
                       setIsUpdatingMasterPin(true);
-                      await new Promise(r => setTimeout(r, 50));
                       try {
-                        await Promise.resolve(setConfigValue('masterPin', hashPin(pin)));
+                        const newConfig = { ...config, masterPin: hashPin(pin) };
+                        await upsertSystemConfig(newConfig);
+                        setConfigValue('masterPin', hashPin(pin));
                         alert('Success: Master Owner PIN has been securely updated! Make sure to use this PIN next time you log in.');
                         form.reset();
                       } finally {
@@ -1702,7 +1705,7 @@ export default function SystemSettings({
                         required
                       />
                       {/* Hidden username field for password manager accessibility */}
-                      <input type="text" name="username" autoComplete="username" defaultValue="admin" style={{ display: 'none' }} />
+                      <input type="text" name="username" autoComplete="username" defaultValue="master_admin" className="sr-only hidden" aria-hidden="true" readOnly />
                     </div>
                     <button
                       type="submit"
@@ -1740,9 +1743,10 @@ export default function SystemSettings({
                       }
 
                       setIsUpdatingDummyPin(true);
-                      await new Promise(r => setTimeout(r, 50));
                       try {
-                        await Promise.resolve(setConfigValue('dummyAdminPin', hashPin(pin)));
+                        const newConfig = { ...config, dummyAdminPin: hashPin(pin) };
+                        await upsertSystemConfig(newConfig);
+                        setConfigValue('dummyAdminPin', hashPin(pin));
                         alert('Success: Dummy Admin Printer PIN has been securely updated!');
                         form.reset();
                       } finally {
@@ -1763,7 +1767,7 @@ export default function SystemSettings({
                         required
                       />
                       {/* Hidden username field for password manager accessibility */}
-                      <input type="text" name="username" autoComplete="username" defaultValue="printer_assistant" style={{ display: 'none' }} />
+                      <input type="text" name="username" autoComplete="username" defaultValue="printer_admin" className="sr-only hidden" aria-hidden="true" readOnly />
                     </div>
                     <button
                       type="submit"
@@ -2467,11 +2471,29 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
       {/* Satisfying Save Button */}
       <div className="mt-8 flex justify-end pb-8">
         <button
-          onClick={() => showToast('Configurations and preferences successfully saved to the active database!', 'success')}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3.5 rounded-xl font-bold tracking-wide shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2"
+          onClick={async () => {
+            setIsSavingAll(true);
+            try {
+              await upsertSystemConfig(config);
+              showToast('Configurations and preferences successfully saved to the active database!', 'success');
+            } finally {
+              setIsSavingAll(false);
+            }
+          }}
+          disabled={isSavingAll}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-8 py-3.5 rounded-xl font-bold tracking-wide shadow-lg shadow-indigo-200 hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
         >
-          <Check className="w-5 h-5" />
-          Save All Changes
+          {isSavingAll ? (
+            <>
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Updating...
+            </>
+          ) : (
+            <>
+              <Check className="w-5 h-5" />
+              Save All Changes
+            </>
+          )}
         </button>
       </div>
 
