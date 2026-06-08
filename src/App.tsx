@@ -1713,6 +1713,8 @@ export default function App() {
                         </option>
                       ))}
                     </select>
+                    {/* Hidden username input for password managers */}
+                    <input type="text" name="username" autoComplete="username" className="sr-only hidden" aria-hidden="true" value={selectedUsername} readOnly />
                   </div>
 
                   <div className="space-y-1">
