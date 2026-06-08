@@ -97,11 +97,13 @@ export default function App() {
   // First Deployment Boot Reboot Utility
   useState(() => {
     try {
-      const booted = localStorage.getItem('ceylon_deployment_final_force_clear_v1');
+      const booted = localStorage.getItem('ceylon_deployment_final_force_clear_v2');
       if (!booted) {
         console.log('[CeylonPets] Force clear trigger detected. Purging all browser local storage databases...');
         localStorage.clear();
-        localStorage.setItem('ceylon_deployment_final_force_clear_v1', 'true');
+        sessionStorage.clear();
+        localStorage.setItem('ceylon_deployment_final_force_clear_v2', 'true');
+        window.location.reload();
       }
     } catch (e) {
       console.error('[CeylonPets] Error during deployment boot initialization:', e);
@@ -1680,8 +1682,6 @@ export default function App() {
                       required
                     >
                       <option value="" disabled>-- Choose Staff --</option>
-                      <option value="ashpoint_owner">Service Provider (System Root Admin)</option>
-                      <option value="printer_assistant">Printer Setup Assistant (Hardware Config)</option>
                       {users.map((u) => (
                         <option key={u.id} value={u.username}>
                           {u.name} ({u.role.toUpperCase()})
