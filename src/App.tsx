@@ -264,8 +264,10 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('ceylon_system_config_v2', JSON.stringify(systemConfig));
-    upsertSystemConfig(systemConfig).catch(() => {}); // best-effort cloud sync
-  }, [systemConfig]);
+    if (currentUser) {
+      upsertSystemConfig(systemConfig, currentUser).catch(() => {}); // best-effort cloud sync
+    }
+  }, [systemConfig, currentUser]);
 
   useEffect(() => {
     const fullUsers = users.map(u => {
@@ -273,8 +275,10 @@ export default function App() {
       return { ...u, pin: realPin };
     });
     localStorage.setItem('ceylon_users_v3', JSON.stringify(fullUsers));
-    fullUsers.forEach(u => upsertStaffUser(u).catch(() => {}));
-  }, [users, pinCache]);
+    if (currentUser) {
+      fullUsers.forEach(u => upsertStaffUser(u, currentUser).catch(() => {}));
+    }
+  }, [users, pinCache, currentUser]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_inventory_v2', JSON.stringify(inventory));

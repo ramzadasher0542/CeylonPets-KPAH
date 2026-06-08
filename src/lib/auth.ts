@@ -65,7 +65,10 @@ export async function fetchStaffUsers(): Promise<User[]> {
  * Upsert a single user record to Supabase (used by Settings when
  * an admin adds or edits a staff member).
  */
-export async function upsertStaffUser(user: User): Promise<void> {
+export async function upsertStaffUser(user: User, currentUser: User): Promise<void> {
+  if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
+    throw new Error('Unauthorized: Only administrators can modify staff records.');
+  }
   try {
     const { error } = await supabase
       .from(DB_TABLES.USERS)
@@ -87,7 +90,10 @@ export async function upsertStaffUser(user: User): Promise<void> {
 /**
  * Delete a staff user from Supabase by ID.
  */
-export async function deleteStaffUser(userId: string): Promise<void> {
+export async function deleteStaffUser(userId: string, currentUser: User): Promise<void> {
+  if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
+    throw new Error('Unauthorized: Only administrators can delete staff records.');
+  }
   try {
     const { error } = await supabase
       .from(DB_TABLES.USERS)
@@ -138,7 +144,10 @@ export async function fetchSystemConfig(): Promise<SystemConfig | null> {
 /**
  * Save the full system config object to Supabase (upsert row id=1).
  */
-export async function upsertSystemConfig(config: SystemConfig): Promise<void> {
+export async function upsertSystemConfig(config: SystemConfig, currentUser: User): Promise<void> {
+  if (currentUser.role !== 'admin' && currentUser.role !== 'owner') {
+    throw new Error('Unauthorized: Only administrators can update global configuration.');
+  }
   try {
     const { error } = await supabase
       .from(DB_TABLES.SYSTEM_CONFIG)

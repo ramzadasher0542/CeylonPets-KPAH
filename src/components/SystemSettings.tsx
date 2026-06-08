@@ -371,7 +371,7 @@ export default function SystemSettings({
 
     setIsDeletingStaff(staff.id);
     try {
-      await deleteStaffUser(staff.id);
+      await deleteStaffUser(staff.id, currentUser);
       if (onRefreshUsers) await onRefreshUsers();
       onRemoveUser(staff.id); // Also update locally as fallback
       showToast('Staff member deleted successfully.', 'success');
@@ -410,7 +410,7 @@ export default function SystemSettings({
         avatarColor: roleColors[newStaffRole as keyof typeof roleColors] || roleColors['cashier']
       };
 
-      await upsertStaffUser(newUserObj);
+      await upsertStaffUser(newUserObj, currentUser);
       if (onRefreshUsers) await onRefreshUsers();
       
       showToast(`Staff member ${newStaffName} added successfully.`, 'success');
@@ -1730,7 +1730,7 @@ export default function SystemSettings({
                       setIsUpdatingMasterPin(true);
                       try {
                         const newConfig = { ...config, masterPin: hashPin(pin) };
-                        await upsertSystemConfig(newConfig);
+                        await upsertSystemConfig(newConfig, currentUser);
                         setConfigValue('masterPin', hashPin(pin));
                         alert('Success: Master Owner PIN has been securely updated! Make sure to use this PIN next time you log in.');
                         form.reset();
@@ -1792,7 +1792,7 @@ export default function SystemSettings({
                       setIsUpdatingDummyPin(true);
                       try {
                         const newConfig = { ...config, dummyAdminPin: hashPin(pin) };
-                        await upsertSystemConfig(newConfig);
+                        await upsertSystemConfig(newConfig, currentUser);
                         setConfigValue('dummyAdminPin', hashPin(pin));
                         alert('Success: Dummy Admin Printer PIN has been securely updated!');
                         form.reset();
@@ -2521,7 +2521,7 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
           onClick={async () => {
             setIsSavingAll(true);
             try {
-              await upsertSystemConfig(config);
+              await upsertSystemConfig(config, currentUser);
               showToast('Configurations and preferences successfully saved to the active database!', 'success');
             } finally {
               setIsSavingAll(false);
