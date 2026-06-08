@@ -102,7 +102,8 @@ export default function DashboardAnalytics({
   });
 
   const activeChartData = chartType === 'revenue' ? dailyRevenue : dailyAppointments;
-  const maxChartVal = Math.max(...activeChartData, chartType === 'revenue' ? 100 : 5);
+  const currentMax = Math.max(...activeChartData);
+  const maxChartVal = currentMax === 0 ? (chartType === 'revenue' ? 150 : 3) : currentMax;
 
   const points = activeChartData.map((val, idx) => {
     const x = 50 + idx * 64;
@@ -277,7 +278,9 @@ export default function DashboardAnalytics({
               <h3 className="text-2xl font-bold text-slate-800 mt-1">{currencySign}{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
             </div>
             <div className="p-3 bg-teal-50 rounded-xl text-teal-600 group-hover:bg-teal-100 transition-all duration-300">
-              <span className="flex items-center justify-center font-black font-mono h-5 w-5 text-xl">{currencySign}</span>
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <text x="12" y="17" textAnchor="middle" fontSize="16" fontWeight="bold" fontFamily="sans-serif" stroke="none" fill="currentColor">{currencySign}</text>
+              </svg>
             </div>
           </div>
           <div className="mt-4 flex gap-2 text-xs text-slate-500">
@@ -428,10 +431,10 @@ export default function DashboardAnalytics({
                 {chartType === 'revenue' ? `${currencySign}${maxChartVal.toFixed(0)}` : maxChartVal}
               </text>
               <text x="32" y="72" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">
-                {chartType === 'revenue' ? `${currencySign}${(maxChartVal * 0.66).toFixed(0)}` : Math.round(maxChartVal * 0.66)}
+                {chartType === 'revenue' ? `${currencySign}${(maxChartVal * 2 / 3).toFixed(0)}` : Math.round(maxChartVal * 2 / 3)}
               </text>
               <text x="32" y="115" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">
-                {chartType === 'revenue' ? `${currencySign}${(maxChartVal * 0.33).toFixed(0)}` : Math.round(maxChartVal * 0.33)}
+                {chartType === 'revenue' ? `${currencySign}${(maxChartVal / 3).toFixed(0)}` : Math.round(maxChartVal / 3)}
               </text>
               <text x="32" y="159" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">0</text>
 
