@@ -387,7 +387,7 @@ export default function DashboardAnalytics({
                 onClick={() => setChartType('revenue')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-tight cursor-pointer transition-all ${
                   chartType === 'revenue' 
-                    ? 'bg-indigo-650 bg-indigo-655 text-white shadow-sm' 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
@@ -397,7 +397,7 @@ export default function DashboardAnalytics({
                 onClick={() => setChartType('appointments')}
                 className={`px-3 py-1.5 rounded-lg text-[10px] uppercase font-bold tracking-tight cursor-pointer transition-all ${
                   chartType === 'appointments' 
-                    ? 'bg-indigo-650 bg-indigo-655 text-white shadow-sm' 
+                    ? 'bg-indigo-600 text-white shadow-sm' 
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
