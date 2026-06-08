@@ -312,7 +312,7 @@ export default function PatientPortal({
             </p>
             <div className="relative">
               <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-              <input
+              <input name="eG15557814200757" id="e-g-1-555-781-4200-757"
                 type="tel"
                 placeholder="e.g. +1 (555) 781-4200"
                 value={phoneNumber}
@@ -543,8 +543,8 @@ export default function PatientPortal({
             ) : (
               <form onSubmit={handleBookNextBooster} className="space-y-3">
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Booster Goal / Requested vaccine</label>
-                  <select
+                  <label className="font-semibold text-slate-700 block" htmlFor="booster-goal-requested-vaccine">Booster Goal / Requested vaccine</label>
+                  <select name="boosterGoalRequestedVaccine" id="booster-goal-requested-vaccine"
                     value={bookingReason}
                     onChange={(e) => setBookingReason(e.target.value)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs"
@@ -560,8 +560,8 @@ export default function PatientPortal({
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 block">Desired Date</label>
-                    <input
+                    <label className="font-semibold text-slate-700 block" htmlFor="desired-date">Desired Date</label>
+                    <input name="desiredDate" id="desired-date"
                       type="date"
                       value={bookingDate}
                       onChange={(e) => setBookingDate(e.target.value)}
@@ -569,8 +569,8 @@ export default function PatientPortal({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 block">Desired Hours</label>
-                    <input
+                    <label className="font-semibold text-slate-700 block" htmlFor="desired-hours">Desired Hours</label>
+                    <input name="desiredHours" id="desired-hours"
                       type="time"
                       value={bookingTime}
                       onChange={(e) => setBookingTime(e.target.value)}

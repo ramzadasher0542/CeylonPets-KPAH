@@ -246,7 +246,7 @@ export default function MedicalRecordsManager({
         <div className="space-y-3 pb-3 border-b border-slate-100 flex items-center justify-between">
           <div className="relative flex-1 mr-2">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
-            <input
+            <input name="searchPatients272" id="search-patients-272"
               type="text"
               placeholder="Search patients..."
               value={searchQuery}
@@ -378,8 +378,8 @@ export default function MedicalRecordsManager({
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-700 block text-[10px]">Subjective & Objective Findings</label>
-                          <textarea
+                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor="subjective-objective-findings">Subjective & Objective Findings</label>
+                          <textarea name="subjectiveObjectiveFindings" id="subjective-objective-findings"
                             rows={3}
                             value={editSymptoms}
                             onChange={(e) => setEditSymptoms(e.target.value)}
@@ -387,8 +387,8 @@ export default function MedicalRecordsManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-700 block text-[10px]">Assessment</label>
-                          <textarea
+                          <label className="font-bold text-slate-700 block text-[10px]" htmlFor="assessment">Assessment</label>
+                          <textarea name="assessment" id="assessment"
                             rows={3}
                             value={editDiagnosis}
                             onChange={(e) => setEditDiagnosis(e.target.value)}
@@ -398,8 +398,8 @@ export default function MedicalRecordsManager({
                       </div>
 
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Treatment Plan & Prescriptions</label>
-                        <textarea
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="treatment-plan-prescriptions">Treatment Plan & Prescriptions</label>
+                        <textarea name="treatmentPlanPrescriptions" id="treatment-plan-prescriptions"
                           rows={3}
                           value={editTreatmentNotes}
                           onChange={(e) => setEditTreatmentNotes(e.target.value)}
@@ -520,8 +520,8 @@ export default function MedicalRecordsManager({
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-600 block text-[10px]">Vaccine Catalog Item</label>
-                          <select
+                          <label className="font-bold text-slate-600 block text-[10px]" htmlFor="vaccine-catalog-item">Vaccine Catalog Item</label>
+                          <select name="vaccineCatalogItem" id="vaccine-catalog-item"
                             value={newVacItemId}
                             onChange={(e) => setNewVacItemId(e.target.value)}
                             className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-850"
@@ -535,8 +535,8 @@ export default function MedicalRecordsManager({
                           </select>
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Active Status Check</label>
-                          <select
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="active-status-check">Active Status Check</label>
+                          <select name="activeStatusCheck" id="active-status-check"
                             value={newVacStatus}
                             onChange={(e: any) => setNewVacStatus(e.target.value)}
                             className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-850"
@@ -550,8 +550,8 @@ export default function MedicalRecordsManager({
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Date Administered</label>
-                          <input
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="date-administered">Date Administered</label>
+                          <input name="dateAdministered" id="date-administered"
                             type="date"
                             value={newVacDate}
                             onChange={(e) => setNewVacDate(e.target.value)}
@@ -559,8 +559,8 @@ export default function MedicalRecordsManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Next Booster Due Date</label>
-                          <input
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="next-booster-due-date">Next Booster Due Date</label>
+                          <input name="nextBoosterDueDate" id="next-booster-due-date"
                             type="date"
                             value={newVacDueDate}
                             onChange={(e) => setNewVacDueDate(e.target.value)}
@@ -714,8 +714,8 @@ export default function MedicalRecordsManager({
                       
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-600 block text-[10px]">Test Name / Marker</label>
-                          <input
+                          <label className="font-bold text-slate-600 block text-[10px]" htmlFor="test-name-marker">Test Name / Marker</label>
+                          <input name="testNameMarker" id="test-name-marker"
                             type="text"
                             placeholder="e.g. Complete Blood Count (CBC)"
                             value={newLabTestName}
@@ -724,8 +724,8 @@ export default function MedicalRecordsManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Result Clearance Status</label>
-                          <select
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="result-clearance-status">Result Clearance Status</label>
+                          <select name="resultClearanceStatus" id="result-clearance-status"
                             value={newLabStatus}
                             onChange={(e: any) => setNewLabStatus(e.target.value)}
                             className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-850"
@@ -739,8 +739,8 @@ export default function MedicalRecordsManager({
 
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Released Date</label>
-                          <input
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="released-date">Released Date</label>
+                          <input name="releasedDate" id="released-date"
                             type="date"
                             value={newLabDate}
                             onChange={(e) => setNewLabDate(e.target.value)}
@@ -748,8 +748,8 @@ export default function MedicalRecordsManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Tested Value Metrics</label>
-                          <input
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="tested-value-metrics">Tested Value Metrics</label>
+                          <input name="testedValueMetrics" id="tested-value-metrics"
                             type="text"
                             placeholder="e.g. 14.5 g/dL"
                             value={newLabValue}
@@ -761,8 +761,8 @@ export default function MedicalRecordsManager({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Reference Safe Threshold Range</label>
-                          <input
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="reference-safe-threshold-range">Reference Safe Threshold Range</label>
+                          <input name="referenceSafeThresholdRange" id="reference-safe-threshold-range"
                             type="text"
                             placeholder="e.g. 12.0 - 18.0 g/dL"
                             value={newLabRefRange}
@@ -771,8 +771,8 @@ export default function MedicalRecordsManager({
                           />
                         </div>
                         <div className="space-y-1">
-                          <label className="font-bold text-slate-650 block text-[10px]">Diagnostic Notes</label>
-                          <input
+                          <label className="font-bold text-slate-650 block text-[10px]" htmlFor="diagnostic-notes">Diagnostic Notes</label>
+                          <input name="diagnosticNotes" id="diagnostic-notes"
                             type="text"
                             placeholder="e.g. Red blood cells morphology normal."
                             value={newLabNotes}
@@ -969,8 +969,8 @@ export default function MedicalRecordsManager({
                 
                 {/* Pet descriptor */}
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Pet Name *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="pet-name">Pet Name *</label>
+                  <input name="petName" id="pet-name"
                     type="text"
                     required
                     placeholder="Coco, Luna"
@@ -981,8 +981,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Animal species type</label>
-                  <select
+                  <label className="font-semibold text-slate-700 block" htmlFor="animal-species-type">Animal species type</label>
+                  <select name="animalSpeciesType" id="animal-species-type"
                     value={newPetType}
                     onChange={(e) => setNewPetType(e.target.value as any)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
@@ -996,8 +996,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Breed details</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="breed-details">Breed details</label>
+                  <input name="breedDetails" id="breed-details"
                     type="text"
                     placeholder="French Bulldog"
                     value={newBreed}
@@ -1007,8 +1007,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Estimated Age</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="estimated-age">Estimated Age</label>
+                  <input name="estimatedAge" id="estimated-age"
                     type="text"
                     placeholder="3 Years / 8 Months"
                     value={newAge}
@@ -1018,8 +1018,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Weight (kg)</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="weight-kg">Weight (kg)</label>
+                  <input name="weightKg" id="weight-kg"
                     type="number"
                     step="0.1"
                     placeholder="12.5"
@@ -1030,8 +1030,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Client / Owner Name *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="client-owner-name">Client / Owner Name *</label>
+                  <input name="clientOwnerName" id="client-owner-name"
                     type="text"
                     required
                     placeholder="Marcus Avery"
@@ -1042,8 +1042,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Owner Phone *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="owner-phone">Owner Phone *</label>
+                  <input name="ownerPhone" id="owner-phone"
                     type="text"
                     required
                     placeholder="+1 (555) 432-8761"
@@ -1054,8 +1054,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Owner Email</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="owner-email">Owner Email</label>
+                  <input name="ownerEmail" id="owner-email"
                     type="email"
                     placeholder="marcus.a@example.com"
                     value={newOwnerEmail}
@@ -1066,8 +1066,8 @@ export default function MedicalRecordsManager({
 
                 {/* Health diagnostics */}
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Chief Symptoms Reported *</label>
-                  <textarea
+                  <label className="font-semibold text-slate-700 block" htmlFor="chief-symptoms-reported">Chief Symptoms Reported *</label>
+                  <textarea name="chiefSymptomsReported" id="chief-symptoms-reported"
                     rows={2}
                     required
                     placeholder="Lethargy, redness around belly skin, frequent head turning..."
@@ -1078,8 +1078,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Clinical Diagnosis Assessment</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="clinical-diagnosis-assessment">Clinical Diagnosis Assessment</label>
+                  <input name="clinicalDiagnosisAssessment" id="clinical-diagnosis-assessment"
                     type="text"
                     placeholder="Allergic flare, standard check-up healthy, mild infection"
                     value={newDiagnosis}
@@ -1089,8 +1089,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Treatment Notes</label>
-                  <textarea
+                  <label className="font-semibold text-slate-700 block" htmlFor="treatment-notes">Treatment Notes</label>
+                  <textarea name="treatmentNotes" id="treatment-notes"
                     rows={2}
                     placeholder="Cleaned affected skin, prescribed topical spray. Booster rabies shot administered."
                     value={newTreatmentNotes}
@@ -1142,8 +1142,8 @@ export default function MedicalRecordsManager({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Pet Name *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="pet-name">Pet Name *</label>
+                  <input name="petName" id="pet-name"
                     type="text"
                     required
                     value={editPetName}
@@ -1153,8 +1153,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Animal species type</label>
-                  <select
+                  <label className="font-semibold text-slate-700 block" htmlFor="animal-species-type">Animal species type</label>
+                  <select name="animalSpeciesType" id="animal-species-type"
                     value={editPetType}
                     onChange={(e) => setEditPetType(e.target.value as any)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
@@ -1168,8 +1168,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Breed details</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="breed-details">Breed details</label>
+                  <input name="breedDetails" id="breed-details"
                     type="text"
                     value={editBreed}
                     onChange={(e) => setEditBreed(e.target.value)}
@@ -1178,8 +1178,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Age designation</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="age-designation">Age designation</label>
+                  <input name="ageDesignation" id="age-designation"
                     type="text"
                     value={editAge}
                     onChange={(e) => setEditAge(e.target.value)}
@@ -1188,8 +1188,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Measured Weight (kg)</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="measured-weight-kg">Measured Weight (kg)</label>
+                  <input name="measuredWeightKg" id="measured-weight-kg"
                     type="number"
                     step="0.01"
                     value={editWeight}
@@ -1203,8 +1203,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Owner Name *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="owner-name">Owner Name *</label>
+                  <input name="ownerName" id="owner-name"
                     type="text"
                     required
                     value={editOwnerName}
@@ -1214,8 +1214,8 @@ export default function MedicalRecordsManager({
                 </div>
                 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Contact Phone *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="contact-phone">Contact Phone *</label>
+                  <input name="contactPhone" id="contact-phone"
                     type="tel"
                     required
                     value={editOwnerPhone}
@@ -1225,8 +1225,8 @@ export default function MedicalRecordsManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Email Address</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="email-address">Email Address</label>
+                  <input name="emailAddress" id="email-address"
                     type="email"
                     value={editOwnerEmail}
                     onChange={(e) => setEditOwnerEmail(e.target.value)}

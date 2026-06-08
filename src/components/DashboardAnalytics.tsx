@@ -645,7 +645,7 @@ export default function DashboardAnalytics({
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <input 
+          <input name="inputMonth647" id="input-month-647" 
             type="month"
             value={reportMonth}
             onChange={(e) => setReportMonth(e.target.value)}

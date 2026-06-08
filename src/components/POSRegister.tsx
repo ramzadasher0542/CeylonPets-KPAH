@@ -521,7 +521,7 @@ export default function POSRegister({
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                <input
+                <input name="searchServicesPrescriptionM603" id="search-services-prescription-m-603"
                   type="text"
                   placeholder="Search services, prescription meds, or toy inventory by SKU / name..."
                   value={searchQuery}
@@ -533,7 +533,7 @@ export default function POSRegister({
               {/* Barcode scanner input */}
               <div className="relative w-full sm:w-64">
                 <QrCode className="absolute left-3.5 top-3 h-4 w-4 text-indigo-500" />
-                <input
+                <input name="scanBarcodeSku728" id="scan-barcode-sku-728"
                   type="text"
                   placeholder="Scan Barcode (SKU)..."
                   value={barcodeInput}
@@ -556,7 +556,7 @@ export default function POSRegister({
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                <input
+                <input name="searchLedgerByInvoiceIdCl69" id="search-ledger-by-invoice-id-cl-69"
                   type="text"
                   placeholder="Search ledger by Invoice ID, Client name, or Pet patient..."
                   value={ledgerSearchQuery}
@@ -705,7 +705,7 @@ export default function POSRegister({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
                 <div className="sm:col-span-5">
-                  <input
+                  <input name="productServiceDescription953" id="product-service-description-953"
                     type="text"
                     placeholder="Product/Service description"
                     value={customItemName}
@@ -714,7 +714,7 @@ export default function POSRegister({
                   />
                 </div>
                 <div className="sm:col-span-3">
-                  <input
+                  <input name="inputNumber3" id="input-number-3"
                     type="number"
                     step="0.01"
                     placeholder={`Price (${currencySign})`}
@@ -724,7 +724,7 @@ export default function POSRegister({
                   />
                 </div>
                 <div className="sm:col-span-2">
-                  <select
+                  <select name="select6340" id="select-6-340"
                     value={customItemCategory}
                     onChange={(e) => setCustomItemCategory(e.target.value as 'service' | 'retail')}
                     className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
@@ -867,7 +867,7 @@ export default function POSRegister({
               </span>
             </div>
             <div className="mt-2 text-xs">
-              <select
+              <select name="select760" id="select-7-60"
                 value={selectedPetId}
                 onChange={(e) => setSelectedPetId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
@@ -943,7 +943,7 @@ export default function POSRegister({
               <span className="flex items-center gap-1 text-[11px]">
                 <Tag className="h-3.5 w-3.5 text-indigo-500" /> Adjust Discount ({currencySign}):
               </span>
-              <input
+              <input name="inputNumber859" id="input-number-859"
                 type="number"
                 min="0"
                 step="5"
@@ -1048,7 +1048,7 @@ export default function POSRegister({
               <div className="space-y-2 p-3 bg-teal-50/50 rounded-xl border border-teal-100">
                 <span className="font-semibold text-teal-800 block">Cash Received calculator</span>
                 <div className="flex gap-2">
-                  <input
+                  <input name="inputNumber739" id="input-number-739"
                     ref={cashInputRef}
                     type="number"
                     placeholder={`Enter cash amount (${currencySign})`}

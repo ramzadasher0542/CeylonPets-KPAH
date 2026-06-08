@@ -202,7 +202,7 @@ export default function InventoryManager({
         
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-          <input
+          <input name="searchCustomAnimalItemsMed172" id="search-custom-animal-items-med-172"
             type="text"
             placeholder="Search custom animal items, medications, checkups..."
             value={searchTerm}
@@ -340,7 +340,7 @@ export default function InventoryManager({
                     <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-800">
                       {editingPriceId === item.id ? (
                         <div className="flex items-center justify-end gap-1">
-                          <input
+                          <input name="inputNumber594" id="input-number-594"
                             type="number"
                             step="0.1"
                             value={tempPrice}
@@ -394,7 +394,7 @@ export default function InventoryManager({
                             -
                           </button>
                           
-                          <input
+                          <input name="inputNumber399" id="input-number-399"
                             type="number"
                             value={tempStockAdjustments[item.id] !== undefined ? tempStockAdjustments[item.id] : item.stock}
                             onChange={(e) => handleTempStockChange(item.id, e.target.value)}
@@ -483,8 +483,8 @@ export default function InventoryManager({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Unique SKU Code *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="unique-sku-code">Unique SKU Code *</label>
+                  <input name="uniqueSkuCode" id="unique-sku-code"
                     type="text"
                     required
                     placeholder="e.g. RT-009, SV-012"
@@ -495,8 +495,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Supply Category</label>
-                  <select
+                  <label className="font-semibold text-slate-700 block" htmlFor="supply-category">Supply Category</label>
+                  <select name="supplyCategory" id="supply-category"
                     value={category}
                     onChange={(e) => setCategory(e.target.value as ItemCategory)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
@@ -510,8 +510,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Catalog Item Name *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="catalog-item-name">Catalog Item Name *</label>
+                  <input name="catalogItemName" id="catalog-item-name"
                     type="text"
                     required
                     placeholder="e.g. Purina Hypoallergenic Vet Food 3kg"
@@ -522,8 +522,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Clinic Selling Price ({currencySign}) *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="clinic-selling-price-currencysign">Clinic Selling Price ({currencySign}) *</label>
+                  <input name="clinicSellingPriceCurrencysign" id="clinic-selling-price-currencysign"
                     type="number"
                     step="0.01"
                     required
@@ -535,8 +535,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Acquisition Cost ({currencySign})</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="acquisition-cost-currencysign">Acquisition Cost ({currencySign})</label>
+                  <input name="acquisitionCostCurrencysign" id="acquisition-cost-currencysign"
                     type="number"
                     step="0.01"
                     placeholder="22.50"
@@ -549,8 +549,8 @@ export default function InventoryManager({
                 {category !== 'service' && (
                   <>
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700 block">Starting Stock Units *</label>
-                      <input
+                      <label className="font-semibold text-slate-700 block" htmlFor="starting-stock-units">Starting Stock Units *</label>
+                      <input name="startingStockUnits" id="starting-stock-units"
                         type="number"
                         required
                         placeholder="15"
@@ -561,8 +561,8 @@ export default function InventoryManager({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700 block">Min Stock Safety Threshold</label>
-                      <input
+                      <label className="font-semibold text-slate-700 block" htmlFor="min-stock-safety-threshold">Min Stock Safety Threshold</label>
+                      <input name="minStockSafetyThreshold" id="min-stock-safety-threshold"
                         type="number"
                         placeholder="5"
                         value={minStock}
@@ -572,8 +572,8 @@ export default function InventoryManager({
                     </div>
 
                     <div className="space-y-1 sm:col-span-2">
-                      <label className="font-semibold text-slate-700 block">Unit label</label>
-                      <input
+                      <label className="font-semibold text-slate-700 block" htmlFor="unit-label">Unit label</label>
+                      <input name="unitLabel" id="unit-label"
                         type="text"
                         placeholder="bag, bottle, caplet, dose"
                         value={unit}
@@ -629,8 +629,8 @@ export default function InventoryManager({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Unique SKU Code *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="unique-sku-code">Unique SKU Code *</label>
+                  <input name="uniqueSkuCode" id="unique-sku-code"
                     type="text"
                     required
                     placeholder="e.g. RT-009, SV-012"
@@ -641,8 +641,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Supply Category</label>
-                  <select
+                  <label className="font-semibold text-slate-700 block" htmlFor="supply-category">Supply Category</label>
+                  <select name="supplyCategory" id="supply-category"
                     value={editingCategory}
                     onChange={(e) => setEditingCategory(e.target.value as ItemCategory)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
@@ -656,8 +656,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2">
-                  <label className="font-semibold text-slate-700 block">Catalog Item Name *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="catalog-item-name">Catalog Item Name *</label>
+                  <input name="catalogItemName" id="catalog-item-name"
                     type="text"
                     required
                     placeholder="e.g. Purina Hypoallergenic Vet Food 3kg"
@@ -668,8 +668,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Clinic Selling Price ({currencySign}) *</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="clinic-selling-price-currencysign">Clinic Selling Price ({currencySign}) *</label>
+                  <input name="clinicSellingPriceCurrencysign" id="clinic-selling-price-currencysign"
                     type="number"
                     step="0.01"
                     required
@@ -681,8 +681,8 @@ export default function InventoryManager({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block">Acquisition Cost ({currencySign})</label>
-                  <input
+                  <label className="font-semibold text-slate-700 block" htmlFor="acquisition-cost-currencysign">Acquisition Cost ({currencySign})</label>
+                  <input name="acquisitionCostCurrencysign" id="acquisition-cost-currencysign"
                     type="number"
                     step="0.01"
                     placeholder="22.50"
@@ -695,8 +695,8 @@ export default function InventoryManager({
                 {editingCategory !== 'service' && (
                   <>
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700 block">Inventory Stock Quantity *</label>
-                      <input
+                      <label className="font-semibold text-slate-700 block" htmlFor="inventory-stock-quantity">Inventory Stock Quantity *</label>
+                      <input name="inventoryStockQuantity" id="inventory-stock-quantity"
                         type="number"
                         required
                         placeholder="15"
@@ -707,8 +707,8 @@ export default function InventoryManager({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-semibold text-slate-700 block">Min Stock Safety Threshold</label>
-                      <input
+                      <label className="font-semibold text-slate-700 block" htmlFor="min-stock-safety-threshold">Min Stock Safety Threshold</label>
+                      <input name="minStockSafetyThreshold" id="min-stock-safety-threshold"
                         type="number"
                         placeholder="5"
                         value={editingMinStock}
@@ -718,8 +718,8 @@ export default function InventoryManager({
                     </div>
 
                     <div className="space-y-1 sm:col-span-2">
-                      <label className="font-semibold text-slate-700 block">Unit label</label>
-                      <input
+                      <label className="font-semibold text-slate-700 block" htmlFor="unit-label">Unit label</label>
+                      <input name="unitLabel" id="unit-label"
                         type="text"
                         placeholder="bag, bottle, caplet, dose"
                         value={editingUnit}

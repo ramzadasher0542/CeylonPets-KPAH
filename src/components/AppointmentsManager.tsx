@@ -155,7 +155,7 @@ export default function AppointmentsManager({
         {/* Search Input */}
         <div className="relative w-full md:w-96">
           <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-          <input
+          <input name="searchAppointmentLogByPet461" id="search-appointment-log-by-pet--461"
             type="text"
             placeholder="Search appointment log by pet, owner, or medical reasons..."
             value={searchFilter}
@@ -309,8 +309,8 @@ export default function AppointmentsManager({
                 
                 {/* Pet info */}
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Patient Name *</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-name">Patient Name *</label>
+                  <input name="patientName" id="patient-name"
                     type="text"
                     required
                     placeholder="Coco, Buster, etc."
@@ -321,8 +321,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Animal Classification</label>
-                  <select
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="animal-classification">Animal Classification</label>
+                  <select name="animalClassification" id="animal-classification"
                     value={petType}
                     onChange={(e) => setPetType(e.target.value as any)}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
@@ -336,8 +336,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Breed / Description</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="breed-description">Breed / Description</label>
+                  <input name="breedDescription" id="breed-description"
                     type="text"
                     placeholder="Goldendoodle, etc."
                     value={breed}
@@ -348,8 +348,8 @@ export default function AppointmentsManager({
 
                 {/* Owner info */}
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Owner Name *</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-name">Owner Name *</label>
+                  <input name="ownerName" id="owner-name"
                     type="text"
                     required
                     placeholder="Isabella Bennett"
@@ -360,8 +360,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Owner Phone *</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone">Owner Phone *</label>
+                  <input name="ownerPhone" id="owner-phone"
                     type="text"
                     required
                     placeholder="+1 (555) 781-4200"
@@ -372,8 +372,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Owner Email Address</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-email-address">Owner Email Address</label>
+                  <input name="ownerEmailAddress" id="owner-email-address"
                     type="email"
                     placeholder="isabella.b@example.com"
                     value={ownerEmail}
@@ -384,8 +384,8 @@ export default function AppointmentsManager({
 
                 {/* Scheduling meta */}
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Visit Date</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="visit-date">Visit Date</label>
+                  <input name="visitDate" id="visit-date"
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
@@ -394,8 +394,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Hour Slot</label>
-                  <input
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="hour-slot">Hour Slot</label>
+                  <input name="hourSlot" id="hour-slot"
                     type="time"
                     value={time}
                     onChange={(e) => setTime(e.target.value)}
@@ -404,8 +404,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]">Assigned Doctor/Vet</label>
-                  <select
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="assigned-doctor-vet">Assigned Doctor/Vet</label>
+                  <select name="assignedDoctorVet" id="assigned-doctor-vet"
                     value={veterinarian}
                     onChange={(e) => setVeterinarian(e.target.value)}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
@@ -416,8 +416,8 @@ export default function AppointmentsManager({
                 </div>
 
                 <div className="space-y-0.5 col-span-3">
-                  <label className="font-bold text-slate-600 block text-[10px]">Reason for Care / Chief Complaint *</label>
-                  <textarea
+                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="reason-for-care-chief-complaint">Reason for Care / Chief Complaint *</label>
+                  <textarea name="reasonForCareChiefComplaint" id="reason-for-care-chief-complaint"
                     required
                     rows={1}
                     placeholder="e.g. Coughing, rabies vaccines booster need, ear canal check-up"

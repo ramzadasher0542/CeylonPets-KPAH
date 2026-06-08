@@ -671,8 +671,8 @@ export default function SystemSettings({
                     <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Building className="h-4 w-4 text-indigo-500"/> Core Clinic Master Data</h4>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Client Hospital/Clinic Name</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="client-hospital-clinic-name">Client Hospital/Clinic Name</label>
+                      <input name="clientHospitalClinicName" id="client-hospital-clinic-name"
                         type="text"
                         value={config.hospitalName}
                         onChange={(e) => setConfigValue('hospitalName', e.target.value)}
@@ -681,8 +681,8 @@ export default function SystemSettings({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Office Address</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="office-address">Office Address</label>
+                      <input name="officeAddress" id="office-address"
                         type="text"
                         value={config.hospitalAddress}
                         onChange={(e) => setConfigValue('hospitalAddress', e.target.value)}
@@ -692,8 +692,8 @@ export default function SystemSettings({
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Office Telephone No.</label>
-                        <input
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="office-telephone-no">Office Telephone No.</label>
+                        <input name="officeTelephoneNo" id="office-telephone-no"
                           type="text"
                           value={config.hospitalPhone}
                           onChange={(e) => setConfigValue('hospitalPhone', e.target.value)}
@@ -701,8 +701,8 @@ export default function SystemSettings({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Office Contact Email</label>
-                        <input
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="office-contact-email">Office Contact Email</label>
+                        <input name="officeContactEmail" id="office-contact-email"
                           type="email"
                           value={config.hospitalEmail}
                           onChange={(e) => setConfigValue('hospitalEmail', e.target.value)}
@@ -713,8 +713,8 @@ export default function SystemSettings({
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Currency Sign</label>
-                        <input
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="currency-sign">Currency Sign</label>
+                        <input name="currencySign" id="currency-sign"
                           type="text"
                           value={config.currencySymbol}
                           onChange={(e) => setConfigValue('currencySymbol', e.target.value)}
@@ -722,8 +722,8 @@ export default function SystemSettings({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Tax Rate (%)</label>
-                        <input
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="tax-rate">Tax Rate (%)</label>
+                        <input name="taxRate" id="tax-rate"
                           type="number"
                           step={0.5}
                           value={config.taxRate * 100}
@@ -739,8 +739,8 @@ export default function SystemSettings({
                     <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><FileText className="h-4 w-4 text-indigo-500"/> Document-Specific Configurations</h4>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Logo Emoji</label>
-                      <select
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="logo-emoji">Logo Emoji</label>
+                      <select name="logoEmoji" id="logo-emoji"
                         value={config.invoiceLogo}
                         onChange={(e) => setConfigValue('invoiceLogo', e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold"
@@ -754,8 +754,8 @@ export default function SystemSettings({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Custom Receipt Footer Message</label>
-                      <textarea
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="custom-receipt-footer-message">Custom Receipt Footer Message</label>
+                      <textarea name="customReceiptFooterMessage" id="custom-receipt-footer-message"
                         rows={2}
                         value={config.invoiceFooterMessage}
                         onChange={(e) => setConfigValue('invoiceFooterMessage', e.target.value)}
@@ -772,7 +772,7 @@ export default function SystemSettings({
                           )}
                         </div>
                         {!config.loginLogoUrl ? (
-                          <input
+                          <input name="inputFile732" id="input-file-732"
                             type="file"
                             accept="image/*"
                             onChange={(e) => handleLogoUpload(e, 'loginLogoUrl')}
@@ -792,7 +792,7 @@ export default function SystemSettings({
                           )}
                         </div>
                         {!config.posLogoUrl ? (
-                          <input
+                          <input name="inputFile344" id="input-file-344"
                             type="file"
                             accept=".bmp,image/bmp"
                             onChange={(e) => handleLogoUpload(e, 'posLogoUrl')}
@@ -812,8 +812,8 @@ export default function SystemSettings({
                     <h4 className="font-extrabold text-slate-800 flex items-center gap-2"><Sparkles className="h-4 w-4 text-indigo-500"/> System Whitelabeling</h4>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Title / Software App Name</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="title-software-app-name">Title / Software App Name</label>
+                      <input name="titleSoftwareAppName" id="title-software-app-name"
                         type="text"
                         value={config.appName}
                         onChange={(e) => setConfigValue('appName', e.target.value)}
@@ -822,8 +822,8 @@ export default function SystemSettings({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">System Provider Name (e.g., Powered By)</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="system-provider-name-e-g-powered-by">System Provider Name (e.g., Powered By)</label>
+                      <input name="systemProviderNameEGPoweredBy" id="system-provider-name-e-g-powered-by"
                         type="text"
                         value={config.invoiceSubFooterMessage || ''}
                         onChange={(e) => setConfigValue('invoiceSubFooterMessage', e.target.value)}
@@ -833,8 +833,8 @@ export default function SystemSettings({
                     </div>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Official System Footer (Powered By text)</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="official-system-footer-powered-by-text">Official System Footer (Powered By text)</label>
+                      <input name="officialSystemFooterPoweredByText" id="official-system-footer-powered-by-text"
                         type="text"
                         value={config.invoiceExtraFooterMessage || ''}
                         onChange={(e) => setConfigValue('invoiceExtraFooterMessage', e.target.value)}
@@ -1048,8 +1048,8 @@ export default function SystemSettings({
                     <span className="font-extrabold text-indigo-950 block text-xs">Add Clinician credentials</span>
                     
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Real Name</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="real-name">Real Name</label>
+                      <input name="realName" id="real-name"
                         type="text"
                         placeholder="e.g. Nurse Kandy Assistant"
                         value={newStaffName}
@@ -1061,8 +1061,8 @@ export default function SystemSettings({
 
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Username</label>
-                        <input
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="username">Username</label>
+                        <input name="username" id="username"
                           type="text"
                           placeholder="nurse_kandy"
                           value={newStaffUsername}
@@ -1072,8 +1072,8 @@ export default function SystemSettings({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Login Pass / PIN</label>
-                        <input
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="login-pass-pin">Login Pass / PIN</label>
+                        <input name="loginPassPin" id="login-pass-pin"
                           type="password"
                           maxLength={4}
                           placeholder="e.g. 4321"
@@ -1086,8 +1086,8 @@ export default function SystemSettings({
                     </div>
 
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Permission User-Level</label>
-                      <select
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="permission-user-level">Permission User-Level</label>
+                      <select name="permissionUserLevel" id="permission-user-level"
                         value={newStaffRole}
                         onChange={(e: any) => setNewStaffRole(e.target.value)}
                         className="w-full px-3 py-1.5 bg-white border rounded-lg text-slate-800 text-xs"
@@ -1134,7 +1134,7 @@ export default function SystemSettings({
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Revenue counts, charts & stats</span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox933" id="input-checkbox-933"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('dashboard')}
                             onChange={(e) => handleUpdatePermission('cashier', 'dashboard', e.target.checked)}
@@ -1142,7 +1142,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox646" id="input-checkbox-646"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('dashboard')}
                             onChange={(e) => handleUpdatePermission('veterinarian', 'dashboard', e.target.checked)}
@@ -1150,7 +1150,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox946" id="input-checkbox-946"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('dashboard')}
                             onChange={(e) => handleUpdatePermission('owner', 'dashboard', e.target.checked)}
@@ -1166,7 +1166,7 @@ export default function SystemSettings({
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Product search, cart billing, prints</span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox23" id="input-checkbox-23"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('pos')}
                             onChange={(e) => handleUpdatePermission('cashier', 'pos', e.target.checked)}
@@ -1174,7 +1174,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox81" id="input-checkbox-81"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('pos')}
                             onChange={(e) => handleUpdatePermission('veterinarian', 'pos', e.target.checked)}
@@ -1182,7 +1182,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox417" id="input-checkbox-417"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('pos')}
                             onChange={(e) => handleUpdatePermission('owner', 'pos', e.target.checked)}
@@ -1198,7 +1198,7 @@ export default function SystemSettings({
                           <span className="text-[8px] bg-indigo-500 text-white block font-semibold leading-relaxed mt-0.5 px-1.5 py-0.5 rounded">Book appointments, consult requests</span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox642" id="input-checkbox-642"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('appointments')}
                             onChange={(e) => handleUpdatePermission('cashier', 'appointments', e.target.checked)}
@@ -1206,7 +1206,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox543" id="input-checkbox-543"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('appointments')}
                             onChange={(e) => handleUpdatePermission('veterinarian', 'appointments', e.target.checked)}
@@ -1214,7 +1214,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox467" id="input-checkbox-467"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('appointments')}
                             onChange={(e) => handleUpdatePermission('owner', 'appointments', e.target.checked)}
@@ -1230,7 +1230,7 @@ export default function SystemSettings({
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Write bloodwork labs, vaccine dates</span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox248" id="input-checkbox-248"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('records')}
                             onChange={(e) => handleUpdatePermission('cashier', 'records', e.target.checked)}
@@ -1238,7 +1238,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox534" id="input-checkbox-534"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('records')}
                             onChange={(e) => handleUpdatePermission('veterinarian', 'records', e.target.checked)}
@@ -1246,7 +1246,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox226" id="input-checkbox-226"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('records')}
                             onChange={(e) => handleUpdatePermission('owner', 'records', e.target.checked)}
@@ -1262,7 +1262,7 @@ export default function SystemSettings({
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Modify product lists, restock items</span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox380" id="input-checkbox-380"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('inventory')}
                             onChange={(e) => handleUpdatePermission('cashier', 'inventory', e.target.checked)}
@@ -1270,7 +1270,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox451" id="input-checkbox-451"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('inventory')}
                             onChange={(e) => handleUpdatePermission('veterinarian', 'inventory', e.target.checked)}
@@ -1278,7 +1278,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox802" id="input-checkbox-802"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('inventory')}
                             onChange={(e) => handleUpdatePermission('owner', 'inventory', e.target.checked)}
@@ -1294,7 +1294,7 @@ export default function SystemSettings({
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Flea alerts, reorder warnings</span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox357" id="input-checkbox-357"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('reminders')}
                             onChange={(e) => handleUpdatePermission('cashier', 'reminders', e.target.checked)}
@@ -1302,7 +1302,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox583" id="input-checkbox-583"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('reminders')}
                             onChange={(e) => handleUpdatePermission('veterinarian', 'reminders', e.target.checked)}
@@ -1310,7 +1310,7 @@ export default function SystemSettings({
                           />
                         </div>
                         <div className="col-span-2 text-center">
-                          <input
+                          <input name="inputCheckbox677" id="input-checkbox-677"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('reminders')}
                             onChange={(e) => handleUpdatePermission('owner', 'reminders', e.target.checked)}
@@ -1343,7 +1343,7 @@ export default function SystemSettings({
                     <p className="text-sm text-gray-500">Instantly open the print dialog after a successful checkout.</p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
+                    <input name="inputCheckbox708" id="input-checkbox-708" 
                       type="checkbox" 
                       className="sr-only peer" 
                       checked={config.autoPrintReceipt} 
@@ -1357,8 +1357,8 @@ export default function SystemSettings({
 
                 {/* Paper Size Dropdown */}
                 <div className="flex flex-col space-y-2">
-                  <label className="font-semibold text-gray-800">Default Receipt Format</label>
-                  <select 
+                  <label className="font-semibold text-gray-800" htmlFor="default-receipt-format">Default Receipt Format</label>
+                  <select name="defaultReceiptFormat" id="default-receipt-format" 
                     value={config.receiptPaperSize}
                     onChange={(e: any) => setConfigValue('receiptPaperSize', e.target.value)}
                     className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5"
@@ -1408,7 +1408,7 @@ export default function SystemSettings({
                   </div>
                   
                   <form onSubmit={handleAddEmail} className="flex gap-2">
-                    <input 
+                    <input name="inputEmail149" id="input-email-149" 
                       type="email" 
                       value={newEmail}
                       onChange={(e) => setNewEmail(e.target.value)}
@@ -1481,7 +1481,7 @@ export default function SystemSettings({
                       <label className="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap">
                         <Upload className="h-4.5 w-4.5 shrink-0" />
                         <span>Restore JSON</span>
-                        <input 
+                        <input name="inputFile72" id="input-file-72" 
                           type="file" 
                           accept=".json" 
                           onChange={(e) => {
@@ -1518,7 +1518,7 @@ export default function SystemSettings({
 
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-bold text-slate-750">Enable Cloud vaults backups sync:</span>
-                      <input
+                      <input name="inputCheckbox609" id="input-checkbox-609"
                         type="checkbox"
                         checked={config.cloudBackupEnabled}
                         onChange={(e) => setConfigValue('cloudBackupEnabled', e.target.checked)}
@@ -1528,8 +1528,8 @@ export default function SystemSettings({
 
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]">Autosave Sync frequency</label>
-                        <select
+                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="autosave-sync-frequency">Autosave Sync frequency</label>
+                        <select name="autosaveSyncFrequency" id="autosave-sync-frequency"
                           value={config.cloudBackupSchedule}
                           onChange={(e: any) => setConfigValue('cloudBackupSchedule', e.target.value)}
                           className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800"
@@ -1667,8 +1667,8 @@ export default function SystemSettings({
                     className="space-y-3"
                   >
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Current / New Master PIN</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="current-new-master-pin">Current / New Master PIN</label>
+                      <input id="current-new-master-pin"
                         type="password"
                         name="ownerPin"
                         maxLength={8}
@@ -1712,8 +1712,8 @@ export default function SystemSettings({
                     className="space-y-3"
                   >
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px]">Dummy Admin Access PIN</label>
-                      <input
+                      <label className="font-bold text-slate-700 block text-[10px]" htmlFor="dummy-admin-access-pin">Dummy Admin Access PIN</label>
+                      <input id="dummy-admin-access-pin"
                         type="password"
                         name="dummyPin"
                         maxLength={8}
@@ -1839,7 +1839,7 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                     <div className="space-y-1">
                       <label className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Option A: Upload .csv File</label>
                       <div className="flex items-center gap-3">
-                        <input
+                        <input name="inputFile640" id="input-file-640"
                           type="file"
                           accept=".csv"
                           onChange={(e) => {
@@ -1863,8 +1863,8 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
 
                     {/* Copypaste raw CSV input */}
                     <div className="space-y-1">
-                      <label className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider">Option B: Copy-Paste Raw CSV Data</label>
-                      <textarea
+                      <label className="font-bold text-slate-700 block text-[10px] uppercase tracking-wider" htmlFor="option-b-copy-paste-raw-csv-data">Option B: Copy-Paste Raw CSV Data</label>
+                      <textarea name="optionBCopyPasteRawCsvData" id="option-b-copy-paste-raw-csv-data"
                         value={csvText}
                         onChange={(e) => {
                           setCsvText(e.target.value);
@@ -1888,7 +1888,7 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                             <span className="text-[11px]">Merge & Update</span>
                             <span className="text-[8px] text-slate-400 font-medium">Match and overwrite existing items</span>
                           </div>
-                          <input
+                          <input id="input-radio-860"
                             type="radio"
                             name="strategy"
                             checked={csvImportMode === 'merge'}
@@ -1909,7 +1909,7 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                             <span className="text-[11px] text-rose-700">Wipe & Replace</span>
                             <span className="text-[8px] text-slate-400 font-medium">Purge all stock, overwrite completely</span>
                           </div>
-                          <input
+                          <input id="input-radio-2"
                             type="radio"
                             name="strategy"
                             checked={csvImportMode === 'replace'}
@@ -2366,7 +2366,7 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                 <label className="block text-[10px] uppercase font-bold text-slate-500 mb-1 font-mono text-center">
                   Master Security PIN
                 </label>
-                <input
+                <input name="input28186" id="input-28-186"
                   type="password"
                   placeholder="••••"
                   maxLength={6}
