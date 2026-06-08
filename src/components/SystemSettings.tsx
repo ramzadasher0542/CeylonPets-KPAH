@@ -1049,7 +1049,7 @@ export default function SystemSettings({
                       These credentials unlock the clinician tablets. Only administrators can delete or alter clinician positions.
                     </p>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 min-h-[120px]">
                       {users.map((staff) => (
                         <div 
                           key={staff.id}
@@ -1087,6 +1087,14 @@ export default function SystemSettings({
                           )}
                         </div>
                       ))}
+                      
+                      {users.length <= 1 && (
+                        <div className="flex items-center justify-center p-4 border border-dashed border-slate-200 rounded-xl bg-slate-50/50 mt-2">
+                          <span className="text-slate-400 text-[10px] font-semibold italic text-center">
+                            No additional staff members authorized yet.<br/>Use the form below to add clinicians.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1152,7 +1160,7 @@ export default function SystemSettings({
                     <button
                       type="submit"
                       disabled={isAddingStaff}
-                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-all shadow-xs cursor-pointer text-xs disabled:opacity-50 flex justify-center items-center gap-2"
+                      className="w-full py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 font-bold rounded-xl transition-all shadow-xs cursor-pointer text-xs disabled:opacity-50 flex justify-center items-center gap-2"
                     >
                       {isAddingStaff ? (
                         <>
@@ -1183,12 +1191,12 @@ export default function SystemSettings({
                       </div>
 
                       {/* Line module dashboard */}
-                      <div className="grid grid-cols-12 p-2.5 items-center">
+                      <div className="grid grid-cols-12 p-2.5 items-center bg-white hover:bg-slate-50 transition-colors">
                         <div className="col-span-6 font-bold text-slate-800">
                           Executive Dashboard
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Revenue counts, charts & stats</span>
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox933" id="input-checkbox-933"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('dashboard')}
@@ -1196,7 +1204,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox646" id="input-checkbox-646"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('dashboard')}
@@ -1204,7 +1212,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox946" id="input-checkbox-946"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('dashboard')}
@@ -1215,12 +1223,12 @@ export default function SystemSettings({
                       </div>
 
                       {/* Line POS Checkout */}
-                      <div className="grid grid-cols-12 p-2.5 items-center">
+                      <div className="grid grid-cols-12 p-2.5 items-center bg-white hover:bg-slate-50 transition-colors">
                         <div className="col-span-6 font-bold text-slate-800">
                           POS register terminal
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Product search, cart billing, prints</span>
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox23" id="input-checkbox-23"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('pos')}
@@ -1228,7 +1236,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox81" id="input-checkbox-81"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('pos')}
@@ -1236,7 +1244,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox417" id="input-checkbox-417"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('pos')}
@@ -1247,12 +1255,12 @@ export default function SystemSettings({
                       </div>
 
                       {/* Line Scheduling Planner */}
-                      <div className="grid grid-cols-12 p-2.5 items-center">
+                      <div className="grid grid-cols-12 p-2.5 items-center bg-white hover:bg-slate-50 transition-colors">
                         <div className="col-span-6 font-bold text-slate-800">
-                          <span className="bg-indigo-600 text-white rounded px-1.5 py-0.5 leading-relaxed inline-block">Scheduling Planner</span>
-                          <span className="text-[8px] bg-indigo-500 text-white block font-semibold leading-relaxed mt-0.5 px-1.5 py-0.5 rounded">Book appointments, consult requests</span>
+                          Scheduling Planner
+                          <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed mt-0.5">Book appointments, consult requests</span>
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox642" id="input-checkbox-642"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('appointments')}
@@ -1260,7 +1268,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox543" id="input-checkbox-543"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('appointments')}
@@ -1268,7 +1276,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox467" id="input-checkbox-467"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('appointments')}
@@ -1279,12 +1287,12 @@ export default function SystemSettings({
                       </div>
 
                       {/* Line Medical records EHR */}
-                      <div className="grid grid-cols-12 p-2.5 items-center">
+                      <div className="grid grid-cols-12 p-2.5 items-center bg-white hover:bg-slate-50 transition-colors">
                         <div className="col-span-6 font-bold text-slate-800">
                           EHR Patient Charts
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Write bloodwork labs, vaccine dates</span>
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox248" id="input-checkbox-248"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('records')}
@@ -1292,7 +1300,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox534" id="input-checkbox-534"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('records')}
@@ -1300,7 +1308,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox226" id="input-checkbox-226"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('records')}
@@ -1311,12 +1319,12 @@ export default function SystemSettings({
                       </div>
 
                       {/* Line Item & Stock Catalog */}
-                      <div className="grid grid-cols-12 p-2.5 items-center">
+                      <div className="grid grid-cols-12 p-2.5 items-center bg-white hover:bg-slate-50 transition-colors">
                         <div className="col-span-6 font-bold text-slate-800">
                           Item & Stock catalog
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Modify product lists, restock items</span>
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox380" id="input-checkbox-380"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('inventory')}
@@ -1324,7 +1332,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox451" id="input-checkbox-451"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('inventory')}
@@ -1332,7 +1340,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox802" id="input-checkbox-802"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('inventory')}
@@ -1343,12 +1351,12 @@ export default function SystemSettings({
                       </div>
 
                       {/* Line Alert & Reminders */}
-                      <div className="grid grid-cols-12 p-2.5 items-center">
+                      <div className="grid grid-cols-12 p-2.5 items-center bg-white hover:bg-slate-50 transition-colors">
                         <div className="col-span-6 font-bold text-slate-800">
                           Alerts & Reminders Hub
                           <span className="text-[8px] text-slate-400 block font-semibold leading-relaxed">Flea alerts, reorder warnings</span>
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox357" id="input-checkbox-357"
                             type="checkbox"
                             checked={rolePermissions.cashier.includes('reminders')}
@@ -1356,7 +1364,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox583" id="input-checkbox-583"
                             type="checkbox"
                             checked={rolePermissions.veterinarian.includes('reminders')}
@@ -1364,7 +1372,7 @@ export default function SystemSettings({
                             className="cursor-pointer"
                           />
                         </div>
-                        <div className="col-span-2 text-center">
+                        <div className="col-span-2 flex justify-center items-center">
                           <input name="inputCheckbox677" id="input-checkbox-677"
                             type="checkbox"
                             checked={rolePermissions.owner.includes('reminders')}
@@ -1373,7 +1381,6 @@ export default function SystemSettings({
                           />
                         </div>
                       </div>
-
                     </div>
                   </div>
                 </div>
