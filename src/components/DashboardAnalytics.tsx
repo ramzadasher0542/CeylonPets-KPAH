@@ -103,7 +103,21 @@ export default function DashboardAnalytics({
 
   const activeChartData = chartType === 'revenue' ? dailyRevenue : dailyAppointments;
   const currentMax = Math.max(...activeChartData);
-  const maxChartVal = currentMax === 0 ? (chartType === 'revenue' ? 150 : 3) : currentMax;
+  
+  const getTickStep = (max: number) => {
+    if (max === 0) return chartType === 'revenue' ? 50 : 1;
+    const targetStep = max / 3;
+    const mag = Math.pow(10, Math.floor(Math.log10(targetStep || 1)));
+    const normalized = targetStep / mag;
+    let step;
+    if (normalized <= 1) step = 1;
+    else if (normalized <= 2) step = 2;
+    else if (normalized <= 5) step = 5;
+    else step = 10;
+    return Math.max(1, step * mag);
+  };
+  const tickStep = getTickStep(currentMax);
+  const maxChartVal = tickStep * 3;
 
   const points = activeChartData.map((val, idx) => {
     const x = 50 + idx * 64;
@@ -111,6 +125,46 @@ export default function DashboardAnalytics({
     const y = 155 - ((val / maxChartVal) * 125);
     return { x, y, val, date: last7Days[idx] };
   });
+
+  // MoM calculations for Gross Sales
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  let currentMonthRev = 0;
+  let prevMonthRev = 0;
+
+  invoices.forEach(inv => {
+    if (inv.paymentStatus === 'paid') {
+      const invDate = new Date(inv.date);
+      if (invDate.getFullYear() === currentYear && invDate.getMonth() === currentMonth) {
+        currentMonthRev += inv.total;
+      } else if (
+        (currentMonth === 0 && invDate.getFullYear() === currentYear - 1 && invDate.getMonth() === 11) ||
+        (currentMonth > 0 && invDate.getFullYear() === currentYear && invDate.getMonth() === currentMonth - 1)
+      ) {
+        prevMonthRev += inv.total;
+      }
+    }
+  });
+
+  const momGrowth = prevMonthRev > 0 ? ((currentMonthRev - prevMonthRev) / prevMonthRev) * 100 : null;
+
+  const momGrowthElement = () => {
+    if (totalRevenue === 0 || invoices.length === 0) return null;
+    if (prevMonthRev === 0) {
+      return <span className="font-semibold text-sky-600 bg-sky-50 px-2 py-0.5 rounded text-[10px] uppercase">New Period</span>;
+    }
+    const isUp = momGrowth! >= 0;
+    return (
+      <>
+        <span className={`font-semibold flex items-center gap-0.5 ${isUp ? 'text-emerald-600 animate-pulse' : 'text-rose-600'}`}>
+          <TrendingUp className={`h-3 w-3 ${!isUp ? 'rotate-180' : ''}`} /> {isUp ? '+' : ''}{momGrowth!.toFixed(1)}%
+        </span>
+        <span>vs last month</span>
+      </>
+    );
+  };
 
   // Dynamic Clinical Category revenue calculation
   const categoryRev = invoices.reduce((acc, inv) => {
@@ -277,21 +331,15 @@ export default function DashboardAnalytics({
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Gross Sales</p>
               <h3 className="text-2xl font-bold text-slate-800 mt-1">{currencySign}{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
             </div>
-            <div className="p-3 bg-teal-50 rounded-xl text-teal-600 group-hover:bg-teal-100 transition-all duration-300">
-              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <text x="12" y="17" textAnchor="middle" fontSize="16" fontWeight="bold" fontFamily="sans-serif" stroke="none" fill="currentColor">{currencySign}</text>
-              </svg>
+            <div className="absolute -bottom-4 -right-4 opacity-10 text-[100px] font-black pointer-events-none select-none text-teal-600 leading-none">
+              {currencySign}
+            </div>
+            <div className="p-3 bg-teal-50 rounded-xl text-teal-600 group-hover:bg-teal-100 transition-all duration-300 relative z-10">
+              <DollarSign className="h-5 w-5" />
             </div>
           </div>
-          <div className="mt-4 flex gap-2 text-xs text-slate-500">
-            {totalRevenue > 0 && invoices.length > 0 && (
-              <>
-                <span className="font-semibold text-emerald-600 flex items-center gap-0.5 animate-pulse">
-                  <TrendingUp className="h-3 w-3" /> +14.2%
-                </span>
-                <span>vs last month</span>
-              </>
-            )}
+          <div className="mt-4 flex gap-2 text-xs text-slate-500 relative z-10">
+            {momGrowthElement()}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-emerald-400" />
         </div>
@@ -352,15 +400,15 @@ export default function DashboardAnalytics({
           <div className="flex justify-between items-start">
             <div>
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Low Stock Warnings</p>
-              <h3 className={`text-2xl font-bold mt-1 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'text-rose-600 animate-pulse font-black' : 'text-slate-800'}`}>
+              <h3 className={`text-2xl font-bold mt-1 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'text-rose-600 animate-pulse font-black' : 'text-emerald-600'}`}>
                 {inventory.length === 0 ? '0' : lowStockItems.length}
               </h3>
             </div>
-            <div className={`p-3 rounded-xl transition-all duration-300 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
-              <AlertTriangle className="h-5 w-5" />
+            <div className={`p-3 rounded-xl transition-all duration-300 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100'}`}>
+              {(inventory.length === 0 || lowStockItems.length > 0) ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
             </div>
           </div>
-          <div className="mt-4 text-xs text-rose-700 font-mono truncate font-bold">
+          <div className={`mt-4 text-xs font-mono truncate font-bold ${(inventory.length === 0 || lowStockItems.length > 0) ? 'text-rose-700' : 'text-emerald-600'}`}>
             {inventory.length === 0 ? 'Inventory is completely empty!' : 
              lowStockItems.length > 0 
               ? `${lowStockItems.map(i => i.name).slice(0, 1).join(',')} needs reorder!` 
@@ -428,13 +476,13 @@ export default function DashboardAnalytics({
 
               {/* Labels y */}
               <text x="32" y="29" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">
-                {chartType === 'revenue' ? `${currencySign}${maxChartVal.toFixed(0)}` : maxChartVal}
+                {chartType === 'revenue' ? `${currencySign}${maxChartVal}` : maxChartVal}
               </text>
               <text x="32" y="72" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">
-                {chartType === 'revenue' ? `${currencySign}${(maxChartVal * 2 / 3).toFixed(0)}` : Math.round(maxChartVal * 2 / 3)}
+                {chartType === 'revenue' ? `${currencySign}${tickStep * 2}` : tickStep * 2}
               </text>
               <text x="32" y="115" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">
-                {chartType === 'revenue' ? `${currencySign}${(maxChartVal / 3).toFixed(0)}` : Math.round(maxChartVal / 3)}
+                {chartType === 'revenue' ? `${currencySign}${tickStep}` : tickStep}
               </text>
               <text x="32" y="159" className="text-[9px] font-bold font-mono fill-slate-400" textAnchor="end">0</text>
 
@@ -570,7 +618,7 @@ export default function DashboardAnalytics({
                     {sliceInfo.name.toUpperCase()}
                   </text>
                   <text x="50" y="56" className={`text-xs font-black font-mono text-center fill-slate-800`} textAnchor="middle">
-                    {hasData ? `${currencySign}${sliceInfo.rev.toFixed(0)}` : ''}
+                    {hasData ? `${currencySign}${sliceInfo.rev.toFixed(2)}` : ''}
                   </text>
                   <text x="50" y="65" className={`text-[9px] font-black text-center ${sliceInfo.color}`} textAnchor="middle">
                     {hasData ? `${sliceInfo.pct}% Share` : ''}
