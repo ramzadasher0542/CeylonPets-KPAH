@@ -34,7 +34,7 @@ export async function fetchStaffUsers(): Promise<User[]> {
     if (error) throw error;
 
     if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_users_v2', JSON.stringify([]));
+      localStorage.setItem('ceylon_users_v3', JSON.stringify([]));
       return [];
     }
 
@@ -49,7 +49,7 @@ export async function fetchStaffUsers(): Promise<User[]> {
     }));
 
     // Refresh the localStorage cache with fresh cloud data
-    localStorage.setItem('ceylon_users_v2', JSON.stringify(users));
+    localStorage.setItem('ceylon_users_v3', JSON.stringify(users));
     return users;
 
   } catch (err) {
@@ -153,7 +153,7 @@ export async function upsertSystemConfig(config: SystemConfig): Promise<void> {
 
 function getCachedUsers(): User[] {
   try {
-    const raw = localStorage.getItem('ceylon_users_v2');
+    const raw = localStorage.getItem('ceylon_users_v3');
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];

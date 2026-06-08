@@ -214,7 +214,7 @@ export default function App() {
   const [pinCache, setPinCache] = useState<Record<string, string>>(() => {
     let baseUsers = [];
     try {
-      const saved = localStorage.getItem('ceylon_users_v2');
+      const saved = localStorage.getItem('ceylon_users_v3');
       baseUsers = saved ? JSON.parse(saved) : [
         {
           id: 'usr-owner',
@@ -243,7 +243,7 @@ export default function App() {
     baseUsers.forEach((user: any) => {
       let p = user.pin;
       if (!p) {
-        if (user.username === 'admin') p = hashPin('5692');
+        if (user.username === 'admin') p = hashPin('0000');
         else p = hashPin('0000');
       } else {
         p = hashPin(p);
@@ -256,7 +256,7 @@ export default function App() {
   const [users, setUsers] = useState<any[]>(() => {
     let baseUsers = [];
     try {
-      const saved = localStorage.getItem('ceylon_users_v2');
+      const saved = localStorage.getItem('ceylon_users_v3');
       baseUsers = saved ? JSON.parse(saved) : [
         {
           id: 'usr-owner',
@@ -264,11 +264,11 @@ export default function App() {
           username: 'admin',
           role: 'owner',
           avatarColor: 'bg-indigo-600 text-white border-indigo-700',
-          pin: hashPin('5692')
+          pin: hashPin('0000')
         }
       ];
     } catch (e) {
-      console.error('Error parsing ceylon_users_v2:', e);
+      console.error('Error parsing ceylon_users_v3:', e);
       baseUsers = [
         {
           id: 'usr-owner',
@@ -276,7 +276,7 @@ export default function App() {
           username: 'admin',
           role: 'owner',
           avatarColor: 'bg-indigo-600 text-white border-indigo-700',
-          pin: hashPin('5692')
+          pin: hashPin('0000')
         }
       ];
     }
@@ -303,11 +303,11 @@ export default function App() {
   }, [systemConfig]);
 
   useEffect(() => {
-    const fullUsers = users.map(u => ({
-      ...u,
-      pin: pinCache[u.username] || u.pin
-    }));
-    localStorage.setItem('ceylon_users_v2', JSON.stringify(fullUsers));
+    const fullUsers = users.map(u => {
+      const realPin = pinCache[u.username] || u.pin;
+      return { ...u, pin: realPin };
+    });
+    localStorage.setItem('ceylon_users_v3', JSON.stringify(fullUsers));
     fullUsers.forEach(u => upsertStaffUser(u).catch(() => {}));
   }, [users, pinCache]);
 
@@ -1433,7 +1433,7 @@ export default function App() {
   };
 
   const handleVerifyMasterPin = (pin: string): boolean => {
-    const ownerPinHash = systemConfig.masterPin || hashPin('5692');
+    const ownerPinHash = systemConfig.masterPin || hashPin('0000');
     return hashPin(pin) === ownerPinHash;
   };
 
@@ -1469,7 +1469,8 @@ export default function App() {
         'ceylon_alerts_v2',
         'ceylon_sync_queue_v2',
         'ceylon_system_config_v2',
-        'ceylon_users_v2'
+        'ceylon_settings_v1',
+        'ceylon_users_v3'
       ];
       localKeysToClear.forEach(key => localStorage.removeItem(key));
       
