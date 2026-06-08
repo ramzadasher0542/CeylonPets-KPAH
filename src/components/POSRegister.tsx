@@ -36,8 +36,8 @@ interface POSProps {
   isOnline: boolean;
   currentUser: StaffUser;
   invoices: Invoice[];
-  onUpdateStock: (itemId: string, qtyDelta: number) => void;
-  onAddInvoice: (invoice: Invoice) => void;
+  onUpdateStock: (itemId: string, qtyDelta: number) => Promise<void>;
+  onAddInvoice: (invoice: Invoice) => Promise<void>;
   onVoidInvoice: (invoiceId: string) => void;
   systemConfig?: any;
   onVerifyMasterPin?: (pin: string) => boolean;
@@ -324,18 +324,19 @@ export default function POSRegister({
   };
 
   // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0);
+  const rawSubtotal = cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0);
   const taxRate = systemConfig ? systemConfig.taxRate : 0.0825;
   const currencySign = systemConfig ? systemConfig.currencySymbol : '$';
-  const tax = subtotal * taxRate;
-  const discount = discountVal;
-  const total = Math.max(0, subtotal + tax - discount);
+  const subtotal = Math.round(rawSubtotal * 100) / 100;
+  const tax = Math.round((subtotal * taxRate) * 100) / 100;
+  const discount = Math.round((discountVal || 0) * 100) / 100;
+  const total = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
 
   // 1. Process Checkout
   let selectedRecord = records.find(r => r.id === selectedPetId);
 
   // Trigger Checkout
-  const handleCheckoutSubmit = () => {
+  const handleCheckoutSubmit = async () => {
     if (cart.length === 0) return;
 
     // Create a new invoice
@@ -346,7 +347,7 @@ export default function POSRegister({
       category: c.item.category,
       quantity: c.quantity,
       unitPrice: c.item.price,
-      totalPrice: c.item.price * c.quantity
+      totalPrice: Math.round((c.item.price * c.quantity) * 100) / 100
     }));
 
     const invoiceObj: Invoice = {
@@ -358,28 +359,32 @@ export default function POSRegister({
       ownerPhone: selectedRecord ? selectedRecord.ownerPhone : 'N/A',
       date: new Date().toISOString().split('T')[0],
       items: newInvItems,
-      subtotal: parseFloat(subtotal.toFixed(2)),
-      tax: parseFloat(tax.toFixed(2)),
-      discount: parseFloat(discount.toFixed(2)),
-      total: parseFloat(total.toFixed(2)),
+      subtotal: subtotal,
+      tax: tax,
+      discount: discount,
+      total: total,
       paymentMethod: paymentMethod,
       paymentStatus: 'paid',
       createdBy: currentUser?.name || 'Unknown',
       notes: selectedRecord ? `General clinical checkout for patient profile: ${selectedRecord.patientId}` : 'Quick shop checkout'
     };
 
-    // Apply stock deduction to state
-    cart.forEach(c => {
-      if (c.item.category !== 'service') {
-        onUpdateStock(c.item.id, -c.quantity);
-      }
-    });
+    try {
+      // Apply stock deduction to state
+      const stockUpdates = cart
+        .filter(c => c.item.category !== 'service')
+        .map(c => onUpdateStock(c.item.id, -c.quantity));
+      
+      await Promise.all(stockUpdates);
+      await onAddInvoice(invoiceObj);
 
-    onAddInvoice(invoiceObj);
-    setCheckoutSuccess(invoiceObj);
-    setCart([]);
-    setDiscountVal(0);
-    setSelectedPetId('walkin');
+      setCheckoutSuccess(invoiceObj);
+      setCart([]);
+      setDiscountVal(0);
+      setSelectedPetId('walkin');
+    } catch (err) {
+      showToast('Error during checkout sequence. Please try again.', 'error');
+    }
   };
 
   const handlePrintReceipt = (inv: Invoice) => {

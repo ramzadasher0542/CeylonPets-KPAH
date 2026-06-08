@@ -830,7 +830,7 @@ export default function App() {
     }
   };
 
-  const handleUpdateStock = (itemId: string, qtyDelta: number) => {
+  const handleUpdateStock = async (itemId: string, qtyDelta: number) => {
     const currentItem = inventory.find(i => i.id === itemId);
     if (!currentItem) return;
     const newStock = Math.max(0, currentItem.stock + qtyDelta);
@@ -839,45 +839,48 @@ export default function App() {
     setInventory(prev => 
       prev.map(item => {
         if (item.id === itemId) {
-          if (newStock <= item.minStock && item.category !== 'service') {
-            const lowStockAlert: SystemAlert = {
-              id: `al-${Date.now()}-${itemId}`,
-              severity: 'urgent',
-              category: 'inventory',
-              message: `LOW STOCK ACTION: ${item.name} (${item.sku}) is running out! Current: ${newStock} units left.`,
-              timestamp: new Date().toISOString(),
-              read: false
-            };
-            setAlerts(prev => [lowStockAlert, ...prev]);
-            
-            if (isOnline) {
-              upsertAlert(lowStockAlert).catch(() => {
-                const syncItemAlert: OfflineSyncItem = {
-                  id: `sync-alert-${Date.now()}`,
-                  action: 'create_alert',
-                  collection: 'alerts',
-                  payload: lowStockAlert,
-                  timestamp: new Date().toISOString()
-                };
-                pushToOfflineQueue(syncItemAlert);
-              });
-            } else {
-              const syncItemAlert: OfflineSyncItem = {
-                id: `sync-alert-${Date.now()}`,
-                action: 'create_alert',
-                collection: 'alerts',
-                payload: lowStockAlert,
-                timestamp: new Date().toISOString()
-              };
-              pushToOfflineQueue(syncItemAlert);
-            }
-          }
-          showToast(`Stock updated: ${item.name} (${newStock} remaining).`);
           return updatedItem;
         }
         return item;
       })
     );
+
+    if (newStock <= currentItem.minStock && currentItem.category !== 'service') {
+      const lowStockAlert: SystemAlert = {
+        id: `al-${Date.now()}-${itemId}`,
+        severity: 'urgent',
+        category: 'inventory',
+        message: `LOW STOCK ACTION: ${currentItem.name} (${currentItem.sku}) is running out! Current: ${newStock} units left.`,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      setAlerts(prev => [lowStockAlert, ...prev]);
+      
+      if (isOnline) {
+        try {
+          await upsertAlert(lowStockAlert);
+        } catch (error) {
+          const syncItemAlert: OfflineSyncItem = {
+            id: `sync-alert-${Date.now()}`,
+            action: 'create_alert',
+            collection: 'alerts',
+            payload: lowStockAlert,
+            timestamp: new Date().toISOString()
+          };
+          pushToOfflineQueue(syncItemAlert);
+        }
+      } else {
+        const syncItemAlert: OfflineSyncItem = {
+          id: `sync-alert-${Date.now()}`,
+          action: 'create_alert',
+          collection: 'alerts',
+          payload: lowStockAlert,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItemAlert);
+      }
+    }
+    showToast(`Stock updated: ${currentItem.name} (${newStock} remaining).`);
 
     if (!isOnline) {
       const syncItem: OfflineSyncItem = {
@@ -889,7 +892,9 @@ export default function App() {
       };
       pushToOfflineQueue(syncItem);
     } else {
-      upsertInventoryItem(updatedItem).catch(() => {
+      try {
+        await upsertInventoryItem(updatedItem);
+      } catch (error) {
         const syncItem: OfflineSyncItem = {
           id: `sync-${Date.now()}-${itemId}`,
           action: 'update_stock',
@@ -898,7 +903,7 @@ export default function App() {
           timestamp: new Date().toISOString()
         };
         pushToOfflineQueue(syncItem);
-      });
+      }
     }
   };
 
@@ -1131,7 +1136,7 @@ export default function App() {
   };
 
 
-  const handleAddInvoice = (invoice: Invoice) => {
+  const handleAddInvoice = async (invoice: Invoice) => {
     setInvoices(prev => [invoice, ...prev]);
     showToast(`Invoice added: $${invoice.total.toFixed(2)}.`);
 
@@ -1150,7 +1155,9 @@ export default function App() {
       };
       pushToOfflineQueue(syncItem);
     } else {
-      upsertInvoice(invoice).catch(() => {
+      try {
+        await upsertInvoice(invoice);
+      } catch (error) {
         const syncItem: OfflineSyncItem = {
           id: `sync-inv-${Date.now()}`,
           action: 'create_invoice',
@@ -1159,7 +1166,7 @@ export default function App() {
           timestamp: new Date().toISOString()
         };
         pushToOfflineQueue(syncItem);
-      });
+      }
     }
   };
 
@@ -2006,6 +2013,7 @@ export default function App() {
               {activeView === 'records' && isViewPermitted('records', currentUser) && (
                 <MedicalRecordsManager
                   records={records}
+                  inventory={inventory}
                   isOnline={isOnline}
                   onUpdateRecord={handleUpdateRecord}
                   onDeleteRecord={handleDeleteRecord}

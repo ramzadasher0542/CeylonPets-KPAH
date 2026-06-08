@@ -35,7 +35,7 @@ export async function fetchStaffUsers(): Promise<User[]> {
 
     if (!data || data.length === 0) {
       const initialStaffState: User[] = [
-        { name: 'System Administrator', username: 'admin', role: 'admin', pin: '5692', id: 'usr-admin-master' }
+        { name: 'System Administrator', username: 'admin', role: 'admin', pin: '5692', id: 'usr-admin-master', avatarColor: 'bg-indigo-100' }
       ];
       localStorage.setItem('ceylon_users_v3', JSON.stringify(initialStaffState));
       return initialStaffState;
