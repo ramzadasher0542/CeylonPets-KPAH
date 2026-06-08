@@ -210,17 +210,16 @@ export default function App() {
     }
   });
 
-  const initialStaffState = [{ name: 'System Administrator', username: 'admin', role: 'admin', pin: '5692' }];
 
   // Load users and pins separately from localStorage
   const [pinCache, setPinCache] = useState<Record<string, string>>(() => {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
-      baseUsers = saved ? JSON.parse(saved) : initialStaffState;
+      baseUsers = saved ? JSON.parse(saved) : [];
     } catch (e) {
       console.error('Error parsing ceylon_users_v3:', e);
-      baseUsers = initialStaffState;
+      baseUsers = [];
     }
 
     const cache: Record<string, string> = {};
@@ -241,10 +240,10 @@ export default function App() {
     let baseUsers = [];
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
-      baseUsers = saved ? JSON.parse(saved) : initialStaffState;
+      baseUsers = saved ? JSON.parse(saved) : [];
     } catch (e) {
       console.error('Error parsing ceylon_users_v3:', e);
-      baseUsers = initialStaffState;
+      baseUsers = [];
     }
 
     return baseUsers.map((user: any) => {
