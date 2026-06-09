@@ -116,6 +116,25 @@ export async function deleteInventoryItem(id: string): Promise<void> {
   }
 }
 
+export async function updateInventoryStockCAS(itemId: string, newStock: number, expectedStock: number): Promise<void> {
+  try {
+    const { data, error } = await supabase
+      .from(DB_TABLES.INVENTORY)
+      .update({ stock: newStock })
+      .eq('id', itemId)
+      .eq('stock', expectedStock)
+      .select('id');
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('CAS_MISMATCH');
+    }
+  } catch (err) {
+    console.warn('[CeylonPets] updateInventoryStockCAS failed:', err);
+    throw err;
+  }
+}
+
 // ---------------------------------------------------------------
 // APPOINTMENTS
 // ---------------------------------------------------------------

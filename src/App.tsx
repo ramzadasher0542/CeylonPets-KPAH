@@ -57,7 +57,7 @@ import ToastContainer, { showToast } from './components/Toast';
 import { supabase, DB_TABLES } from './lib/supabase';
 import { fetchStaffUsers, upsertStaffUser, fetchSystemConfig, upsertSystemConfig } from './lib/auth';
 import {
-  fetchInventory,    upsertInventoryItem,
+  fetchInventory,    upsertInventoryItem, updateInventoryStockCAS,
   fetchAppointments, upsertAppointment,
   fetchMedicalRecords, upsertMedicalRecord,
   fetchInvoices,     upsertInvoice,
@@ -834,11 +834,22 @@ export default function App() {
     }
   };
 
-  const handleUpdateStock = async (itemId: string, qtyDelta: number) => {
+  const handleUpdateStock = async (itemId: string, qtyDelta: number, expectedStock?: number) => {
     const currentItem = inventory.find(i => i.id === itemId);
     if (!currentItem) return;
     const newStock = Math.max(0, currentItem.stock + qtyDelta);
     const updatedItem = { ...currentItem, stock: newStock };
+
+    if (expectedStock !== undefined && isOnline) {
+      try {
+        await updateInventoryStockCAS(itemId, newStock, expectedStock);
+      } catch (err: any) {
+        if (err.message === 'CAS_MISMATCH') {
+          fetchInventory().then(items => setInventory(items));
+        }
+        throw err;
+      }
+    }
 
     setInventory(prev => 
       prev.map(item => {
@@ -895,7 +906,7 @@ export default function App() {
         timestamp: new Date().toISOString()
       };
       pushToOfflineQueue(syncItem);
-    } else {
+    } else if (expectedStock === undefined) {
       try {
         await upsertInventoryItem(updatedItem);
       } catch (error) {
@@ -1999,6 +2010,7 @@ export default function App() {
                     onVoidInvoice={handleVoidInvoice}
                     systemConfig={safeSystemConfig}
                     onVerifyMasterPin={handleVerifyMasterPin}
+                    onTriggerInventorySync={triggerAutoSynchronize}
                   />
                 );
               })()}

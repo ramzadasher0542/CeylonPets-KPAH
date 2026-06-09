@@ -36,11 +36,12 @@ interface POSProps {
   isOnline: boolean;
   currentUser: StaffUser;
   invoices: Invoice[];
-  onUpdateStock: (itemId: string, qtyDelta: number) => Promise<void>;
+  onUpdateStock: (itemId: string, qtyDelta: number, expectedStock?: number) => Promise<void>;
   onAddInvoice: (invoice: Invoice) => Promise<void>;
   onVoidInvoice: (invoiceId: string) => void;
   systemConfig?: any;
   onVerifyMasterPin?: (pin: string) => boolean;
+  onTriggerInventorySync?: () => void;
 }
 
 export default function POSRegister({ 
@@ -54,7 +55,8 @@ export default function POSRegister({
   onAddInvoice,
   onVoidInvoice,
   systemConfig,
-  onVerifyMasterPin
+  onVerifyMasterPin,
+  onTriggerInventorySync
 }: POSProps) {
   // POS States
   const [activeTab, setActiveTab] = useState<'service' | 'medication' | 'retail' | 'ledger'>('service');
@@ -370,19 +372,26 @@ export default function POSRegister({
     };
 
     try {
-      // Apply stock deduction to state
-      const stockUpdates = cart
-        .filter(c => c.item.category !== 'service')
-        .map(c => onUpdateStock(c.item.id, -c.quantity));
+      // Apply stock deduction to state sequentially to enforce strict CAS locking
+      for (const c of cart) {
+        if (c.item.category !== 'service') {
+          // Pass the expected stock to explicitly engage the Compare-And-Swap concurrency lock
+          await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
+        }
+      }
       
-      await Promise.all(stockUpdates);
       await onAddInvoice(invoiceObj);
 
       setCheckoutSuccess(invoiceObj);
       setCart([]);
       setDiscountVal(0);
       setSelectedPetId('walkin');
-    } catch (err) {
+    } catch (err: any) {
+      if (err.message === 'CAS_MISMATCH') {
+        showToast('Checkout Aborted: Another terminal just purchased the last of this item.', 'error');
+        if (onTriggerInventorySync) onTriggerInventorySync();
+        return; // Hard abort the rest of the checkout flow, preventing ledger changes
+      }
       showToast('Error during checkout sequence. Please try again.', 'error');
     }
   };
