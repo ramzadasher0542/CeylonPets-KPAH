@@ -228,11 +228,12 @@ export default function POSRegister({
     );
 
     if (found) {
-      if (found.stock <= 0 && found.category !== 'service') {
+      const isService = found.category === 'service' || found.category === 'lab_service';
+      if (found.stock <= 0 && !isService) {
         setBarcodeFeedback({ text: `Failed: ${found.name} is currently out of stock.`, error: true });
       } else {
         const existing = cart.find(i => i.item.id === found.id);
-        if (existing && existing.quantity >= found.stock && found.category !== 'service') {
+        if (existing && existing.quantity >= found.stock && !isService) {
           setBarcodeFeedback({ text: `Failed: Limit of ${found.stock} reached for ${found.name}.`, error: true });
         } else {
           if (existing) {
@@ -263,13 +264,14 @@ export default function POSRegister({
 
   // Cart operations
   const addToCart = (product: InventoryItem) => {
-    if (product.stock <= 0 && product.category !== 'service') {
+    const isService = product.category === 'service' || product.category === 'lab_service';
+    if (product.stock <= 0 && !isService) {
       showToast(`Critical: ${product.name} is currently out of stock. Please adjust inventory parameters.`, 'error');
       return;
     }
     const existing = cart.find(i => i.item.id === product.id);
     if (existing) {
-      if (existing.quantity >= product.stock && product.category !== 'service') {
+      if (existing.quantity >= product.stock && !isService) {
         showToast(`Cannot add more. Limit of ${product.stock} reached.`, 'error');
         return;
       }
@@ -288,8 +290,9 @@ export default function POSRegister({
     if (newQty <= 0) {
       setCart(cart.filter(i => i.item.id !== productId));
     } else {
-      if (newQty > itemStock && existing.item.category !== 'service') {
-        showToast(`Cannot add more. Retail cap is ${itemStock} units.`, 'error');
+      const isService = existing.item.category === 'service' || existing.item.category === 'lab_service';
+      if (newQty > itemStock && !isService) {
+        showToast(`Warning: Cannot exceed available stock limit of ${itemStock} units.`, 'error');
         return;
       }
       setCart(cart.map(i => i.item.id === productId ? { ...i, quantity: newQty } : i));
@@ -374,7 +377,8 @@ export default function POSRegister({
     try {
       // Apply stock deduction to state sequentially to enforce strict CAS locking
       for (const c of cart) {
-        if (c.item.category !== 'service') {
+        const isService = c.item.category === 'service' || c.item.category === 'lab_service';
+        if (!isService) {
           // Pass the expected stock to explicitly engage the Compare-And-Swap concurrency lock
           await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
         }
@@ -660,7 +664,8 @@ export default function POSRegister({
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-4 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredProducts.map(product => {
-                const isLowStock = product.stock <= product.minStock && product.category !== 'service';
+                const isService = product.category === 'service' || product.category === 'lab_service';
+                const isLowStock = product.stock <= product.minStock && !isService;
                 return (
                   <div
                     key={product.id}
@@ -681,7 +686,7 @@ export default function POSRegister({
                       <h5 className="text-xs font-bold text-slate-800 tracking-tight leading-snug mt-1 group-hover:text-sky-600 line-clamp-2">
                         {product.name}
                       </h5>
-                      {product.category !== 'service' && (
+                      {!isService && (
                         <span className={`text-[10px] font-mono block ${isLowStock ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
                           Stock: {product.stock} {product.unit}s
                         </span>
