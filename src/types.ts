@@ -14,7 +14,7 @@ export interface User {
   pin?: string;
 }
 
-export type ItemCategory = 'service' | 'retail' | 'medication' | 'vaccine' | 'prescription' | 'lab_service';
+export type ItemCategory = 'retail' | 'prescription' | 'lab_service' | 'service' | 'vaccine';
 
 export interface InventoryItem {
   id: string;

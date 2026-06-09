@@ -519,7 +519,7 @@ export default function InventoryManager({
                     onChange={(e) => setCategory(e.target.value as ItemCategory)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                   >
-                    <option value="retail">Pet Retail product</option>
+                    <option value="retail">Pet Retail Product</option>
                     <option value="prescription">Prescription Medicine</option>
                     <option value="vaccine">Vaccine</option>
                     <option value="lab_service">Lab Service</option>
@@ -676,7 +676,7 @@ export default function InventoryManager({
                     onChange={(e) => setEditingCategory(e.target.value as ItemCategory)}
                     className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold"
                   >
-                    <option value="retail">Pet Retail product</option>
+                    <option value="retail">Pet Retail Product</option>
                     <option value="prescription">Prescription Medicine</option>
                     <option value="vaccine">Vaccine</option>
                     <option value="lab_service">Lab Service</option>

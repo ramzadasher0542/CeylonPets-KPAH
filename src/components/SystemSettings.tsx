@@ -2153,9 +2153,15 @@ export default function SystemSettings({
                           parsedRows.forEach((row, idx) => {
                             const sku = row.sku || `SKU-${Date.now()}-${idx}`;
                             const name = row.name || `Bulk Item ${idx + 1}`;
-                            const category = ['service', 'lab_service', 'retail', 'medication', 'vaccine', 'prescription'].includes(row.category || '') 
-                              ? (row.category as any) 
-                              : 'retail';
+                            let rawCategory = (row.category || '').toLowerCase();
+                            if (rawCategory.includes('lab')) rawCategory = 'lab_service';
+                            else if (rawCategory.includes('clinical') || rawCategory === 'service') rawCategory = 'service';
+                            else if (rawCategory.includes('retail')) rawCategory = 'retail';
+                            else if (rawCategory.includes('prescription') || rawCategory.includes('med')) rawCategory = 'prescription';
+                            else if (rawCategory.includes('vaccine') || rawCategory.includes('vax')) rawCategory = 'vaccine';
+                            else rawCategory = 'retail';
+                            
+                            const category = rawCategory as any;
                             const isService = category === 'service' || category === 'lab_service';
                             const price = isNaN(Number(row.price)) ? 0 : Number(row.price);
                             const cost = isNaN(Number(row.cost)) ? 0 : Number(row.cost);
