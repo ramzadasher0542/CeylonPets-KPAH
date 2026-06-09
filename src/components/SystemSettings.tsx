@@ -1882,25 +1882,33 @@ SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit`}
 
                   <button
                     onClick={() => {
-                      if (!inventory || inventory.length === 0) {
-                        alert("Notice: No inventory items are available to export.");
-                        return;
-                      }
-
                       const headers = ['sku', 'name', 'category', 'price', 'cost', 'stock', 'threshold', 'unit'];
                       const csvRows = [headers.join(',')];
 
-                      inventory.forEach(item => {
-                        const rowValues = headers.map(header => {
-                          const val = header === 'threshold' ? item.minStock : (item as any)[header] ?? '';
-                          const stringVal = String(val);
-                          if (stringVal.includes(',') || stringVal.includes('\n') || stringVal.includes('"')) {
-                            return `"${stringVal.replace(/"/g, '""')}"`;
-                          }
-                          return stringVal;
+                      if (!inventory || inventory.length === 0) {
+                        showToast("Downloading template...", "info");
+                        setBackupLogs(prev => [
+                          ...prev,
+                          `[INVENTORY EXPORT]: Generated empty CSV template for initial import.`
+                        ]);
+                      } else {
+                        inventory.forEach(item => {
+                          const rowValues = headers.map(header => {
+                            const val = header === 'threshold' ? item.minStock : (item as any)[header] ?? '';
+                            const stringVal = String(val);
+                            if (stringVal.includes(',') || stringVal.includes('\n') || stringVal.includes('"')) {
+                              return `"${stringVal.replace(/"/g, '""')}"`;
+                            }
+                            return stringVal;
+                          });
+                          csvRows.push(rowValues.join(','));
                         });
-                        csvRows.push(rowValues.join(','));
-                      });
+
+                        setBackupLogs(prev => [
+                          ...prev,
+                          `[INVENTORY EXPORT]: Successfully compiled ${inventory.length} catalog items into standard CSV file.`
+                        ]);
+                      }
 
                       const csvContent = csvRows.join('\n');
                       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1911,11 +1919,6 @@ SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit`}
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
-
-                      setBackupLogs(prev => [
-                        ...prev,
-                        `[INVENTORY EXPORT]: Successfully compiled ${inventory.length} catalog items into standard CSV file.`
-                      ]);
                     }}
                     className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 text-sm"
                   >
