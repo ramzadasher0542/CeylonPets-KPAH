@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord } from '../types';
 import { showToast } from './Toast';
+import { fetchActiveShiftId } from '../lib/db';
 
 interface POSProps {
   inventory: InventoryItem[];
