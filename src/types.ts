@@ -101,6 +101,14 @@ export interface InvoiceItem {
 
 export type PaymentMethod = 'cash' | 'card' | 'bank_transfer' | 'e_wallet';
 
+export interface PosShift {
+  id: string;
+  openedAt: string;
+  closedAt?: string;
+  status: 'open' | 'closed';
+  openedBy: string;
+}
+
 export interface Invoice {
   id: string;
   appointmentId?: string; // Opt association
@@ -117,6 +125,7 @@ export interface Invoice {
   paymentMethod?: PaymentMethod;
   paymentStatus: 'unpaid' | 'paid' | 'void';
   createdBy: string;
+  shiftId?: string;
   notes?: string;
 }
 

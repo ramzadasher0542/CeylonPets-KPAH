@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import useSWR from 'swr';
 import { 
   TrendingUp, 
   Users, 
@@ -20,6 +21,7 @@ import {
   FileText
 } from 'lucide-react';
 import { InventoryItem, Appointment, MedicalRecord, Invoice } from '../types';
+import { fetchShiftMetrics, fetchLowStockCount } from '../lib/db';
 
 interface DashboardProps {
   inventory: InventoryItem[];
@@ -48,30 +50,16 @@ export default function DashboardAnalytics({
   const [chartType, setChartType] = useState<'revenue' | 'appointments'>('revenue');
   const [hoveredSlice, setHoveredSlice] = useState<'service' | 'medication' | 'retail' | null>(null);
 
-  // Key performance calculations
-  const totalRevenue = invoices.reduce((sum, inv) => inv.paymentStatus === 'paid' ? sum + inv.total : sum, 0);
-  const retailRevenue = invoices.reduce((sum, inv) => {
-    if (inv.paymentStatus !== 'paid') return sum;
-    const retailSum = inv.items
-      .filter(item => item.category === 'retail')
-      .reduce((s, i) => s + i.totalPrice, 0);
-    return sum + retailSum;
-  }, 0);
-  const clinicalRevenue = totalRevenue - retailRevenue;
+  const { data: shiftMetrics } = useSWR('shiftMetrics', fetchShiftMetrics, { refreshInterval: 30000 });
+  const { data: lowStockCount } = useSWR('lowStockCount', fetchLowStockCount, { refreshInterval: 60000 });
 
-  // Calculate total Cost of Goods Sold (COGS) based on inventory costs
-  const totalCost = invoices.reduce((sum, inv) => {
-    if (inv.paymentStatus !== 'paid') return sum;
-    const invoiceCost = inv.items.reduce((itemSum, item) => {
-      const invMatch = inventory.find(i => i.id === item.itemId || i.sku === item.sku);
-      const unitCost = invMatch ? invMatch.cost : 0;
-      return itemSum + (unitCost * item.quantity);
-    }, 0);
-    return sum + invoiceCost;
-  }, 0);
-
-  const netProfit = totalRevenue - totalCost;
-  const lowStockItems = inventory.filter(item => !(item.category?.toLowerCase().includes('service')) && item.stock <= item.minStock);
+  const totalRevenue = shiftMetrics?.gross_sales || 0;
+  const retailRevenue = shiftMetrics?.pet_shop_revenue || 0;
+  const clinicalRevenue = shiftMetrics?.clinical_care_revenue || 0;
+  const totalCost = shiftMetrics?.total_cogs || 0;
+  
+  const netProfit = shiftMetrics?.net_profit || 0;
+  const lowStockItemsCount = lowStockCount || 0;
   const activeConsultations = appointments.filter(apt => apt.status === 'in-progress' || apt.status === 'booked').length;
   const patientsCount = records.length;
 
@@ -322,6 +310,27 @@ export default function DashboardAnalytics({
         </div>
       )}
 
+      {/* Shift Status Indicator */}
+      <div className="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border shadow-sm border-indigo-100">
+        <div className="flex items-center gap-3">
+          {shiftMetrics ? (
+            <>
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+              <span className="text-sm font-bold text-slate-700">Active Register Shift Open</span>
+            </>
+          ) : (
+            <>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
+              <span className="text-sm font-bold text-slate-700">Register Closed (No Active Shift)</span>
+            </>
+          )}
+        </div>
+        <div className="text-xs text-slate-500 font-semibold">Metrics show data for the current shift only</div>
+      </div>
+
       {/* Main KPI metrics bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {/* Total Revenue */}
@@ -396,25 +405,26 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Under Stock Alarms */}
-        <div className={`bg-white p-5 w-full h-full flex flex-col justify-between rounded-2xl border shadow-sm relative overflow-hidden group transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${(inventory.length === 0 || lowStockItems.length > 0) ? 'border-rose-100 hover:border-rose-300' : 'border-sky-100 hover:border-sky-300'}`}>
+        <div className={`bg-white p-5 w-full h-full flex flex-col justify-between rounded-2xl border shadow-sm relative overflow-hidden group transition-all duration-300 hover:-translate-y-0.5 cursor-pointer ${(inventory.length === 0 || lowStockItemsCount > 0) ? 'border-rose-100 hover:border-rose-300' : 'border-sky-100 hover:border-sky-300'}`}>
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Low Stock Warnings</p>
-              <h3 className={`text-2xl font-bold mt-1 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'text-rose-600 animate-pulse font-black' : 'text-emerald-600'}`}>
-                {inventory.length === 0 ? '0' : lowStockItems.length}
+              <p className="text-[10px] font-black text-slate-400 tracking-wider uppercase mb-0.5 flex items-center gap-1.5">Low Stock Warnings</p>
+              <h3 className={`text-2xl font-bold mt-1 ${(inventory.length === 0 || lowStockItemsCount > 0) ? 'text-rose-600 animate-pulse font-black' : 'text-emerald-600'}`}>
+                {inventory.length === 0 ? '0' : lowStockItemsCount}
               </h3>
             </div>
-            <div className={`p-3 rounded-xl transition-all duration-300 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100'}`}>
-              {(inventory.length === 0 || lowStockItems.length > 0) ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
+            <div className={`p-3 rounded-xl transition-all duration-300 ${(inventory.length === 0 || lowStockItemsCount > 0) ? 'bg-rose-50 text-rose-600 group-hover:bg-rose-100' : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-100'}`}>
+              {(inventory.length === 0 || lowStockItemsCount > 0) ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle className="h-5 w-5" />}
             </div>
           </div>
-          <div className={`mt-4 text-xs font-mono truncate font-bold ${(inventory.length === 0 || lowStockItems.length > 0) ? 'text-rose-700' : 'text-emerald-600'}`}>
-            {inventory.length === 0 ? 'Inventory is completely empty!' : 
-             lowStockItems.length > 0 
-              ? `${lowStockItems.map(i => i.name).slice(0, 1).join(',')} needs reorder!` 
+          <div className={`mt-4 text-xs font-mono truncate font-bold ${(inventory.length === 0 || lowStockItemsCount > 0) ? 'text-rose-700' : 'text-emerald-600'}`}>
+            {inventory.length === 0 
+             ? 'No physical stock recorded' 
+             : lowStockItemsCount > 0 
+              ? `${lowStockItemsCount} item(s) need reorder!` 
               : 'All supplies optimally stocked'}
           </div>
-          <div className={`absolute bottom-0 left-0 right-0 h-1 ${(inventory.length === 0 || lowStockItems.length > 0) ? 'bg-gradient-to-r from-rose-400 to-red-600' : 'bg-emerald-400'}`} />
+          <div className={`absolute bottom-0 left-0 right-0 h-1 ${(inventory.length === 0 || lowStockItemsCount > 0) ? 'bg-gradient-to-r from-rose-400 to-red-600' : 'bg-emerald-400'}`} />
         </div>
       </div>
 

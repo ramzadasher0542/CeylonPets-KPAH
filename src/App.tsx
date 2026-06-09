@@ -62,7 +62,8 @@ import {
   fetchMedicalRecords, upsertMedicalRecord,
   fetchInvoices,     upsertInvoice,
   fetchNotifications, upsertNotification,
-  fetchAlerts,       upsertAlert, deleteMedicalRecord
+  fetchAlerts,       upsertAlert, deleteMedicalRecord,
+  fetchActiveShiftId
 } from './lib/db';
 
 // Helper to hash a PIN synchronously using a custom salted polynomial hash
@@ -1152,6 +1153,12 @@ export default function App() {
 
 
   const handleAddInvoice = async (invoice: Invoice) => {
+    // Attempt to tag invoice with active shift ID
+    const currentShiftId = await fetchActiveShiftId();
+    if (currentShiftId) {
+      invoice.shiftId = currentShiftId;
+    }
+
     setInvoices(prev => [invoice, ...prev]);
     showToast(`Invoice added: $${invoice.total.toFixed(2)}.`);
 

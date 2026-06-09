@@ -376,3 +376,43 @@ export async function upsertAlert(alert: SystemAlert): Promise<void> {
     throw err;
   }
 }
+
+// ---------------------------------------------------------------
+// POS SHIFTS & RPC METRICS
+// ---------------------------------------------------------------
+
+export interface ShiftMetrics {
+  gross_sales: number;
+  total_cogs: number;
+  net_profit: number;
+  clinical_care_revenue: number;
+  pet_shop_revenue: number;
+  prescription_revenue: number;
+}
+
+export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
+  const { data, error } = await supabase.rpc('get_current_shift_metrics');
+  if (error) {
+    console.error('[CeylonPets] Error fetching shift metrics:', error);
+    return null;
+  }
+  // The RPC returns a TABLE, so data is an array of rows
+  return data && data.length > 0 ? (data[0] as ShiftMetrics) : null;
+}
+
+export async function fetchLowStockCount(): Promise<number> {
+  const { data, error } = await supabase.rpc('get_low_stock_count');
+  if (error) {
+    console.error('[CeylonPets] Error fetching low stock count:', error);
+    return 0;
+  }
+  return Number(data) || 0;
+}
+
+export async function fetchActiveShiftId(): Promise<string | undefined> {
+  const { data, error } = await supabase.rpc('get_active_shift_id');
+  if (error || !data) {
+    return undefined;
+  }
+  return data as string;
+}
