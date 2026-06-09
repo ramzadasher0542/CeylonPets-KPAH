@@ -29,12 +29,6 @@ import {
 import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord } from '../types';
 import { showToast } from './Toast';
 
-// Robust service-category check covering both internal DB keys ('service', 'lab_service')
-// and the human-readable display labels that may have been bulk-imported via CSV.
-const checkIsService = (category?: string): boolean => {
-  return category?.toLowerCase().includes('service') || false;
-};
-
 interface POSProps {
   inventory: InventoryItem[];
   appointments: Appointment[];
@@ -234,7 +228,7 @@ export default function POSRegister({
     );
 
     if (found) {
-      const isService = checkIsService(found.category);
+      const isService = found?.category?.toLowerCase().includes('service');
       if (found.stock <= 0 && !isService) {
         setBarcodeFeedback({ text: `Failed: ${found.name} is currently out of stock.`, error: true });
       } else {
@@ -270,7 +264,7 @@ export default function POSRegister({
 
   // Cart operations
   const addToCart = (product: InventoryItem) => {
-    const isService = checkIsService(product.category);
+    const isService = product?.category?.toLowerCase().includes('service');
     if (product.stock <= 0 && !isService) {
       showToast(`Critical: ${product.name} is currently out of stock. Please adjust inventory parameters.`, 'error');
       return;
@@ -296,7 +290,7 @@ export default function POSRegister({
     if (newQty <= 0) {
       setCart(cart.filter(i => i.item.id !== productId));
     } else {
-      const isService = checkIsService(existing.item.category);
+      const isService = existing.item?.category?.toLowerCase().includes('service');
       if (newQty > itemStock && !isService) {
         showToast(`Warning: Cannot exceed available stock limit of ${itemStock} units.`, 'error');
         return;
@@ -383,7 +377,7 @@ export default function POSRegister({
     try {
       // Apply stock deduction to state sequentially to enforce strict CAS locking
       for (const c of cart) {
-        const isService = checkIsService(c.item.category);
+        const isService = c.item?.category?.toLowerCase().includes('service');
         if (!isService) {
           // Pass the expected stock to explicitly engage the Compare-And-Swap concurrency lock
           await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
@@ -670,7 +664,7 @@ export default function POSRegister({
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-4 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredProducts.map(product => {
-                const isService = checkIsService(product.category);
+                const isService = product?.category?.toLowerCase().includes('service');
                 const isLowStock = product.stock <= product.minStock && !isService;
                 return (
                   <div
