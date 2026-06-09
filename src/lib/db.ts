@@ -34,7 +34,7 @@ async function supabaseUpsert(table: string, row: object, conflictCol = 'id'): P
 async function supabaseDelete(table: string, id: string): Promise<void> {
   const { error } = await supabase
     .from(table)
-    .update({ is_active: false })
+    .delete()
     .eq('id', id);
   if (error) throw error;
 }
@@ -57,7 +57,6 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
     const { data, error } = await supabase
       .from(DB_TABLES.INVENTORY)
       .select('id, sku, name, category, price, cost, stock, min_stock, unit, location')
-      .eq('is_active', true)
       .order('name');
 
     if (error) throw error;
@@ -145,7 +144,6 @@ export async function fetchAppointments(): Promise<Appointment[]> {
     const { data, error } = await supabase
       .from(DB_TABLES.APPOINTMENTS)
       .select('id, pet_name, pet_type, breed, owner_name, owner_phone, owner_email, date, time, veterinarian, reason, status')
-      .eq('is_active', true)
       .order('date', { ascending: false });
 
     if (error) throw error;
@@ -264,7 +262,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     const { data, error } = await supabase
       .from(DB_TABLES.INVOICES)
       .select('id, pet_name, owner_name, date, total, payment_status, data')
-      .eq('is_active', true)
+      .neq('payment_status', 'void')
       .order('date', { ascending: false });
 
     if (error) throw error;
