@@ -1999,6 +1999,7 @@ export default function App() {
                   isOnline={isOnline}
                   syncQueueLength={syncQueue.length}
                   systemConfig={systemConfig}
+                  currentUser={currentUser}
                 />
               )}
 

@@ -420,3 +420,35 @@ export async function fetchActiveShiftId(): Promise<string | undefined> {
   }
   return data as string;
 }
+
+export async function openShift(openedBy: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('pos_shifts')
+    .insert({ status: 'open', opened_by: openedBy })
+    .select('id')
+    .single();
+    
+  if (error) {
+    console.error('[CeylonPets] Error opening shift:', error);
+    throw error;
+  }
+  return data?.id || null;
+}
+
+export async function closeShift(shiftId: string, actualCash: number, expectedCash: number, notes: string): Promise<void> {
+  const { error } = await supabase
+    .from('pos_shifts')
+    .update({ 
+      status: 'closed', 
+      closed_at: new Date().toISOString(),
+      actual_drawer_cash: actualCash,
+      expected_drawer_cash: expectedCash,
+      notes: notes
+    })
+    .eq('id', shiftId);
+
+  if (error) {
+    console.error('[CeylonPets] Error closing shift:', error);
+    throw error;
+  }
+}
