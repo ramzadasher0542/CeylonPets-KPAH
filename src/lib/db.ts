@@ -207,7 +207,6 @@ export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
     const { data, error } = await supabase
       .from(DB_TABLES.RECORDS)
       .select('id, patient_id, pet_name, owner_phone, visit_date, data')
-      .eq('is_active', true)
       .order('visit_date', { ascending: false });
 
     if (error) throw error;
