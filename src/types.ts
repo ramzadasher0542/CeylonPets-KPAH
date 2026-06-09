@@ -86,6 +86,7 @@ export interface MedicalRecord {
   vaccinations: Vaccination[];
   labResults: LabResult[];
   createdDate: string;
+  attendingVet?: string;
 }
 
 export interface InvoiceItem {

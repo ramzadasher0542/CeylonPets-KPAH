@@ -2033,6 +2033,7 @@ export default function App() {
                   isOnline={isOnline}
                   onUpdateRecord={handleUpdateRecord}
                   onDeleteRecord={handleDeleteRecord}
+                  users={users}
                   onAddRecord={handleAddEHRRecord => {
                     handleAddRecord(handleAddEHRRecord);
                     const mockAlert: SystemAlert = {

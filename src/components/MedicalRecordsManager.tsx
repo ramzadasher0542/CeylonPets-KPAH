@@ -35,6 +35,7 @@ interface EHRProps {
   onAddRecord: (newRec: MedicalRecord) => void;
   systemConfig?: any;
   currentUser?: StaffUser;
+  users?: StaffUser[];
 }
 
 export default function MedicalRecordsManager({ 
@@ -45,7 +46,8 @@ export default function MedicalRecordsManager({
   onDeleteRecord,
   onAddRecord,
   systemConfig,
-  currentUser
+  currentUser,
+  users = []
 }: EHRProps) {
   const [selectedRecordId, setSelectedRecordId] = useState<string>(records[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,6 +72,12 @@ export default function MedicalRecordsManager({
   const [newDiagnosis, setNewDiagnosis] = useState('');
   const [newTreatmentNotes, setNewTreatmentNotes] = useState('');
   const [formError, setFormError] = useState('');
+  const [newAttendingVet, setNewAttendingVet] = useState(() => {
+    if (currentUser && (currentUser.role === 'veterinarian' || currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.role === 'dummy_admin')) {
+      return currentUser.name;
+    }
+    return '';
+  });
 
   // Edit Patient Entry Form values
   const [showEditRecordForm, setShowEditRecordForm] = useState(false);
@@ -146,8 +154,8 @@ export default function MedicalRecordsManager({
 
   const handleCreateNewEHR = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPetName || !newDiagnosis) {
-      setFormError('Patient Name and Clinical Assessment are required.');
+    if (!newPetName || !newDiagnosis || !newAttendingVet) {
+      setFormError('Patient Name, Clinical Assessment, and Attending Veterinarian are required.');
       return;
     }
 
@@ -169,7 +177,8 @@ export default function MedicalRecordsManager({
       prescribedMeds: [],
       vaccinations: [],
       labResults: [],
-      createdDate: new Date().toISOString().split('T')[0]
+      createdDate: new Date().toISOString().split('T')[0],
+      attendingVet: newAttendingVet
     };
 
     onAddRecord(newRec);
@@ -1073,6 +1082,20 @@ export default function MedicalRecordsManager({
                 </div>
 
                 {/* Health diagnostics */}
+                <div className="space-y-1 sm:col-span-2">
+                  <label className="font-semibold text-slate-700 block" htmlFor="attending-veterinarian">Attending Veterinarian *</label>
+                  <select name="attendingVeterinarian" id="attending-veterinarian"
+                    value={newAttendingVet}
+                    onChange={(e) => { setNewAttendingVet(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-3 py-2 bg-slate-50 border ${formError && !newAttendingVet ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 font-semibold`}
+                  >
+                    <option value="">-- Select Doctor --</option>
+                    {users?.filter(u => u.role === 'veterinarian' || u.role === 'admin' || u.role === 'owner' || u.role === 'dummy_admin').map(u => (
+                      <option key={u.id} value={u.name}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div className="space-y-1 sm:col-span-2">
                   <label className="font-semibold text-slate-700 block" htmlFor="chief-symptoms-reported">Chief Symptoms Reported *</label>
                   <textarea name="chiefSymptomsReported" id="chief-symptoms-reported"
