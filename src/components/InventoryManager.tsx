@@ -135,7 +135,7 @@ export default function InventoryManager({
       category,
       price: priceNum,
       cost: costNum,
-      stock: isService ? 999999 : stockNum,
+      stock: isService ? 0 : stockNum,
       minStock: isService ? 0 : minNum,
       unit
     };
@@ -172,7 +172,7 @@ export default function InventoryManager({
           category: editingCategory,
           price: parseFloat(editingPrice) || 0,
           cost: parseFloat(editingCost) || 0,
-          stock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 999999 : parseInt(editingStock) || 0,
+          stock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 0 : parseInt(editingStock) || 0,
           minStock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 0 : parseInt(editingMinStock) || 0,
           unit: editingUnit
         };

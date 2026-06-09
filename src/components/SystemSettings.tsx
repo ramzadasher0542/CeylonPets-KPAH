@@ -2156,10 +2156,10 @@ export default function SystemSettings({
                             const category = ['service', 'lab_service', 'retail', 'medication', 'vaccine', 'prescription'].includes(row.category || '') 
                               ? (row.category as any) 
                               : 'retail';
-                            const isService = category === 'service' || category === 'lab_service';
+                            const isService = row.category?.toLowerCase().includes('service') || false;
                             const price = isNaN(Number(row.price)) ? 0 : Number(row.price);
                             const cost = isNaN(Number(row.cost)) ? 0 : Number(row.cost);
-                            const stock = isService ? 999999 : (isNaN(Number(row.stock)) ? 0 : Number(row.stock));
+                            const stock = isService ? 0 : (isNaN(Number(row.stock)) ? 0 : Number(row.stock));
                             const minStock = isService ? 0 : (isNaN(Number(row.threshold || row.minstock || row.minStock)) ? 0 : Number(row.threshold || row.minstock || row.minStock));
                             const unit = row.unit || 'pcs';
                             const location = row.location || '';

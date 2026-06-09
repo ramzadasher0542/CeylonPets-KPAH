@@ -31,14 +31,8 @@ import { showToast } from './Toast';
 
 // Robust service-category check covering both internal DB keys ('service', 'lab_service')
 // and the human-readable display labels that may have been bulk-imported via CSV.
-const checkIsService = (category: string): boolean => {
-  const cat = (category || '').toLowerCase().trim();
-  return (
-    cat === 'service' ||
-    cat === 'lab_service' ||
-    cat === 'lab service' ||
-    cat === 'clinical core service'
-  );
+const checkIsService = (category?: string): boolean => {
+  return category?.toLowerCase().includes('service') || false;
 };
 
 interface POSProps {
