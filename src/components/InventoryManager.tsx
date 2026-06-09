@@ -501,6 +501,7 @@ export default function InventoryManager({
                   <input name="uniqueSkuCode" id="unique-sku-code"
                     type="text"
                     required
+                    maxLength={50}
                     placeholder="e.g. RT-009, SV-012"
                     value={sku}
                     onChange={(e) => { setSku(e.target.value.toUpperCase()); if (formError) setFormError(''); }}
@@ -528,6 +529,7 @@ export default function InventoryManager({
                   <input name="catalogItemName" id="catalog-item-name"
                     type="text"
                     required
+                    maxLength={100}
                     placeholder="e.g. Purina Hypoallergenic Vet Food 3kg"
                     value={name}
                     onChange={(e) => { setName(e.target.value); if (formError) setFormError(''); }}
@@ -541,6 +543,8 @@ export default function InventoryManager({
                     type="number"
                     step="0.01"
                     required
+                    min={0}
+                    max={999999}
                     placeholder="0.00"
                     value={price}
                     onChange={(e) => { setPrice(e.target.value); if (formError) setFormError(''); }}
@@ -553,6 +557,8 @@ export default function InventoryManager({
                   <input name="acquisitionCostCurrencysign" id="acquisition-cost-currencysign"
                     type="number"
                     step="0.01"
+                    min={0}
+                    max={999999}
                     placeholder="22.50"
                     value={cost}
                     onChange={(e) => setCost(e.target.value)}
@@ -567,6 +573,8 @@ export default function InventoryManager({
                       <input name="startingStockUnits" id="starting-stock-units"
                         type="number"
                         required
+                        min={0}
+                        max={999999}
                         placeholder="15"
                         value={stock}
                         onChange={(e) => setStock(e.target.value)}
@@ -578,6 +586,8 @@ export default function InventoryManager({
                       <label className="font-semibold text-slate-700 block" htmlFor="min-stock-safety-threshold">Min Stock Safety Threshold</label>
                       <input name="minStockSafetyThreshold" id="min-stock-safety-threshold"
                         type="number"
+                        min={0}
+                        max={999999}
                         placeholder="5"
                         value={minStock}
                         onChange={(e) => setMinStock(e.target.value)}
@@ -589,6 +599,7 @@ export default function InventoryManager({
                       <label className="font-semibold text-slate-700 block" htmlFor="unit-label">Unit label</label>
                       <input name="unitLabel" id="unit-label"
                         type="text"
+                        maxLength={50}
                         placeholder="item, dose, vial"
                         value={unit}
                         onChange={(e) => setUnit(e.target.value)}
@@ -647,6 +658,7 @@ export default function InventoryManager({
                   <input name="uniqueSkuCode" id="unique-sku-code"
                     type="text"
                     required
+                    maxLength={50}
                     placeholder="e.g. RT-009, SV-012"
                     value={editingSku}
                     onChange={(e) => setEditingSku(e.target.value.toUpperCase())}
@@ -674,6 +686,7 @@ export default function InventoryManager({
                   <input name="catalogItemName" id="catalog-item-name"
                     type="text"
                     required
+                    maxLength={100}
                     placeholder="e.g. Purina Hypoallergenic Vet Food 3kg"
                     value={editingName}
                     onChange={(e) => setEditingName(e.target.value)}
@@ -687,6 +700,8 @@ export default function InventoryManager({
                     type="number"
                     step="0.01"
                     required
+                    min={0}
+                    max={999999}
                     placeholder="45.00"
                     value={editingPrice}
                     onChange={(e) => setEditingPrice(e.target.value)}
@@ -699,6 +714,8 @@ export default function InventoryManager({
                   <input name="acquisitionCostCurrencysign" id="acquisition-cost-currencysign"
                     type="number"
                     step="0.01"
+                    min={0}
+                    max={999999}
                     placeholder="22.50"
                     value={editingCost}
                     onChange={(e) => setEditingCost(e.target.value)}
@@ -713,6 +730,8 @@ export default function InventoryManager({
                       <input name="inventoryStockQuantity" id="inventory-stock-quantity"
                         type="number"
                         required
+                        min={0}
+                        max={999999}
                         placeholder="15"
                         value={editingStock}
                         onChange={(e) => setEditingStock(e.target.value)}
@@ -724,6 +743,8 @@ export default function InventoryManager({
                       <label className="font-semibold text-slate-700 block" htmlFor="min-stock-safety-threshold">Min Stock Safety Threshold</label>
                       <input name="minStockSafetyThreshold" id="min-stock-safety-threshold"
                         type="number"
+                        min={0}
+                        max={999999}
                         placeholder="5"
                         value={editingMinStock}
                         onChange={(e) => setEditingMinStock(e.target.value)}
@@ -735,6 +756,7 @@ export default function InventoryManager({
                       <label className="font-semibold text-slate-700 block" htmlFor="unit-label">Unit label</label>
                       <input name="unitLabel" id="unit-label"
                         type="text"
+                        maxLength={50}
                         placeholder="bag, bottle, caplet, dose"
                         value={editingUnit}
                         onChange={(e) => setEditingUnit(e.target.value)}

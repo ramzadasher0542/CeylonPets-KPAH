@@ -990,6 +990,7 @@ export default function MedicalRecordsManager({
                   <input name="petName" id="pet-name"
                     type="text"
                     required
+                    maxLength={100}
                     placeholder="Coco, Luna"
                     value={newPetName}
                     onChange={(e) => { setNewPetName(e.target.value); if (formError) setFormError(''); }}
@@ -1016,6 +1017,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="breed-details">Breed details</label>
                   <input name="breedDetails" id="breed-details"
                     type="text"
+                    maxLength={100}
                     placeholder="French Bulldog"
                     value={newBreed}
                     onChange={(e) => setNewBreed(e.target.value)}
@@ -1027,6 +1029,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="estimated-age">Estimated Age</label>
                   <input name="estimatedAge" id="estimated-age"
                     type="text"
+                    maxLength={50}
                     placeholder="3 Years / 8 Months"
                     value={newAge}
                     onChange={(e) => setNewAge(e.target.value)}
@@ -1039,6 +1042,8 @@ export default function MedicalRecordsManager({
                   <input name="weightKg" id="weight-kg"
                     type="number"
                     step="0.1"
+                    min={0}
+                    max={999}
                     placeholder="12.5"
                     value={newWeight}
                     onChange={(e) => setNewWeight(e.target.value)}
@@ -1051,6 +1056,7 @@ export default function MedicalRecordsManager({
                   <input name="clientOwnerName" id="client-owner-name"
                     type="text"
                     required
+                    maxLength={100}
                     placeholder="Marcus Avery"
                     value={newOwnerName}
                     onChange={(e) => setNewOwnerName(e.target.value)}
@@ -1063,6 +1069,7 @@ export default function MedicalRecordsManager({
                   <input name="ownerPhone" id="owner-phone"
                     type="text"
                     required
+                    maxLength={25}
                     placeholder="+1 (555) 432-8761"
                     value={newOwnerPhone}
                     onChange={(e) => setNewOwnerPhone(e.target.value)}
@@ -1074,6 +1081,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="owner-email">Owner Email</label>
                   <input name="ownerEmail" id="owner-email"
                     type="email"
+                    maxLength={100}
                     placeholder="marcus.a@example.com"
                     value={newOwnerEmail}
                     onChange={(e) => setNewOwnerEmail(e.target.value)}
@@ -1101,6 +1109,7 @@ export default function MedicalRecordsManager({
                   <textarea name="chiefSymptomsReported" id="chief-symptoms-reported"
                     rows={2}
                     required
+                    maxLength={1000}
                     placeholder="Lethargy, redness around belly skin, frequent head turning..."
                     value={newSymptoms}
                     onChange={(e) => setNewSymptoms(e.target.value)}
@@ -1112,6 +1121,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="clinical-diagnosis-assessment">Clinical Diagnosis Assessment</label>
                   <input name="clinicalDiagnosisAssessment" id="clinical-diagnosis-assessment"
                     type="text"
+                    maxLength={255}
                     placeholder="Allergic flare, standard check-up healthy, mild infection"
                     value={newDiagnosis}
                     onChange={(e) => { setNewDiagnosis(e.target.value); if (formError) setFormError(''); }}
@@ -1123,6 +1133,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="treatment-notes">Treatment Notes</label>
                   <textarea name="treatmentNotes" id="treatment-notes"
                     rows={2}
+                    maxLength={1000}
                     placeholder="Cleaned affected skin, prescribed topical spray. Booster rabies shot administered."
                     value={newTreatmentNotes}
                     onChange={(e) => setNewTreatmentNotes(e.target.value)}
@@ -1177,6 +1188,7 @@ export default function MedicalRecordsManager({
                   <input name="petName" id="pet-name"
                     type="text"
                     required
+                    maxLength={100}
                     value={editPetName}
                     onChange={(e) => setEditPetName(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
@@ -1202,6 +1214,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="breed-details">Breed details</label>
                   <input name="breedDetails" id="breed-details"
                     type="text"
+                    maxLength={100}
                     value={editBreed}
                     onChange={(e) => setEditBreed(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
@@ -1212,6 +1225,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="age-designation">Age designation</label>
                   <input name="ageDesignation" id="age-designation"
                     type="text"
+                    maxLength={50}
                     value={editAge}
                     onChange={(e) => setEditAge(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
@@ -1223,6 +1237,8 @@ export default function MedicalRecordsManager({
                   <input name="measuredWeightKg" id="measured-weight-kg"
                     type="number"
                     step="0.01"
+                    min={0}
+                    max={999}
                     value={editWeight}
                     onChange={(e) => setEditWeight(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
@@ -1238,6 +1254,7 @@ export default function MedicalRecordsManager({
                   <input name="ownerName" id="owner-name"
                     type="text"
                     required
+                    maxLength={100}
                     value={editOwnerName}
                     onChange={(e) => setEditOwnerName(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
@@ -1249,6 +1266,7 @@ export default function MedicalRecordsManager({
                   <input name="contactPhone" id="contact-phone"
                     type="tel"
                     required
+                    maxLength={25}
                     value={editOwnerPhone}
                     onChange={(e) => setEditOwnerPhone(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
@@ -1259,6 +1277,7 @@ export default function MedicalRecordsManager({
                   <label className="font-semibold text-slate-700 block" htmlFor="email-address">Email Address</label>
                   <input name="emailAddress" id="email-address"
                     type="email"
+                    maxLength={100}
                     value={editOwnerEmail}
                     onChange={(e) => setEditOwnerEmail(e.target.value)}
                     className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"

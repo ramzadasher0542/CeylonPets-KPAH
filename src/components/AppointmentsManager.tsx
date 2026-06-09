@@ -321,6 +321,7 @@ export default function AppointmentsManager({
                   <input name="patientName" id="patient-name"
                     type="text"
                     required
+                    maxLength={100}
                     placeholder="Coco, Buster, etc."
                     value={petName}
                     onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }}
@@ -347,6 +348,7 @@ export default function AppointmentsManager({
                   <label className="font-bold text-slate-600 block text-[10px]" htmlFor="breed-description">Breed / Description</label>
                   <input name="breedDescription" id="breed-description"
                     type="text"
+                    maxLength={100}
                     placeholder="Goldendoodle, etc."
                     value={breed}
                     onChange={(e) => setBreed(e.target.value)}
@@ -360,6 +362,7 @@ export default function AppointmentsManager({
                   <input name="ownerName" id="owner-name"
                     type="text"
                     required
+                    maxLength={100}
                     placeholder="Isabella Bennett"
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
@@ -372,6 +375,7 @@ export default function AppointmentsManager({
                   <input name="ownerPhone" id="owner-phone"
                     type="text"
                     required
+                    maxLength={25}
                     placeholder="+1 (555) 781-4200"
                     value={ownerPhone}
                     onChange={(e) => setOwnerPhone(e.target.value)}
@@ -383,6 +387,7 @@ export default function AppointmentsManager({
                   <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-email-address">Owner Email Address</label>
                   <input name="ownerEmailAddress" id="owner-email-address"
                     type="email"
+                    maxLength={100}
                     placeholder="isabella.b@example.com"
                     value={ownerEmail}
                     onChange={(e) => setOwnerEmail(e.target.value)}
@@ -427,6 +432,7 @@ export default function AppointmentsManager({
                   <label className="font-bold text-slate-600 block text-[10px]" htmlFor="reason-for-care-chief-complaint">Reason for Care / Chief Complaint *</label>
                   <textarea name="reasonForCareChiefComplaint" id="reason-for-care-chief-complaint"
                     required
+                    maxLength={1000}
                     rows={1}
                     placeholder="e.g. Coughing, rabies vaccines booster need, ear canal check-up"
                     value={reason}
