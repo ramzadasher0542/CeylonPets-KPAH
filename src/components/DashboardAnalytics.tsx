@@ -71,7 +71,8 @@ export default function DashboardAnalytics({
   }, 0);
 
   const netProfit = totalRevenue - totalCost;
-  const lowStockItems = inventory.filter(item => item.category !== 'service' && item.category !== 'lab_service' && item.stock <= item.minStock);
+  const SERVICE_CATEGORIES = ['service', 'lab_service', 'lab service', 'clinical core service'];
+  const lowStockItems = inventory.filter(item => !SERVICE_CATEGORIES.includes((item.category || '').toLowerCase().trim()) && item.stock <= item.minStock);
   const activeConsultations = appointments.filter(apt => apt.status === 'in-progress' || apt.status === 'booked').length;
   const patientsCount = records.length;
 

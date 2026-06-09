@@ -29,6 +29,18 @@ import {
 import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord } from '../types';
 import { showToast } from './Toast';
 
+// Robust service-category check covering both internal DB keys ('service', 'lab_service')
+// and the human-readable display labels that may have been bulk-imported via CSV.
+const checkIsService = (category: string): boolean => {
+  const cat = (category || '').toLowerCase().trim();
+  return (
+    cat === 'service' ||
+    cat === 'lab_service' ||
+    cat === 'lab service' ||
+    cat === 'clinical core service'
+  );
+};
+
 interface POSProps {
   inventory: InventoryItem[];
   appointments: Appointment[];
@@ -228,7 +240,7 @@ export default function POSRegister({
     );
 
     if (found) {
-      const isService = found.category === 'service' || found.category === 'lab_service';
+      const isService = checkIsService(found.category);
       if (found.stock <= 0 && !isService) {
         setBarcodeFeedback({ text: `Failed: ${found.name} is currently out of stock.`, error: true });
       } else {
@@ -264,7 +276,7 @@ export default function POSRegister({
 
   // Cart operations
   const addToCart = (product: InventoryItem) => {
-    const isService = product.category === 'service' || product.category === 'lab_service';
+    const isService = checkIsService(product.category);
     if (product.stock <= 0 && !isService) {
       showToast(`Critical: ${product.name} is currently out of stock. Please adjust inventory parameters.`, 'error');
       return;
@@ -290,7 +302,7 @@ export default function POSRegister({
     if (newQty <= 0) {
       setCart(cart.filter(i => i.item.id !== productId));
     } else {
-      const isService = existing.item.category === 'service' || existing.item.category === 'lab_service';
+      const isService = checkIsService(existing.item.category);
       if (newQty > itemStock && !isService) {
         showToast(`Warning: Cannot exceed available stock limit of ${itemStock} units.`, 'error');
         return;
@@ -377,7 +389,7 @@ export default function POSRegister({
     try {
       // Apply stock deduction to state sequentially to enforce strict CAS locking
       for (const c of cart) {
-        const isService = c.item.category === 'service' || c.item.category === 'lab_service';
+        const isService = checkIsService(c.item.category);
         if (!isService) {
           // Pass the expected stock to explicitly engage the Compare-And-Swap concurrency lock
           await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
@@ -664,7 +676,7 @@ export default function POSRegister({
             <div className="flex-1 overflow-y-auto min-h-0 custom-scrollbar pb-4 pr-1">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {filteredProducts.map(product => {
-                const isService = product.category === 'service' || product.category === 'lab_service';
+                const isService = checkIsService(product.category);
                 const isLowStock = product.stock <= product.minStock && !isService;
                 return (
                   <div
@@ -674,9 +686,8 @@ export default function POSRegister({
                   >
                     <div className="space-y-1">
                       <span className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full ${
-                        product.category === 'service' ? 'bg-sky-100 text-sky-800' :
+                        isService ? 'bg-sky-100 text-sky-800' :
                         product.category === 'vaccine' ? 'bg-fuchsia-100 text-fuchsia-800' :
-                        product.category === 'lab_service' ? 'bg-purple-100 text-purple-800' :
                         product.category === 'prescription' ? 'bg-emerald-100 text-emerald-800' :
                         product.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
                         'bg-amber-100 text-amber-800'
@@ -686,7 +697,9 @@ export default function POSRegister({
                       <h5 className="text-xs font-bold text-slate-800 tracking-tight leading-snug mt-1 group-hover:text-sky-600 line-clamp-2">
                         {product.name}
                       </h5>
-                      {!isService && (
+                      {isService ? (
+                        <span className="text-[10px] font-mono block text-sky-500 font-semibold">Service</span>
+                      ) : (
                         <span className={`text-[10px] font-mono block ${isLowStock ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
                           Stock: {product.stock} {product.unit}s
                         </span>
