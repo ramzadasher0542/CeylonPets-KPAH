@@ -1860,9 +1860,9 @@ export default function SystemSettings({
                     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                       <span className="font-bold text-slate-500 block text-[9px] uppercase tracking-wider">CSV Data Format Reference:</span>
                       <div className="font-mono text-[9px] text-slate-600 overflow-x-auto whitespace-pre p-2 bg-white rounded border">
-{`id,sku,name,category,price,cost,stock,minStock,unit,location
-inv-vax-01,SKU-CAN-VAX,Rabies Booster,medication,45.00,20.00,85,15,dose,Shelf-C3
-inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
+{`sku,name,category,price,cost,stock,threshold,unit
+SKU-CAN-VAX,Rabies Booster,medication,45.00,20.00,85,15,dose
+SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit`}
                       </div>
                       <p className="text-[10px] text-slate-400 font-medium">
                         * Supported categories are <code className="font-mono bg-white px-1 border rounded text-slate-700">medication</code>, <code className="font-mono bg-white px-1 border rounded text-slate-700">retail</code>, and <code className="font-mono bg-white px-1 border rounded text-slate-700">service</code>.
@@ -1887,12 +1887,12 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                         return;
                       }
 
-                      const headers = ['id', 'sku', 'name', 'category', 'price', 'cost', 'stock', 'minStock', 'unit', 'location'];
+                      const headers = ['sku', 'name', 'category', 'price', 'cost', 'stock', 'threshold', 'unit'];
                       const csvRows = [headers.join(',')];
 
                       inventory.forEach(item => {
                         const rowValues = headers.map(header => {
-                          const val = (item as any)[header] ?? '';
+                          const val = header === 'threshold' ? item.minStock : (item as any)[header] ?? '';
                           const stringVal = String(val);
                           if (stringVal.includes(',') || stringVal.includes('\n') || stringVal.includes('"')) {
                             return `"${stringVal.replace(/"/g, '""')}"`;
@@ -1970,7 +1970,7 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                           setCsvText(e.target.value);
                           setCsvIsValidated(false);
                         }}
-                        placeholder="id,sku,name,category,price,cost,stock,minStock,unit,location&#13;&#10;inv-101,SKU-SAMPLE,Sample Product,retail,12.50,6.00,10,2,unit,Aisle-A"
+                        placeholder="sku,name,category,price,cost,stock,threshold,unit&#13;&#10;SKU-SAMPLE,Sample Product,retail,12.50,6.00,10,2,unit"
                         className="w-full h-24 p-3 bg-white border text-slate-800 font-mono text-[9px] rounded-lg tracking-normal max-h-40 focus:ring-1 focus:ring-indigo-500"
                       />
                     </div>
@@ -2137,13 +2137,14 @@ inv-ret-02,SKU-COLL-BLU,Reflective Collar,retail,18.50,8.00,40,10,unit,Aisle-1`}
                           parsedRows.forEach((row, idx) => {
                             const sku = row.sku || `SKU-${Date.now()}-${idx}`;
                             const name = row.name || `Bulk Item ${idx + 1}`;
-                            const category = ['service', 'retail', 'medication'].includes(row.category || '') 
+                            const category = ['service', 'lab_service', 'retail', 'medication', 'vaccine', 'prescription'].includes(row.category || '') 
                               ? (row.category as any) 
                               : 'retail';
+                            const isService = category === 'service' || category === 'lab_service';
                             const price = isNaN(Number(row.price)) ? 0 : Number(row.price);
                             const cost = isNaN(Number(row.cost)) ? 0 : Number(row.cost);
-                            const stock = isNaN(Number(row.stock)) ? 0 : Number(row.stock);
-                            const minStock = isNaN(Number(row.minstock || row.minStock)) ? 0 : Number(row.minstock || row.minStock);
+                            const stock = isService ? 999999 : (isNaN(Number(row.stock)) ? 0 : Number(row.stock));
+                            const minStock = isService ? 0 : (isNaN(Number(row.threshold || row.minstock || row.minStock)) ? 0 : Number(row.threshold || row.minstock || row.minStock));
                             const unit = row.unit || 'pcs';
                             const location = row.location || '';
                             const id = row.id || `inv-${Date.now()}-${idx}-${Math.random().toString(36).substring(2, 6)}`;

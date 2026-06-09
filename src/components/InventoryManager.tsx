@@ -121,6 +121,13 @@ export default function InventoryManager({
     const stockNum = parseInt(stock) || 0;
     const minNum = parseInt(minStock) || 0;
 
+    const isService = category === 'service' || category === 'lab_service';
+    
+    if (!isService && stockNum < 0) {
+      setFormError('Stock cannot be negative for physical items.');
+      return;
+    }
+
     const newItem: InventoryItem = {
       id: `inv-${Date.now()}`,
       sku,
@@ -128,8 +135,8 @@ export default function InventoryManager({
       category,
       price: priceNum,
       cost: costNum,
-      stock: category === 'service' ? 9999 : stockNum,
-      minStock: category === 'service' ? 0 : minNum,
+      stock: isService ? 999999 : stockNum,
+      minStock: isService ? 0 : minNum,
       unit
     };
 
@@ -165,8 +172,8 @@ export default function InventoryManager({
           category: editingCategory,
           price: parseFloat(editingPrice) || 0,
           cost: parseFloat(editingCost) || 0,
-          stock: editingCategory === 'service' ? 9999 : parseInt(editingStock) || 0,
-          minStock: editingCategory === 'service' ? 0 : parseInt(editingMinStock) || 0,
+          stock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 999999 : parseInt(editingStock) || 0,
+          minStock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 0 : parseInt(editingMinStock) || 0,
           unit: editingUnit
         };
       }
@@ -534,7 +541,7 @@ export default function InventoryManager({
                     type="number"
                     step="0.01"
                     required
-                    placeholder="45.00"
+                    placeholder="0.00"
                     value={price}
                     onChange={(e) => { setPrice(e.target.value); if (formError) setFormError(''); }}
                     className={`w-full px-3 py-2 bg-slate-50 border ${formError && !price ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 font-mono font-bold`}
@@ -553,7 +560,7 @@ export default function InventoryManager({
                   />
                 </div>
 
-                {category !== 'service' && (
+                {category !== 'service' && category !== 'lab_service' && (
                   <>
                     <div className="space-y-1">
                       <label className="font-semibold text-slate-700 block" htmlFor="starting-stock-units">Starting Stock Units *</label>
@@ -582,7 +589,7 @@ export default function InventoryManager({
                       <label className="font-semibold text-slate-700 block" htmlFor="unit-label">Unit label</label>
                       <input name="unitLabel" id="unit-label"
                         type="text"
-                        placeholder="bag, bottle, caplet, dose"
+                        placeholder="item, dose, vial"
                         value={unit}
                         onChange={(e) => setUnit(e.target.value)}
                         className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
