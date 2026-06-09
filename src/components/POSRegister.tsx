@@ -59,7 +59,7 @@ export default function POSRegister({
   onTriggerInventorySync
 }: POSProps) {
   // POS States
-  const [activeTab, setActiveTab] = useState<'service' | 'medication' | 'retail' | 'ledger'>('service');
+  const [activeTab, setActiveTab] = useState<'service' | 'vaccine' | 'lab_service' | 'prescription' | 'retail' | 'ledger'>('service');
   const [searchQuery, setSearchQuery] = useState('');
   const [barcodeInput, setBarcodeInput] = useState('');
   const [barcodeFeedback, setBarcodeFeedback] = useState<{ text: string; error: boolean } | null>(null);
@@ -127,7 +127,9 @@ export default function POSRegister({
   // Tabs style config matching the pastel sky blue interior
   const tabStyles = {
     service: { bg: 'bg-sky-50 text-sky-800 border-sky-300', active: 'bg-sky-500 text-white border-sky-500 shadow-sm' },
-    medication: { bg: 'bg-emerald-50 text-emerald-800 border-emerald-300', active: 'bg-emerald-600 text-white border-emerald-600 shadow-sm' },
+    vaccine: { bg: 'bg-fuchsia-50 text-fuchsia-800 border-fuchsia-300', active: 'bg-fuchsia-500 text-white border-fuchsia-500 shadow-sm' },
+    lab_service: { bg: 'bg-purple-50 text-purple-800 border-purple-300', active: 'bg-purple-500 text-white border-purple-500 shadow-sm' },
+    prescription: { bg: 'bg-emerald-50 text-emerald-800 border-emerald-300', active: 'bg-emerald-600 text-white border-emerald-600 shadow-sm' },
     retail: { bg: 'bg-amber-50 text-amber-800 border-amber-300', active: 'bg-amber-500 text-white border-amber-500 shadow-sm' },
     ledger: { bg: 'bg-slate-50 text-slate-700 border-slate-300', active: 'bg-blue-50 text-blue-700 border-blue-500 shadow-sm' }
   };
@@ -204,14 +206,7 @@ export default function POSRegister({
 
   // Filter items based on active tab and search query
   const filteredProducts = inventory.filter(item => {
-    let itemTab: string = item.category;
-    if (item.category === 'vaccine' || item.category === 'lab_service') {
-      itemTab = 'service';
-    } else if (item.category === 'prescription') {
-      itemTab = 'medication';
-    }
-
-    const matchesTab = itemTab === activeTab;
+    const matchesTab = item.category === activeTab;
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.sku.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesTab && matchesSearch;
@@ -622,38 +617,54 @@ export default function POSRegister({
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
             <button
               onClick={() => setActiveTab('service')}
-              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-1 border rounded-xl text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                 activeTab === 'service' ? tabStyles.service.active : tabStyles.service.bg
               }`}
             >
-              <HeartPulse className="h-4 w-4" /> Medicine & Services
+              Clinical
             </button>
             <button
-              onClick={() => setActiveTab('medication')}
-              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === 'medication' ? tabStyles.medication.active : tabStyles.medication.bg
+              onClick={() => setActiveTab('vaccine')}
+              className={`py-2 px-1 border rounded-xl text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
+                activeTab === 'vaccine' ? tabStyles.vaccine.active : tabStyles.vaccine.bg
               }`}
             >
-              <FileText className="h-4 w-4" /> Rx Pharmacy
+              Vaccines
+            </button>
+            <button
+              onClick={() => setActiveTab('lab_service')}
+              className={`py-2 px-1 border rounded-xl text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
+                activeTab === 'lab_service' ? tabStyles.lab_service.active : tabStyles.lab_service.bg
+              }`}
+            >
+              Labs
+            </button>
+            <button
+              onClick={() => setActiveTab('prescription')}
+              className={`py-2 px-1 border rounded-xl text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
+                activeTab === 'prescription' ? tabStyles.prescription.active : tabStyles.prescription.bg
+              }`}
+            >
+              Pharmacy
             </button>
             <button
               onClick={() => setActiveTab('retail')}
-              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-1 border rounded-xl text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                 activeTab === 'retail' ? tabStyles.retail.active : tabStyles.retail.bg
               }`}
             >
-              <ShoppingBag className="h-4 w-4" /> Pet Retail Shop
+              Pet Shop
             </button>
             <button
               onClick={() => setActiveTab('ledger')}
-              className={`py-2 px-3 border rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-1 border rounded-xl text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
                 activeTab === 'ledger' ? tabStyles.ledger.active : tabStyles.ledger.bg
               }`}
             >
-              <FileCheck2 className="h-4 w-4" /> Transaction Ledger
+              Ledger
             </button>
           </div>
         </div>

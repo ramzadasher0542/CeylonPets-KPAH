@@ -89,7 +89,7 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
 
 export async function upsertInventoryItem(item: InventoryItem): Promise<void> {
   try {
-    await supabaseUpsert(DB_TABLES.INVENTORY, {
+    const payload = {
       id:        item.id,
       sku:       item.sku,
       name:      item.name,
@@ -100,7 +100,14 @@ export async function upsertInventoryItem(item: InventoryItem): Promise<void> {
       min_stock: item.minStock,
       unit:      item.unit,
       location:  item.location ?? null,
-    });
+    };
+
+    if (payload.category === 'lab_service' || payload.category === 'service') { 
+      payload.stock = 0; 
+      payload.min_stock = 0; 
+    }
+
+    await supabaseUpsert(DB_TABLES.INVENTORY, payload);
   } catch (err) {
     console.warn('[CeylonPets] upsertInventoryItem offline:', err);
     throw err;
