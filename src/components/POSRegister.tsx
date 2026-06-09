@@ -337,20 +337,25 @@ export default function POSRegister({
   let selectedRecord = records.find(r => r.id === selectedPetId);
 
   // Trigger Checkout
-  const handleCheckoutSubmit = async () => {
-    if (cart.length === 0) return;
+  const handleCheckoutSubmit = async (): Promise<boolean> => {
+    if (cart.length === 0) {
+      showToast('Cannot checkout: Cart is empty.', 'error');
+      return false;
+    }
 
     // Fetch and Attach the Active Shift
     const activeShiftId = await fetchActiveShiftId();
     if (!activeShiftId) {
-      showToast('Checkout Blocked: No active shift found. Please open a shift first.', 'error');
-      return;
+      showToast('Cannot checkout: No open shift detected in state.', 'error');
+      return false;
     }
 
     // Create a new invoice and calculate COGS
     let totalCogs = 0;
     const newInvItems: InvoiceItem[] = cart.map(c => {
-      totalCogs += ((c.item.cost || 0) * c.quantity);
+      const itemCost = Number(c.item.cost) || 0;
+      const itemCogs = itemCost * c.quantity;
+      totalCogs += itemCogs;
       return {
         itemId: c.item.id,
         sku: c.item.sku,
@@ -395,20 +400,23 @@ export default function POSRegister({
           await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
         }
       }
-      
+      console.log('Supabase Payload:', invoiceObj);
       await onAddInvoice(invoiceObj);
 
       setCheckoutSuccess(invoiceObj);
       setCart([]);
       setDiscountVal(0);
       setSelectedPetId('walkin');
+      return true;
     } catch (err: any) {
+      console.error('Supabase Rejection:', err);
       if (err.message === 'CAS_MISMATCH') {
         showToast('Checkout Aborted: Another terminal just purchased the last of this item.', 'error');
         if (onTriggerInventorySync) onTriggerInventorySync();
-        return; // Hard abort the rest of the checkout flow, preventing ledger changes
+        return false; // Hard abort the rest of the checkout flow, preventing ledger changes
       }
       showToast('Error during checkout sequence. Please try again.', 'error');
+      return false;
     }
   };
 
@@ -1110,11 +1118,11 @@ export default function POSRegister({
                     placeholder={`Enter cash amount (${currencySign})`}
                     value={amountReceived}
                     onChange={(e) => setAmountReceived(e.target.value)}
-                    onKeyDown={(e) => {
+                    onKeyDown={async (e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
-                        handleCheckoutSubmit();
-                        setShowCheckoutModal(false);
+                        const success = await handleCheckoutSubmit();
+                        if (success) setShowCheckoutModal(false);
                       }
                     }}
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs font-bold"
@@ -1145,9 +1153,9 @@ export default function POSRegister({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  handleCheckoutSubmit();
-                  setShowCheckoutModal(false);
+                onClick={async () => {
+                  const success = await handleCheckoutSubmit();
+                  if (success) setShowCheckoutModal(false);
                 }}
                 className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer shadow-xs"
               >
