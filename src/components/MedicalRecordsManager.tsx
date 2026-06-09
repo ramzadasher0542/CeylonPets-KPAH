@@ -74,7 +74,7 @@ export default function MedicalRecordsManager({
   const [formError, setFormError] = useState('');
   const [newAttendingVet, setNewAttendingVet] = useState(() => {
     if (currentUser && (currentUser.role === 'veterinarian' || currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.role === 'dummy_admin')) {
-      return currentUser.name;
+      return currentUser.id;
     }
     return '';
   });
@@ -1091,7 +1091,7 @@ export default function MedicalRecordsManager({
                   >
                     <option value="">-- Select Doctor --</option>
                     {users?.filter(u => u.role === 'veterinarian' || u.role === 'admin' || u.role === 'owner' || u.role === 'dummy_admin').map(u => (
-                      <option key={u.id} value={u.name}>{u.name}</option>
+                      <option key={u.id} value={u.id}>{u.name}</option>
                     ))}
                   </select>
                 </div>

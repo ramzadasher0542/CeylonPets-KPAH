@@ -264,6 +264,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     const { data, error } = await supabase
       .from(DB_TABLES.INVOICES)
       .select('id, pet_name, owner_name, date, total, payment_status, data')
+      .eq('is_active', true)
       .order('date', { ascending: false });
 
     if (error) throw error;
