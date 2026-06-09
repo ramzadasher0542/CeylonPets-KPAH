@@ -69,6 +69,7 @@ export default function MedicalRecordsManager({
   const [newSymptoms, setNewSymptoms] = useState('');
   const [newDiagnosis, setNewDiagnosis] = useState('');
   const [newTreatmentNotes, setNewTreatmentNotes] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Edit Patient Entry Form values
   const [showEditRecordForm, setShowEditRecordForm] = useState(false);
@@ -145,8 +146,8 @@ export default function MedicalRecordsManager({
 
   const handleCreateNewEHR = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPetName || !newOwnerName || !newOwnerPhone) {
-      showToast('Patient descriptors cannot be empty.', 'error');
+    if (!newPetName || !newDiagnosis) {
+      setFormError('Patient Name and Clinical Assessment are required.');
       return;
     }
 
@@ -186,6 +187,7 @@ export default function MedicalRecordsManager({
     setNewSymptoms('');
     setNewDiagnosis('');
     setNewTreatmentNotes('');
+    setFormError('');
   };
 
   const handleSaveEditEHR = (e: React.FormEvent) => {
@@ -966,6 +968,11 @@ export default function MedicalRecordsManager({
             </div>
 
             <form onSubmit={handleCreateNewEHR} className="space-y-4">
+              {formError && (
+                <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
+                  {formError}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 {/* Pet descriptor */}
@@ -976,8 +983,8 @@ export default function MedicalRecordsManager({
                     required
                     placeholder="Coco, Luna"
                     value={newPetName}
-                    onChange={(e) => setNewPetName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    onChange={(e) => { setNewPetName(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-3 py-2 bg-slate-50 border ${formError && !newPetName ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800`}
                   />
                 </div>
 
@@ -1084,8 +1091,8 @@ export default function MedicalRecordsManager({
                     type="text"
                     placeholder="Allergic flare, standard check-up healthy, mild infection"
                     value={newDiagnosis}
-                    onChange={(e) => setNewDiagnosis(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    onChange={(e) => { setNewDiagnosis(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-3 py-2 bg-slate-50 border ${formError && !newDiagnosis ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800`}
                   />
                 </div>
 

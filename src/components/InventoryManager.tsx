@@ -47,6 +47,7 @@ export default function InventoryManager({
   const [stock, setStock] = useState('');
   const [minStock, setMinStock] = useState('');
   const [unit, setUnit] = useState('item');
+  const [formError, setFormError] = useState('');
 
   // Edit stock states
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
@@ -111,7 +112,7 @@ export default function InventoryManager({
   const handleAddProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!sku || !name || !price) {
-      showToast('All required asterisked fields must be completed.', 'success');
+      setFormError('SKU Code, Item Name, and Retail Price are required.');
       return;
     }
 
@@ -143,6 +144,7 @@ export default function InventoryManager({
     setStock('');
     setMinStock('');
     setUnit('item');
+    setFormError('');
   };
 
   const handleEditProductSubmit = (e: React.FormEvent) => {
@@ -480,6 +482,11 @@ export default function InventoryManager({
             </div>
 
             <form onSubmit={handleAddProductSubmit} className="space-y-4">
+              {formError && (
+                <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
+                  {formError}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <div className="space-y-1">
@@ -489,8 +496,8 @@ export default function InventoryManager({
                     required
                     placeholder="e.g. RT-009, SV-012"
                     value={sku}
-                    onChange={(e) => setSku(e.target.value.toUpperCase())}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono uppercase font-bold"
+                    onChange={(e) => { setSku(e.target.value.toUpperCase()); if (formError) setFormError(''); }}
+                    className={`w-full px-3 py-2 bg-slate-50 border ${formError && !sku ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 font-mono uppercase font-bold`}
                   />
                 </div>
 
@@ -516,8 +523,8 @@ export default function InventoryManager({
                     required
                     placeholder="e.g. Purina Hypoallergenic Vet Food 3kg"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                    onChange={(e) => { setName(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-3 py-2 bg-slate-50 border ${formError && !name ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800`}
                   />
                 </div>
 
@@ -529,8 +536,8 @@ export default function InventoryManager({
                     required
                     placeholder="45.00"
                     value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono font-bold"
+                    onChange={(e) => { setPrice(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-3 py-2 bg-slate-50 border ${formError && !price ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 font-mono font-bold`}
                   />
                 </div>
 

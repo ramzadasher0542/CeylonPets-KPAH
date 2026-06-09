@@ -55,6 +55,7 @@ export default function AppointmentsManager({
   const [time, setTime] = useState('09:00');
   const [veterinarian, setVeterinarian] = useState('Dr. Kandy Cruz, DVM');
   const [reason, setReason] = useState('');
+  const [formError, setFormError] = useState('');
 
   // Apply scheduling filters
   const filteredAppointments = appointments.filter(apt => {
@@ -80,8 +81,8 @@ export default function AppointmentsManager({
 
   const handleCreateAppointment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!petName || !ownerName || !ownerPhone || !reason) {
-      showToast('Please complete all veterinary scheduling details', 'info');
+    if (!petName || !date) {
+      setFormError('Patient Name and Visit Date are required.');
       return;
     }
 
@@ -110,6 +111,7 @@ export default function AppointmentsManager({
     setOwnerPhone('');
     setOwnerEmail('');
     setReason('');
+    setFormError('');
   };
 
   const handleCheckIn = (apt: Appointment) => {
@@ -306,6 +308,11 @@ export default function AppointmentsManager({
             </div>
 
             <form onSubmit={handleCreateAppointment} className="space-y-3">
+              {formError && (
+                <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
+                  {formError}
+                </div>
+              )}
               <div className="grid grid-cols-3 gap-2.5 text-[11px]">
                 
                 {/* Pet info */}
@@ -316,8 +323,8 @@ export default function AppointmentsManager({
                     required
                     placeholder="Coco, Buster, etc."
                     value={petName}
-                    onChange={(e) => setPetName(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !petName ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`}
                   />
                 </div>
 
@@ -389,8 +396,8 @@ export default function AppointmentsManager({
                   <input name="visitDate" id="visit-date"
                     type="date"
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    onChange={(e) => { setDate(e.target.value); if (formError) setFormError(''); }}
+                    className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !date ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`}
                   />
                 </div>
 
