@@ -26,21 +26,11 @@ import {
   Cloud,
   Smartphone
 } from 'lucide-react';
-import { User, UserRole, InventoryItem, Invoice, ItemCategory } from '../types';
+import { User, UserRole, InventoryItem, Invoice } from '../types';
 import { showToast } from './Toast';
 import { uploadImageToStorage } from '../lib/supabase';
 import { upsertSystemConfig, deleteStaffUser, upsertStaffUser } from '../lib/auth';
 import emailjs from '@emailjs/browser';
-
-const mapCsvCategory = (rawCat: string): ItemCategory | null => {
-  const norm = (rawCat || '').trim().toLowerCase();
-  if (norm === 'pet retail product' || norm === 'retail') return 'retail';
-  if (norm === 'prescription medicine' || norm === 'medication' || norm === 'prescription') return 'prescription';
-  if (norm === 'vaccine') return 'vaccine';
-  if (norm === 'lab service' || norm === 'lab_service') return 'lab_service';
-  if (norm === 'clinical core service' || norm === 'service') return 'service';
-  return null;
-};
 
 export interface SystemConfig {
   appName: string;
@@ -218,10 +208,21 @@ export default function SystemSettings({
     }
   };
 
-  const runValidation = (text: string, mode: string) => {
-    const lines = text.split(/\r?\n/);
+  const handleValidateCSV = () => {
+    setCsvValidationErrors([]);
+    setCsvValidationSuccess([]);
+    setCsvIsValidated(false);
+
+    if (!csvText.trim()) {
+      alert("Please paste some CSV data or upload a file first.");
+      return;
+    }
+
+    const lines = csvText.split(/\r?\n/);
     if (lines.length === 0 || !lines[0].trim()) {
-      return { errors: ["CSV file is empty or has no header row."], successes: [], count: 0 };
+      setCsvValidationErrors(["CSV file is empty or has no header row."]);
+      setCsvIsValidated(true);
+      return;
     }
 
     const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, '').toLowerCase());
@@ -262,10 +263,10 @@ export default function SystemSettings({
 
       const itemSku = values[headers.indexOf('sku')]?.replace(/^["']|["']$/g, '') || '';
       const itemName = values[headers.indexOf('name')]?.replace(/^["']|["']$/g, '') || '';
+      const itemCategory = values[headers.indexOf('category')]?.replace(/^["']|["']$/g, '') || '';
       const itemPrice = values[headers.indexOf('price')]?.replace(/^["']|["']$/g, '') || '';
       const itemCost = values[headers.indexOf('cost')]?.replace(/^["']|["']$/g, '') || '';
       const itemStock = values[headers.indexOf('stock')]?.replace(/^["']|["']$/g, '') || '';
-      const itemCategory = values[headers.indexOf('category')]?.replace(/^["']|["']$/g, '') || '';
 
       const lineNum = i + 1;
 
@@ -278,7 +279,7 @@ export default function SystemSettings({
           skuSet.add(itemSku);
         }
 
-        if (mode === 'merge') {
+        if (csvImportMode === 'merge') {
           const skuConflict = inventory.find(inv => inv.sku === itemSku);
           if (skuConflict) {
             successes.push(`SKU Overwrite: Item SKU "${itemSku}" already exists in clinical files. It will be updated (Strategy: Merge).`);
@@ -290,23 +291,30 @@ export default function SystemSettings({
         errors.push(`Row ${lineNum}: Missing Name parameter.`);
       }
 
-      if (itemCategory) {
-        const mappedCategory = mapCsvCategory(itemCategory);
-        if (!mappedCategory) {
-          errors.push(`Row ${lineNum}: Invalid category '${itemCategory}'. Must be one of: 'Pet Retail product', 'Prescription Medicine', 'Vaccine', 'Lab Service', 'Clinical Core Service'.`);
-        }
-      }
-
-      if (itemPrice && isNaN(Number(itemPrice))) {
+      if (!itemPrice || isNaN(Number(itemPrice))) {
         errors.push(`Row ${lineNum}: Price "${itemPrice}" is not a valid number.`);
       } else if (Number(itemPrice) < 0) {
         errors.push(`Row ${lineNum}: Price "${itemPrice}" cannot be negative.`);
       }
 
-      if (itemCost && isNaN(Number(itemCost))) {
+      if (!itemCost || isNaN(Number(itemCost))) {
         errors.push(`Row ${lineNum}: Cost "${itemCost}" is not a valid number.`);
       } else if (Number(itemCost) < 0) {
         errors.push(`Row ${lineNum}: Cost "${itemCost}" cannot be negative.`);
+      }
+
+      const validCategories = [
+        'retail', 'pet retail product',
+        'prescription', 'prescription medicine', 'medication',
+        'vaccine',
+        'lab_service', 'lab service',
+        'service', 'clinical core service'
+      ];
+
+      if (!itemCategory) {
+        errors.push(`Row ${lineNum}: Missing Category parameter.`);
+      } else if (!validCategories.includes(itemCategory.toLowerCase())) {
+        errors.push(`Row ${lineNum}: Invalid category "${itemCategory}". Must be one of 'Pet Retail product', 'Prescription Medicine', 'Vaccine', 'Lab Service', 'Clinical Core Service'.`);
       }
 
       if (itemStock && isNaN(Number(itemStock))) {
@@ -324,17 +332,8 @@ export default function SystemSettings({
       successes.push(`Audited ${skuSet.size} records. Found ${errors.length} validation warning(s).`);
     }
 
-    return { errors, successes, count: skuSet.size };
-  };
-
-  const handleValidateCSV = () => {
-    if (!csvText.trim()) {
-      alert("Please paste some CSV data or upload a file first.");
-      return;
-    }
-    const res = runValidation(csvText, csvImportMode);
-    setCsvValidationErrors(res.errors);
-    setCsvValidationSuccess(res.successes);
+    setCsvValidationErrors(errors);
+    setCsvValidationSuccess(successes);
     setCsvIsValidated(true);
   };
 
@@ -1867,12 +1866,11 @@ export default function SystemSettings({
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-indigo-900 font-extrabold text-sm">
                       <Download className="h-5 w-5 text-indigo-600" />
-                      <span>Inventory Export & Management</span>
+                      <span>1. Inventory Export & Management</span>
                     </div>
                     <p className="text-slate-550 leading-relaxed font-semibold">
                       Download a raw, standard Comma-Separated Values (CSV) sheet containing all your live inventory items, stock quantities, pricing list, and location rows. Keep this as a secure local spreadsheet backup or use it as a template for bulk adjustments.
                     </p>
-
 
 
                     <div className="flex items-center justify-between p-3.5 bg-indigo-50/40 border border-indigo-100 rounded-xl">
@@ -1929,7 +1927,7 @@ export default function SystemSettings({
                     className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-2 text-sm"
                   >
                     <Download className="h-4.5 w-4.5" />
-                    <span>Download Template / Export CSV</span>
+                    <span>Download Inventory CSV Sheet</span>
                   </button>
                 </div>
 
@@ -1937,7 +1935,7 @@ export default function SystemSettings({
                 <div className="p-5 border bg-white rounded-2xl space-y-4 border-slate-100 shadow-sm">
                   <div className="flex items-center gap-2 text-slate-800 font-extrabold text-sm">
                     <Upload className="h-5 w-5 text-emerald-600" />
-                    <span>Bulk Import Clinician Stock</span>
+                    <span>2. Inventory Import & Validation</span>
                   </div>
                   <p className="text-slate-550 leading-relaxed font-semibold">
                     Merge new stock parameters or replace the entire database. You can drop a <code className="font-mono font-bold text-slate-800 bg-slate-100 px-1 border rounded">.csv</code> file or paste spreadsheet values below.
@@ -2015,8 +2013,8 @@ export default function SystemSettings({
                             : 'bg-white text-slate-500 border-slate-205 hover:bg-slate-100 font-semibold'
                         }`}>
                           <div className="flex flex-col text-left">
-                            <span className="text-[11px] text-rose-700 font-bold uppercase">Wipe & Replace (DANGER)</span>
-                            <span className="text-[8px] text-rose-400 font-medium">Deletes all existing products completely</span>
+                            <span className="text-[11px] text-rose-700">Wipe & Replace</span>
+                            <span className="text-[8px] text-slate-400 font-medium">Purge all stock, overwrite completely</span>
                           </div>
                           <input id="input-radio-2"
                             type="radio"
@@ -2079,19 +2077,17 @@ export default function SystemSettings({
 
                     <button
                       type="button"
-                      disabled={!csvText.trim()}
+                      disabled={!csvText.trim() || (csvIsValidated && csvValidationErrors.some(e => e.includes('headers')))}
                       onClick={() => {
                         if (!csvText.trim()) return;
 
-                        // Pre-flight Validation
-                        const res = runValidation(csvText, csvImportMode);
-                        setCsvValidationErrors(res.errors);
-                        setCsvValidationSuccess(res.successes);
-                        setCsvIsValidated(true);
-
-                        if (res.errors.length > 0) {
-                          alert(`Validation failed with ${res.errors.length} errors. Please fix them before importing.`);
-                          return;
+                        if (!csvIsValidated) {
+                           alert("Please run 'Pre-Validate Database CSV Sheet' first.");
+                           return;
+                        }
+                        if (csvValidationErrors.length > 0) {
+                           alert("Cannot import due to validation errors. Please fix them and re-validate.");
+                           return;
                         }
 
                         if (csvImportMode === 'replace') {
@@ -2100,11 +2096,6 @@ export default function SystemSettings({
                           );
                           if (!confirmReplace) return;
                         }
-
-                        const confirmImport = window.confirm(
-                          `Importing ${res.count} items. 0 errors found. Continue?`
-                        );
-                        if (!confirmImport) return;
 
                         try {
                           const parsedRows = (() => {
@@ -2162,7 +2153,9 @@ export default function SystemSettings({
                           parsedRows.forEach((row, idx) => {
                             const sku = row.sku || `SKU-${Date.now()}-${idx}`;
                             const name = row.name || `Bulk Item ${idx + 1}`;
-                            const category = mapCsvCategory(row.category) || 'retail';
+                            const category = ['service', 'lab_service', 'retail', 'medication', 'vaccine', 'prescription'].includes(row.category || '') 
+                              ? (row.category as any) 
+                              : 'retail';
                             const isService = category === 'service' || category === 'lab_service';
                             const price = isNaN(Number(row.price)) ? 0 : Number(row.price);
                             const cost = isNaN(Number(row.cost)) ? 0 : Number(row.cost);
@@ -2226,7 +2219,7 @@ export default function SystemSettings({
                         }
                       }}
                       className={`w-full py-3 text-white font-extrabold rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer text-sm shadow-xs ${
-                        csvText.trim()
+                        csvText.trim() && !(csvIsValidated && csvValidationErrors.some(e => e.includes('headers')))
                           ? 'bg-emerald-600 hover:bg-emerald-700' 
                           : 'bg-slate-300 cursor-not-allowed opacity-50'
                       }`}
