@@ -340,16 +340,29 @@ export default function POSRegister({
   const handleCheckoutSubmit = async () => {
     if (cart.length === 0) return;
 
-    // Create a new invoice
-    const newInvItems: InvoiceItem[] = cart.map(c => ({
-      itemId: c.item.id,
-      sku: c.item.sku,
-      name: c.item.name,
-      category: c.item.category,
-      quantity: c.quantity,
-      unitPrice: c.item.price,
-      totalPrice: Math.round((c.item.price * c.quantity) * 100) / 100
-    }));
+    // Fetch and Attach the Active Shift
+    const activeShiftId = await fetchActiveShiftId();
+    if (!activeShiftId) {
+      showToast('Checkout Blocked: No active shift found. Please open a shift first.', 'error');
+      return;
+    }
+
+    // Create a new invoice and calculate COGS
+    let totalCogs = 0;
+    const newInvItems: InvoiceItem[] = cart.map(c => {
+      totalCogs += ((c.item.cost || 0) * c.quantity);
+      return {
+        itemId: c.item.id,
+        sku: c.item.sku,
+        name: c.item.name,
+        category: c.item.category,
+        quantity: c.quantity,
+        unitPrice: c.item.price,
+        totalPrice: Math.round((c.item.price * c.quantity) * 100) / 100
+      };
+    });
+
+    const profit = total - totalCogs;
 
     const invoiceObj: Invoice = {
       id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
@@ -364,6 +377,9 @@ export default function POSRegister({
       tax: tax,
       discount: discount,
       total: total,
+      cogs: totalCogs,
+      profit: profit,
+      shiftId: activeShiftId,
       paymentMethod: paymentMethod,
       paymentStatus: 'paid',
       createdBy: currentUser?.name || 'Unknown',

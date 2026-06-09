@@ -122,6 +122,8 @@ export interface Invoice {
   tax: number;
   discount: number;
   total: number;
+  cogs?: number;
+  profit?: number;
   paymentMethod?: PaymentMethod;
   paymentStatus: 'unpaid' | 'paid' | 'void';
   createdBy: string;

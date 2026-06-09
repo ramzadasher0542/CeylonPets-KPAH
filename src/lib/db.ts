@@ -296,7 +296,11 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       owner_name:     inv.ownerName,
       date:           inv.date,
       total:          inv.total,
-      payment_status: inv.paymentStatus,
+      profit:         inv.profit || 0,
+      cogs:           inv.cogs || 0,
+      status:         inv.paymentStatus,
+      payment_method: inv.paymentMethod,
+      shift_id:       inv.shiftId,
       data:           inv,   // full object stored as JSONB
     });
   } catch (err) {
