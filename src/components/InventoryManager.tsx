@@ -271,7 +271,7 @@ export default function InventoryManager({
             </thead>
             <tbody className="divide-y divide-sky-50 font-medium">
               {filteredProducts.map(item => {
-                const isService = item.category === 'service';
+                const isService = item.category === 'service' || item.category === 'lab_service';
                 const isLowStock = !isService && item.stock <= item.minStock;
                 
                 // Profit margin calculation
@@ -726,7 +726,7 @@ export default function InventoryManager({
                   />
                 </div>
 
-                {editingCategory !== 'service' && (
+                {editingCategory !== 'service' && editingCategory !== 'lab_service' && (
                   <>
                     <div className="space-y-1">
                       <label className="font-semibold text-slate-700 block" htmlFor="edit-inventory-stock-quantity">Inventory Stock Quantity *</label>
