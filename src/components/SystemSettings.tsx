@@ -2092,7 +2092,7 @@ export default function SystemSettings({
 
                         if (csvImportMode === 'replace') {
                           const confirmReplace = window.confirm(
-                            "CRITICAL WARNING:\n\nYou selected 'Wipe & Replace'. This will completely ERASE the entire current clinic database inventory! Proceed only if you have backed up your current database.\n\nAre you absolutely sure you want to proceed?"
+                            "Are you sure? This will delete all existing products."
                           );
                           if (!confirmReplace) return;
                         }
