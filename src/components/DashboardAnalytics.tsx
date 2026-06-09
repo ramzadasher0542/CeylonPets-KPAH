@@ -52,7 +52,7 @@ export default function DashboardAnalytics({
   const [reportMonth, setReportMonth] = useState('2026-05');
   const [exportSuccess, setExportSuccess] = useState(false);
   const [chartType, setChartType] = useState<'revenue' | 'appointments'>('revenue');
-  const [hoveredSlice, setHoveredSlice] = useState<'service' | 'medication' | 'retail' | null>(null);
+  const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
 
   const [isZReportModalOpen, setIsZReportModalOpen] = useState(false);
   const [actualDrawerCash, setActualDrawerCash] = useState<string>('');
@@ -169,85 +169,69 @@ export default function DashboardAnalytics({
     return { x, y, val, date: last7Days[idx] };
   });
 
-  // MoM calculations for Gross Sales
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  let currentMonthRev = 0;
-  let prevMonthRev = 0;
-
+  // Dynamic Category revenue calculation for the current shift
+  const categoryRevMap = new Map<string, number>();
   invoices.forEach(inv => {
-    if (inv.paymentStatus === 'paid') {
-      const invDate = new Date(inv.date);
-      if (invDate.getFullYear() === currentYear && invDate.getMonth() === currentMonth) {
-        currentMonthRev += inv.total;
-      } else if (
-        (currentMonth === 0 && invDate.getFullYear() === currentYear - 1 && invDate.getMonth() === 11) ||
-        (currentMonth > 0 && invDate.getFullYear() === currentYear && invDate.getMonth() === currentMonth - 1)
-      ) {
-        prevMonthRev += inv.total;
-      }
+    if (inv.paymentStatus === 'paid' && inv.shiftId === activeShiftId) {
+      inv.items.forEach(it => {
+        const cat = it.category || 'uncategorized';
+        categoryRevMap.set(cat, (categoryRevMap.get(cat) || 0) + it.totalPrice);
+      });
     }
   });
 
-  const momGrowth = prevMonthRev > 0 ? ((currentMonthRev - prevMonthRev) / prevMonthRev) * 100 : null;
+  const allCategories = Array.from(categoryRevMap.entries())
+    .map(([name, rev]) => ({ name, rev }))
+    .sort((a, b) => b.rev - a.rev);
 
-  const momGrowthElement = () => {
-    if (totalRevenue === 0 || invoices.length === 0) return null;
-    if (prevMonthRev === 0) {
-      return <span className="font-semibold text-sky-600 bg-sky-50 px-2 py-0.5 rounded text-[10px] uppercase">New Period</span>;
-    }
-    const isUp = momGrowth! >= 0;
-    return (
-      <>
-        <span className={`font-semibold flex items-center gap-0.5 ${isUp ? 'text-emerald-600 animate-pulse' : 'text-rose-600'}`}>
-          <TrendingUp className={`h-3 w-3 ${!isUp ? 'rotate-180' : ''}`} /> {isUp ? '+' : ''}{momGrowth!.toFixed(1)}%
-        </span>
-        <span>vs last month</span>
-      </>
-    );
-  };
+  // Group into 'Other' if > 5 categories
+  let displayCategories: { name: string, rev: number }[] = [];
+  if (allCategories.length > 5) {
+    displayCategories = allCategories.slice(0, 4);
+    const otherRev = allCategories.slice(4).reduce((sum, c) => sum + c.rev, 0);
+    displayCategories.push({ name: 'other', rev: otherRev });
+  } else {
+    displayCategories = allCategories;
+  }
 
-  // Dynamic Clinical Category revenue calculation
-  const categoryRev = invoices.reduce((acc, inv) => {
-    if (inv.paymentStatus !== 'paid') return acc;
-    inv.items.forEach(it => {
-      acc[it.category] = (acc[it.category] || 0) + it.totalPrice;
-    });
-    return acc;
-  }, { service: 0, medication: 0, retail: 0 } as Record<string, number>);
-
-  // Actual values instead of hardcoded mockups
-  const finalCategoryRev = {
-    service: categoryRev.service || 0,
-    medication: categoryRev.medication || 0,
-    retail: categoryRev.retail || 0
-  };
-  const finalTotalRevSum = Object.values(finalCategoryRev).reduce((a, b) => a + b, 0);
-
+  const finalTotalRevSum = displayCategories.reduce((sum, c) => sum + c.rev, 0);
   const hasData = finalTotalRevSum > 0;
 
-  const servicePct = hasData ? Math.round((finalCategoryRev.service / finalTotalRevSum) * 100) : 0;
-  const medicationPct = hasData ? Math.round((finalCategoryRev.medication / finalTotalRevSum) * 100) : 0;
-  const retailPct = hasData ? 100 - servicePct - medicationPct : 0;
+  // Add colors and compute percentages/Doughnut math
+  const palette = [
+    { color: 'text-sky-500', hex: '#38bdf8', bg: 'bg-sky-400', hoverBg: 'bg-sky-50' },
+    { color: 'text-emerald-500', hex: '#34d399', bg: 'bg-emerald-400', hoverBg: 'bg-emerald-50' },
+    { color: 'text-amber-500', hex: '#fbbf24', bg: 'bg-amber-400', hoverBg: 'bg-amber-50' },
+    { color: 'text-purple-500', hex: '#a855f7', bg: 'bg-purple-400', hoverBg: 'bg-purple-50' },
+    { color: 'text-rose-500', hex: '#fb7185', bg: 'bg-rose-400', hoverBg: 'bg-rose-50' },
+    { color: 'text-slate-500', hex: '#94a3b8', bg: 'bg-slate-400', hoverBg: 'bg-slate-50' }
+  ];
 
-  // Doughnut math configuration
   const circ = 251.32; // 2 * pi * r (r=40)
-  const serviceDash = (servicePct / 100) * circ;
-  const medicationDash = (medicationPct / 100) * circ;
-  const retailDash = (retailPct / 100) * circ;
+  let currentOffset = 0;
 
-  const serviceOffset = 0;
-  const medicationOffset = serviceDash;
-  const retailOffset = serviceDash + medicationDash;
-  
+  const dynamicSegments = displayCategories.map((c, idx) => {
+    const pct = hasData ? Math.round((c.rev / finalTotalRevSum) * 100) : 0;
+    const dash = (pct / 100) * circ;
+    const offset = currentOffset;
+    currentOffset += dash;
+    const style = palette[idx % palette.length];
+    
+    return {
+      ...c,
+      pct,
+      dash,
+      offset,
+      style
+    };
+  });
+
   const getSliceDetails = () => {
     if (!hasData) return { name: 'No Data Yet', rev: 0, pct: 0, color: 'text-slate-400' };
-    const label = hoveredSlice || 'total';
-    if (label === 'service') return { name: 'Clinical Care', rev: finalCategoryRev.service, pct: servicePct, color: 'text-sky-500' };
-    if (label === 'medication') return { name: 'Prescriptions', rev: finalCategoryRev.medication, pct: medicationPct, color: 'text-emerald-500' };
-    if (label === 'retail') return { name: 'Pet Shop Retail', rev: finalCategoryRev.retail, pct: retailPct, color: 'text-amber-500' };
+    if (hoveredSlice) {
+      const seg = dynamicSegments.find(s => s.name === hoveredSlice);
+      if (seg) return { name: seg.name, rev: seg.rev, pct: seg.pct, color: seg.style.color };
+    }
     return { name: 'Total Revenue', rev: finalTotalRevSum, pct: 100, color: 'text-indigo-650' };
   };
 
@@ -420,9 +404,6 @@ export default function DashboardAnalytics({
             <div className="p-3 bg-teal-50 rounded-xl text-teal-600 group-hover:bg-teal-100 transition-all duration-300 relative z-10">
               <DollarSign className="h-5 w-5" />
             </div>
-          </div>
-          <div className="mt-4 flex gap-2 text-xs text-slate-500 relative z-10">
-            {momGrowthElement()}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-400 to-emerald-400" />
         </div>
@@ -650,50 +631,23 @@ export default function DashboardAnalytics({
                   {/* Background track */}
                   <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="11" />
                   
-                  {/* Segment 1: Clinical */}
-                  <circle 
-                    cx="50" 
-                    cy="50" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#38bdf8" 
-                    strokeWidth={hoveredSlice === 'service' ? "14" : "11"} 
-                    strokeDasharray={`${serviceDash} ${circ}`} 
-                    strokeDashoffset={-serviceOffset} 
-                    className="transition-all duration-300 cursor-pointer"
-                    onMouseEnter={() => setHoveredSlice('service')}
-                    onMouseLeave={() => setHoveredSlice(null)}
-                  />
-                  
-                  {/* Segment 2: Medication */}
-                  <circle 
-                    cx="50" 
-                    cy="50" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#34d399" 
-                    strokeWidth={hoveredSlice === 'medication' ? "14" : "11"} 
-                    strokeDasharray={`${medicationDash} ${circ}`} 
-                    strokeDashoffset={-medicationOffset} 
-                    className="transition-all duration-300 cursor-pointer"
-                    onMouseEnter={() => setHoveredSlice('medication')}
-                    onMouseLeave={() => setHoveredSlice(null)}
-                  />
-
-                  {/* Segment 3: Retail */}
-                  <circle 
-                    cx="50" 
-                    cy="50" 
-                    r="40" 
-                    fill="none" 
-                    stroke="#fbbf24" 
-                    strokeWidth={hoveredSlice === 'retail' ? "14" : "11"} 
-                    strokeDasharray={`${retailDash} ${circ}`} 
-                    strokeDashoffset={-retailOffset} 
-                    className="transition-all duration-300 cursor-pointer"
-                    onMouseEnter={() => setHoveredSlice('retail')}
-                    onMouseLeave={() => setHoveredSlice(null)}
-                  />
+                  {/* Dynamic Segments */}
+                  {dynamicSegments.map(seg => (
+                    <circle 
+                      key={seg.name}
+                      cx="50" 
+                      cy="50" 
+                      r="40" 
+                      fill="none" 
+                      stroke={seg.style.hex} 
+                      strokeWidth={hoveredSlice === seg.name ? "14" : "11"} 
+                      strokeDasharray={`${seg.dash} ${circ}`} 
+                      strokeDashoffset={-seg.offset} 
+                      className="transition-all duration-300 cursor-pointer"
+                      onMouseEnter={() => setHoveredSlice(seg.name)}
+                      onMouseLeave={() => setHoveredSlice(null)}
+                    />
+                  ))}
                 </g>
 
                 {/* Center text displays hovered slice details */}
@@ -712,42 +666,21 @@ export default function DashboardAnalytics({
             </div>
 
             {/* Legend with mouse enters triggers */}
-            <div className="space-y-2 pt-2 border-t text-xs">
-              <div 
-                className={`flex justify-between items-center p-1.5 rounded-lg transition-colors cursor-pointer ${hoveredSlice === 'service' ? 'bg-sky-50 font-bold' : ''}`}
-                onMouseEnter={() => setHoveredSlice('service')}
-                onMouseLeave={() => setHoveredSlice(null)}
-              >
-                <span className="flex items-center gap-2 text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded bg-sky-400 block"></span>
-                  Clinical Care
-                </span>
-                <span className="font-mono text-slate-500 font-bold">{currencySign}{finalCategoryRev.service.toFixed(2)} ({servicePct}%)</span>
-              </div>
-
-              <div 
-                className={`flex justify-between items-center p-1.5 rounded-lg transition-colors cursor-pointer ${hoveredSlice === 'medication' ? 'bg-emerald-50 font-bold' : ''}`}
-                onMouseEnter={() => setHoveredSlice('medication')}
-                onMouseLeave={() => setHoveredSlice(null)}
-              >
-                <span className="flex items-center gap-2 text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded bg-emerald-400 block"></span>
-                  Prescription Rx
-                </span>
-                <span className="font-mono text-slate-500 font-bold">{currencySign}{finalCategoryRev.medication.toFixed(2)} ({medicationPct}%)</span>
-              </div>
-
-              <div 
-                className={`flex justify-between items-center p-1.5 rounded-lg transition-colors cursor-pointer ${hoveredSlice === 'retail' ? 'bg-amber-50 font-bold' : ''}`}
-                onMouseEnter={() => setHoveredSlice('retail')}
-                onMouseLeave={() => setHoveredSlice(null)}
-              >
-                <span className="flex items-center gap-2 text-slate-700">
-                  <span className="w-2.5 h-2.5 rounded bg-amber-400 block"></span>
-                  Pet Retail Shop
-                </span>
-                <span className="font-mono text-slate-500 font-bold">{currencySign}{finalCategoryRev.retail.toFixed(2)} ({retailPct}%)</span>
-              </div>
+            <div className="space-y-2 pt-2 border-t text-xs max-h-36 overflow-y-auto pr-1">
+              {dynamicSegments.map(seg => (
+                <div 
+                  key={seg.name}
+                  className={`flex justify-between items-center p-1.5 rounded-lg transition-colors cursor-pointer ${hoveredSlice === seg.name ? `${seg.style.hoverBg} font-bold` : ''}`}
+                  onMouseEnter={() => setHoveredSlice(seg.name)}
+                  onMouseLeave={() => setHoveredSlice(null)}
+                >
+                  <span className="flex items-center gap-2 text-slate-700 capitalize">
+                    <span className={`w-2.5 h-2.5 rounded block ${seg.style.bg}`}></span>
+                    {seg.name.replace(/_/g, ' ')}
+                  </span>
+                  <span className="font-mono text-slate-500 font-bold">{currencySign}{seg.rev.toFixed(2)} ({seg.pct}%)</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
