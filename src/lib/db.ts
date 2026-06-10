@@ -566,6 +566,7 @@ export async function fetchFullSystemState(): Promise<any> {
 }
 
 export async function masterSystemPurge(): Promise<void> {
+  // Use .not('id','is',null) — deletes every row regardless of UUID value
   const tables = [
     DB_TABLES.INVOICES,
     DB_TABLES.NOTIFICATIONS,
@@ -577,14 +578,12 @@ export async function masterSystemPurge(): Promise<void> {
   ];
 
   for (const table of tables) {
-    // Structural-safe deletion using rows-level removal
-    const { error } = await supabase.from(table).delete().neq('id', 'master_purge_safeguard_uuid');
+    const { error } = await supabase.from(table).delete().not('id', 'is', null);
     if (error) {
-      // Non-critical tables (alerts/notifications) should not abort the entire purge
-      console.warn(`[MasterPurge] Could not clear table '${table}':`, error.message);
+      console.warn(`[MasterPurge] Warning: Could not fully clear '${table}': ${error.message}`);
     }
   }
-  
+
   // Clear local storage caches
   localStorage.removeItem('ceylon_inventory_v2');
   localStorage.removeItem('ceylon_appointments_v2');
@@ -593,12 +592,15 @@ export async function masterSystemPurge(): Promise<void> {
 }
 
 export async function reconstituteSystemState(payload: any): Promise<void> {
-  if (!payload || !payload.collections) throw new Error("Invalid backup payload. Ensure this file is a valid CeylonPets JSON export.");
+  if (!payload || !payload.collections) {
+    throw new Error("Invalid backup payload. Ensure this file is a valid CeylonPets JSON export.");
+  }
 
-  // Phase 1: Structural Purge
+  // Phase 1: Purge all existing rows first
   await masterSystemPurge();
 
-  // Phase 2: Dependency-Aware Reconstitution (in foreign-key safe order)
+  // Phase 2: Dependency-Aware Reconstitution using UPSERT (conflict-safe)
+  // onConflict: 'id' means existing rows get overwritten instead of crashing
   const tablesOrder = [
     { name: DB_TABLES.INVENTORY,     data: payload.collections.inventory },
     { name: 'pos_shifts',            data: payload.collections.pos_shifts },
@@ -610,12 +612,15 @@ export async function reconstituteSystemState(payload: any): Promise<void> {
   ];
 
   for (const table of tablesOrder) {
-    if (table.data && table.data.length > 0) {
-      const { error } = await supabase.from(table.name).insert(table.data);
+    if (table.data && Array.isArray(table.data) && table.data.length > 0) {
+      const { error } = await supabase
+        .from(table.name)
+        .upsert(table.data, { onConflict: 'id', ignoreDuplicates: false });
       if (error) {
-        console.error(`Reconstitution failed on table ${table.name}`, error);
+        console.error(`[Reconstitution] Failed on table '${table.name}':`, error);
         throw new Error(`Failed to restore table '${table.name}': ${error.message}`);
       }
     }
   }
 }
+
