@@ -13,7 +13,7 @@ import {
   CheckCircle2,
   Bookmark
 } from 'lucide-react';
-import { InventoryItem, ItemCategory } from '../types';
+import { InventoryItem, ItemCategory, CATEGORY_DISPLAY_MAP } from '../types';
 import { showToast } from './Toast';
 
 interface InventoryProps {
@@ -234,12 +234,7 @@ export default function InventoryManager({
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                {cat === 'all' ? 'All Inventory' : 
-                 cat === 'service' ? 'Clinical' : 
-                 cat === 'vaccine' ? 'Vaccines' : 
-                 cat === 'lab_service' ? 'Labs' : 
-                 cat === 'prescription' ? 'Pharmacy' : 
-                 'Pet Shop'}
+                {cat === 'all' ? 'All Inventory' : CATEGORY_DISPLAY_MAP[cat] || cat}
               </button>
             ))}
           </div>
@@ -327,9 +322,7 @@ export default function InventoryManager({
                         item.category === 'prescription' ? 'bg-emerald-100 text-emerald-800' :
                         'bg-amber-100 text-amber-800'
                       }`}>
-                        {item.category === 'service' ? 'Clinical' : 
-                         item.category === 'lab_service' ? 'Lab Service' : 
-                         item.category}
+                        {CATEGORY_DISPLAY_MAP[item.category] || item.category}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-right font-bold">

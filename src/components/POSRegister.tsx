@@ -26,7 +26,7 @@ import {
   HeartPulse,
   Printer
 } from 'lucide-react';
-import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord } from '../types';
+import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord, CATEGORY_DISPLAY_MAP } from '../types';
 import { showToast } from './Toast';
 import { fetchActiveShiftId } from '../lib/db';
 
@@ -658,7 +658,7 @@ export default function POSRegister({
                 activeTab === 'service' ? tabStyles.service.active : tabStyles.service.bg
               }`}
             >
-              Clinical
+              {CATEGORY_DISPLAY_MAP['service']}
             </button>
             <button
               onClick={() => setActiveTab('vaccine')}
@@ -666,7 +666,7 @@ export default function POSRegister({
                 activeTab === 'vaccine' ? tabStyles.vaccine.active : tabStyles.vaccine.bg
               }`}
             >
-              Vaccines
+              {CATEGORY_DISPLAY_MAP['vaccine']}
             </button>
             <button
               onClick={() => setActiveTab('lab_service')}
@@ -674,7 +674,7 @@ export default function POSRegister({
                 activeTab === 'lab_service' ? tabStyles.lab_service.active : tabStyles.lab_service.bg
               }`}
             >
-              Labs
+              {CATEGORY_DISPLAY_MAP['lab_service']}
             </button>
             <button
               onClick={() => setActiveTab('prescription')}
@@ -682,7 +682,7 @@ export default function POSRegister({
                 activeTab === 'prescription' ? tabStyles.prescription.active : tabStyles.prescription.bg
               }`}
             >
-              Pharmacy
+              {CATEGORY_DISPLAY_MAP['prescription']}
             </button>
             <button
               onClick={() => setActiveTab('retail')}
@@ -690,7 +690,7 @@ export default function POSRegister({
                 activeTab === 'retail' ? tabStyles.retail.active : tabStyles.retail.bg
               }`}
             >
-              Pet Shop
+              {CATEGORY_DISPLAY_MAP['retail']}
             </button>
             <button
               onClick={() => setActiveTab('ledger')}
@@ -731,7 +731,9 @@ export default function POSRegister({
                         {product.name}
                       </h5>
                       {isService ? (
-                        <span className="text-[10px] font-mono block text-sky-500 font-semibold">Service</span>
+                        <span className="text-[10px] font-mono block text-sky-500 font-semibold">
+                          {CATEGORY_DISPLAY_MAP[product.category] || CATEGORY_DISPLAY_MAP['service']}
+                        </span>
                       ) : (
                         <span className={`text-[10px] font-mono block ${isLowStock ? 'text-rose-600 font-bold' : 'text-slate-400'}`}>
                           Stock: {product.stock} {product.unit}s

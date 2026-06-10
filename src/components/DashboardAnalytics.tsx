@@ -21,7 +21,7 @@ import {
   FileText,
   X
 } from 'lucide-react';
-import { InventoryItem, Appointment, MedicalRecord, Invoice } from '../types';
+import { InventoryItem, Appointment, MedicalRecord, Invoice, CATEGORY_DISPLAY_MAP } from '../types';
 import { fetchShiftMetrics, fetchLowStockCount, fetchActiveShiftId, openShift, closeShift } from '../lib/db';
 import { showToast } from './Toast';
 
@@ -229,7 +229,10 @@ export default function DashboardAnalytics({
     if (!hasData) return { name: 'No Data Yet', rev: 0, pct: 0, color: 'text-slate-400' };
     if (hoveredSlice) {
       const seg = dynamicSegments.find(s => s.name === hoveredSlice);
-      if (seg) return { name: seg.name, rev: seg.rev, pct: seg.pct, color: seg.style.color };
+      if (seg) {
+        const displayName = CATEGORY_DISPLAY_MAP[seg.name] || (seg.name.charAt(0).toUpperCase() + seg.name.slice(1).replace(/_/g, ' '));
+        return { name: displayName, rev: seg.rev, pct: seg.pct, color: seg.style.color };
+      }
     }
     return { name: 'Total Revenue', rev: finalTotalRevSum, pct: 100, color: 'text-indigo-650' };
   };
@@ -680,7 +683,7 @@ export default function DashboardAnalytics({
                 >
                   <span className="flex items-center gap-2 text-slate-700 capitalize">
                     <span className={`w-2.5 h-2.5 rounded block ${seg.style.bg}`}></span>
-                    {seg.name.replace(/_/g, ' ')}
+                    {CATEGORY_DISPLAY_MAP[seg.name] || (seg.name.charAt(0).toUpperCase() + seg.name.slice(1).replace(/_/g, ' '))}
                   </span>
                   <span className="font-mono text-slate-500 font-bold">{currencySign}{seg.rev.toFixed(2)} ({seg.pct}%)</span>
                 </div>

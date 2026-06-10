@@ -159,3 +159,13 @@ export interface OfflineSyncItem {
   payload: any;
   timestamp: string;
 }
+
+export const CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  'service': 'Clinical Care',
+  'lab_service': 'Labs & Diagnostics',
+  'vaccine': 'Vaccinations',
+  'prescription': 'Pharmacy Rx',
+  'retail': 'Pet Supplies Shop',
+  'Taxes & Adjustments': 'Taxes & Adjustments',
+  'other': 'Other / Uncategorized'
+};
