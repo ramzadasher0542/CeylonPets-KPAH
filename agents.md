@@ -53,3 +53,15 @@ This document defines the strict operational boundaries, engineering standards, 
 - **Strict Layout Constraints**: Every system modal wrapper must use a fixed backdrop centered via Flexbox or Grid (`fixed inset-0 flex items-center justify-center p-4`).
 - **Internal Card Architecture**: The modal card itself must use a flex-column layout with a strict maximum height constraint (`flex flex-col max-h-[calc(100vh-40px)] max-w-xl w-full overflow-hidden`).
 - **Isolated Body Scrolling**: The header and the action button footer must remain structurally frozen at the top and bottom (`shrink-0`). Only the inner form or content body is permitted to scroll, using isolated internal overflow controls (`flex-1 overflow-y-auto custom-scrollbar`).
+
+## 11. Global State & Syncing Skill (The "Master Brain")
+- Never duplicate data or options across multiple components. 
+- Always use a "Single Source of Truth" (like React Context or SWR global mutation keys).
+- If an option changes in one panel (e.g., selecting a patient profile or changing a POS discount), ensure that change instantly syncs and flashes to every other panel on the screen without a page refresh.
+- Think like a human brain: one memory updates the whole body.
+
+### 12. Contextual Combobox Search & Active Admission Gatekeeping
+- **Admission Gatekeeping**: The primary POS patient linking system must partition its views cleanly. The default view must filter options to strictly display patients with an active, unresolved check-in state (`status === 'in-progress'`) to prevent administrative cross-billing.
+- **Dynamic Combobox Architecture**: Replace standard native select inputs with customizable lookup combobox components containing text matching inputs paired with absolute vertical layout popovers.
+- **Historical Profile Recall**: The search controller must implement multi-parameter text parsing. Typing inputs must dynamically query historical accounts, matching across both patient name strings and client phone numbers to instantly bind commercial transactions to archived profiles without duplication.
+- **State Cleanup Cascade**: Finalizing a financial ledger collection transaction must clear the patient's active status from the gatekeeper list automatically, updating the upstream scheduling module without requiring data reloads.

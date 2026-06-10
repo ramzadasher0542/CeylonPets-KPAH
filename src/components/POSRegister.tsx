@@ -74,6 +74,32 @@ export default function POSRegister({
   // Resolve undeclared variable reference
   const selectedApt = appointments.find(a => a.id === selectedPetId) || null;
 
+  // Combobox State
+  const [petSearchQuery, setPetSearchQuery] = useState('');
+  const [isPetDropdownOpen, setIsPetDropdownOpen] = useState(false);
+  const petDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (petDropdownRef.current && !petDropdownRef.current.contains(event.target as Node)) {
+        setIsPetDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filter records based on search or active check-ins
+  const filteredRecords = records.filter(rec => {
+    if (petSearchQuery.trim() === '') {
+      // Show only active check-ins when query is empty
+      return appointments.some(a => a.patientId === rec.patientId && a.status === 'in-progress');
+    }
+    // Dual-parameter historical lookup
+    const q = petSearchQuery.toLowerCase();
+    return rec.petName.toLowerCase().includes(q) || rec.ownerPhone.toLowerCase().includes(q);
+  });
+
   // Checkout modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
@@ -935,19 +961,76 @@ export default function POSRegister({
                 {isOnline ? 'Direct Hospital Sync' : 'Offline Buffer Mode'}
               </span>
             </div>
-            <div className="mt-2 text-xs">
-              <select name="select760" id="select-7-60"
-                value={selectedPetId}
-                onChange={(e) => setSelectedPetId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
+            <div className="mt-2 text-xs relative" ref={petDropdownRef}>
+              <div 
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 font-semibold flex items-center justify-between cursor-pointer focus-within:ring-1 focus-within:ring-sky-500 focus-within:border-sky-500"
+                onClick={() => setIsPetDropdownOpen(true)}
               >
-                <option value="walkin">Walk-in Pet Shop Customer (No Clinical EHR link)</option>
-                {records.map(rec => (
-                    <option key={rec.id} value={rec.id}>
-                      {rec.petName} ({rec.petType}) - Owner: {rec.ownerName} [{rec.ownerPhone}]
-                    </option>
-                  ))}
-              </select>
+                <div className="flex items-center gap-2 flex-1">
+                  <Search className="w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text" 
+                    value={isPetDropdownOpen ? petSearchQuery : (selectedPetId === 'walkin' ? 'Walk-in Pet Shop Customer (No Clinical EHR link)' : records.find(r => r.id === selectedPetId)?.petName || '')}
+                    onChange={(e) => {
+                      setPetSearchQuery(e.target.value);
+                      setIsPetDropdownOpen(true);
+                      if (e.target.value === '') {
+                        setSelectedPetId('walkin');
+                      }
+                    }}
+                    onFocus={() => setIsPetDropdownOpen(true)}
+                    placeholder="Search historical profiles or select active check-in..."
+                    className="bg-transparent border-none outline-none w-full truncate text-slate-800"
+                  />
+                </div>
+                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isPetDropdownOpen ? 'rotate-180' : ''}`} />
+              </div>
+
+              {isPetDropdownOpen && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-xl z-20 max-h-60 overflow-y-auto custom-scrollbar overflow-hidden">
+                  <div 
+                    className={`p-2.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${selectedPetId === 'walkin' ? 'bg-sky-50' : ''}`}
+                    onClick={() => {
+                      setSelectedPetId('walkin');
+                      setIsPetDropdownOpen(false);
+                      setPetSearchQuery('');
+                    }}
+                  >
+                    <div className="font-bold text-slate-700">Walk-in Pet Shop Customer</div>
+                    <div className="text-[10px] text-slate-500">No Clinical EHR link</div>
+                  </div>
+                  
+                  {filteredRecords.length > 0 ? (
+                    filteredRecords.map(rec => (
+                      <div 
+                        key={rec.id}
+                        className={`p-2.5 border-b border-slate-50 hover:bg-slate-50 cursor-pointer ${selectedPetId === rec.id ? 'bg-sky-50' : ''}`}
+                        onClick={() => {
+                          setSelectedPetId(rec.id);
+                          setIsPetDropdownOpen(false);
+                          setPetSearchQuery('');
+                        }}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="font-bold text-slate-800">{rec.petName} <span className="text-[10px] text-slate-400 font-normal">({rec.petType})</span></div>
+                            <div className="text-[10px] text-slate-500">Owner: {rec.ownerName} <span className="font-mono">[{rec.ownerPhone}]</span></div>
+                          </div>
+                          {appointments.some(a => a.patientId === rec.patientId && a.status === 'in-progress') && (
+                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold uppercase rounded-md flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Active
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 text-center text-slate-500 text-xs italic">
+                      No matching historical profiles found.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
