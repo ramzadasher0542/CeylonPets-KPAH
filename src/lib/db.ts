@@ -399,8 +399,42 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
     console.error('[CeylonPets] Error fetching shift metrics:', error);
     return null;
   }
-  // The RPC now returns a JSON object directly
-  return data ? (data as ShiftMetrics) : null;
+  
+  if (!data) return null;
+
+  // If the user hasn't run the `fix_dashboard_rpc_json.sql` migration, 
+  // the RPC will still return an Array (TABLE format). We must handle this 
+  // gracefully so the Gross Sales card doesn't crash to 0.00.
+  if (Array.isArray(data)) {
+    if (data.length === 0) return null;
+    
+    // Construct a fallback ShiftMetrics object using the old array data
+    // The pie chart will be empty, but top metrics will survive.
+    const legacyData = data[0];
+    return {
+      gross_sales: legacyData.gross_sales || 0,
+      total_cogs: legacyData.total_cogs || 0,
+      cogs: legacyData.total_cogs || 0,
+      net_profit: legacyData.net_profit || 0,
+      // Create a simulated breakdown from the legacy columns so the cards don't stay 0
+      category_breakdown: [
+        { category: 'service', total: legacyData.clinical_care_revenue || 0 },
+        { category: 'retail', total: legacyData.pet_shop_revenue || 0 }
+      ]
+    } as ShiftMetrics;
+  }
+
+  // If the user HAS run the migration, data will be a JSON object
+  if (typeof data === 'string') {
+    try {
+      return JSON.parse(data) as ShiftMetrics;
+    } catch (e) {
+      console.error('Failed to parse shift metrics JSON string:', e);
+      return null;
+    }
+  }
+
+  return data as ShiftMetrics;
 }
 
 export async function fetchLowStockCount(): Promise<number> {
