@@ -722,7 +722,6 @@ export default function POSRegister({
                         isService ? 'bg-sky-100 text-sky-800' :
                         product.category === 'vaccine' ? 'bg-fuchsia-100 text-fuchsia-800' :
                         product.category === 'prescription' ? 'bg-emerald-100 text-emerald-800' :
-                        product.category === 'medication' ? 'bg-emerald-100 text-emerald-800' :
                         'bg-amber-100 text-amber-800'
                       }`}>
                         {product.sku}
