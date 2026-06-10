@@ -112,14 +112,38 @@ export default function DashboardAnalytics({
   const netProfit = shiftMetrics?.net_profit || 0;
   const totalCost = shiftMetrics?.cogs || shiftMetrics?.total_cogs || 0;
 
+  // --- MATH FIX: Guaranteed frontend category breakdown ---
+  // Build category totals directly from current shift invoices.
+  // This is the ground truth — used as fallback when RPC category_breakdown is empty.
+  const frontendCategoryBreakdown = React.useMemo(() => {
+    const catMap: Record<string, number> = {};
+    const currentShiftInvoices = activeShiftId
+      ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid')
+      : invoices.filter(inv => inv.paymentStatus === 'paid');
+
+    for (const inv of currentShiftInvoices) {
+      for (const item of inv.items || []) {
+        const cat = item.category || 'service';
+        catMap[cat] = (catMap[cat] || 0) + item.totalPrice;
+      }
+    }
+    return Object.entries(catMap).map(([category, total]) => ({ category, total }));
+  }, [invoices, activeShiftId]);
+
+  // Use RPC breakdown if it has data, otherwise use frontend-computed breakdown
+  const resolvedBreakdown: { category: string; total: number }[] =
+    (shiftMetrics?.category_breakdown && shiftMetrics.category_breakdown.length > 0)
+      ? shiftMetrics.category_breakdown
+      : frontendCategoryBreakdown;
+
   const getCatTotal = (catName: string) => {
-    return shiftMetrics?.category_breakdown?.find(c => c.category === catName)?.total || 0;
+    return resolvedBreakdown.find(c => c.category === catName)?.total || 0;
   };
 
   const taxesAndAdjustments = getCatTotal('Taxes & Adjustments');
   const retailRevenue = getCatTotal('retail');
   // Safely group all non-retail and non-tax categories into Clinical Care to prevent UI omissions
-  const clinicalRevenue = (shiftMetrics?.category_breakdown || [])
+  const clinicalRevenue = resolvedBreakdown
     .filter(c => c.category !== 'retail' && c.category !== 'Taxes & Adjustments')
     .reduce((sum, c) => sum + c.total, 0);
 
@@ -178,8 +202,9 @@ export default function DashboardAnalytics({
     return { x, y, val, date: last7Days[idx] };
   });
 
-  // Dynamic Category revenue calculation for the current shift (now strictly pulled from backend RPC)
-  const allCategories = (shiftMetrics?.category_breakdown || [])
+  // Dynamic Category revenue calculation for the current shift
+  // Now reads from resolvedBreakdown which is always accurate (frontend fallback included)
+  const allCategories = resolvedBreakdown
     .map((item) => ({ name: item.category, rev: item.total }))
     .sort((a, b) => b.rev - a.rev);
 
@@ -193,8 +218,13 @@ export default function DashboardAnalytics({
     displayCategories = allCategories;
   }
 
-  const finalTotalRevSum = shiftMetrics?.gross_sales || 0;
+  // Use gross_sales from RPC as the primary truth; fall back to summing paid invoices directly
+  const currentShiftTotal = activeShiftId
+    ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid').reduce((s, inv) => s + inv.total, 0)
+    : invoices.filter(inv => inv.paymentStatus === 'paid').reduce((s, inv) => s + inv.total, 0);
+  const finalTotalRevSum = totalRevenue > 0 ? totalRevenue : currentShiftTotal;
   const hasData = finalTotalRevSum > 0;
+
 
   // Add colors and compute percentages/Doughnut math
   const palette = [
