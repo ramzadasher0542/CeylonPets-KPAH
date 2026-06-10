@@ -52,8 +52,8 @@ export default function AppointmentsManager({
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
   const [veterinarian, setVeterinarian] = useState('');
   const [reason, setReason] = useState('');
   const [formError, setFormError] = useState('');
@@ -125,6 +125,9 @@ export default function AppointmentsManager({
     setOwnerEmail('');
     setReason('');
     setFormError('');
+    // Reset date/time to current so the next modal open is fresh
+    setDate(new Date().toISOString().split('T')[0]);
+    setTime(new Date().toTimeString().slice(0, 5));
   };
 
   const handleCheckIn = (apt: Appointment) => {
@@ -305,7 +308,7 @@ export default function AppointmentsManager({
       {/* Add Appointment Modal Overlay */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-2xl w-full p-5 text-xs shadow-xl animate-fade-in">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-2xl w-full p-5 text-xs shadow-xl animate-fade-in max-h-[90vh] overflow-y-auto custom-scrollbar">
             
             <div className="flex justify-between items-start mb-3">
               <div>
