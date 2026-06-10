@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Calendar, 
   Clock, 
@@ -19,8 +19,9 @@ import {
   Bookmark,
   Stethoscope
 } from 'lucide-react';
-import { Appointment, AppointmentStatus, MedicalRecord } from '../types';
+import { Appointment, AppointmentStatus, MedicalRecord, User as StaffUser } from '../types';
 import { showToast } from './Toast';
+import { fetchVeterinarians } from '../lib/db';
 
 interface AppointmentsProps {
   appointments: Appointment[];
@@ -51,11 +52,21 @@ export default function AppointmentsManager({
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [date, setDate] = useState('2026-05-22');
-  const [time, setTime] = useState('09:00');
-  const [veterinarian, setVeterinarian] = useState('Dr. Kandy Cruz, DVM');
+  const [date, setDate] = useState('');
+  const [time, setTime] = useState('');
+  const [veterinarian, setVeterinarian] = useState('');
   const [reason, setReason] = useState('');
   const [formError, setFormError] = useState('');
+  const [vetList, setVetList] = useState<StaffUser[]>([]);
+
+  useEffect(() => {
+    fetchVeterinarians().then(data => {
+      setVetList(data);
+      if (data.length > 0 && !veterinarian) {
+        setVeterinarian(data[0].name);
+      }
+    });
+  }, []);
 
   // Apply scheduling filters
   const filteredAppointments = appointments.filter(apt => {
@@ -79,10 +90,12 @@ export default function AppointmentsManager({
     }
   };
 
-  const handleCreateAppointment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!petName || !date) {
-      setFormError('Patient Name and Visit Date are required.');
+  const handleCreateAppointment = (e: React.FormEvent | React.KeyboardEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
+    if (!petName || !date || !time) {
+      setFormError('Patient Name, Visit Date, and Time are required.');
       return;
     }
 
@@ -152,7 +165,7 @@ export default function AppointmentsManager({
     <div className="space-y-4" id="appointments-tab-system">
       
       {/* Header operations */}
-      <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+      <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3 text-xs sticky top-0 z-10">
         
         {/* Search Input */}
         <div className="relative w-full md:w-96">
@@ -307,7 +320,18 @@ export default function AppointmentsManager({
               </button>
             </div>
 
-            <form onSubmit={handleCreateAppointment} className="space-y-3">
+            <form 
+              onSubmit={handleCreateAppointment} 
+              className="space-y-3"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const target = e.target as HTMLElement;
+                  if (target.tagName === 'TEXTAREA' && e.shiftKey) return;
+                  e.preventDefault();
+                  handleCreateAppointment(e);
+                }
+              }}
+            >
               {formError && (
                 <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
                   {formError}
@@ -423,8 +447,13 @@ export default function AppointmentsManager({
                     onChange={(e) => setVeterinarian(e.target.value)}
                     className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                   >
-                    <option value="Dr. Kandy Cruz, DVM">Dr. Kandy Cruz (Chief)</option>
-                    <option value="Dr. Dave Assistant, DVM">Dr. Dave (Assistant)</option>
+                    {vetList.length > 0 ? (
+                      vetList.map(vet => (
+                        <option key={vet.id} value={vet.name}>{vet.name}</option>
+                      ))
+                    ) : (
+                      <option value="">No vets available</option>
+                    )}
                   </select>
                 </div>
 

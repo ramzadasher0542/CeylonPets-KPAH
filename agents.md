@@ -41,3 +41,9 @@ This document defines the strict operational boundaries, engineering standards, 
 ### 8. Atomic Multi-Table Mutations & Cascade Triggers
 - **Fail-Safe Integrity**: When executing multi-module sequences (such as a checkout-to-discharge workflow), updates to separate tables (e.g., inserting records to `invoices` while updating statuses in `appointments`) must run atomically. If any part of the chain reaction breaks, roll back the entire transaction to prevent data fragmentation.
 - **Explicit UX Feedback**: Always provide unambiguous toast notifications confirming the status of the entire automated data cascade.
+
+### 9. Fluid UX Execution & Contextual Data Binding (Scheduling)
+- **Zero-Friction Scheduling**: Calendar modals must never generate random parameters; they must dynamically read the date/time slot currently viewed or selected on the user's grid layout.
+- **Form Keyboard Navigation**: All data entry modals must support native keyboard form submission. Pressing the `Enter` key within active form fields must trigger submission automatically.
+- **Sticky UI Controllers**: Global action triggers (like 'Create Appointment') must remain anchored or sticky to the viewport container, eliminating unnecessary scrolling.
+- **Relational Integrity**: Dropdowns requiring clinical staff names must pull verified user accounts containing the 'veterinarian' or 'admin' roles from the database rather than placeholders.

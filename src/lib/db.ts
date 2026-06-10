@@ -17,7 +17,9 @@ import {
   MedicalRecord,
   Invoice,
   ClientNotification,
+  User,
   SystemAlert,
+  ShiftMetrics
 } from '../types';
 
 // ---------------------------------------------------------------
@@ -202,6 +204,31 @@ export async function upsertAppointment(apt: Appointment): Promise<void> {
   } catch (err) {
     console.warn('[CeylonPets] upsertAppointment offline:', err);
     throw err;
+  }
+}
+
+export async function fetchVeterinarians(): Promise<User[]> {
+  try {
+    const { data, error } = await supabase
+      .from(DB_TABLES.USERS)
+      .select('id, name, username, role, avatar_color, pin')
+      .in('role', ['veterinarian', 'admin'])
+      .order('name');
+
+    if (error) throw error;
+    if (!data) return [];
+
+    return data.map((row: any) => ({
+      id:          row.id,
+      name:        row.name,
+      username:    row.username,
+      role:        row.role,
+      avatarColor: row.avatar_color,
+      pin:         row.pin ?? undefined,
+    }));
+  } catch (err) {
+    console.error('[CeylonPets] Failed to fetch veterinarians:', err);
+    return [];
   }
 }
 
