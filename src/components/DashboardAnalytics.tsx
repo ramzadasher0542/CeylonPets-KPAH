@@ -9,7 +9,6 @@ import {
   TrendingUp, 
   Users, 
   AlertTriangle, 
-  ShoppingBag, 
   Activity, 
   Calendar, 
   Download, 
@@ -19,7 +18,10 @@ import {
   CheckCircle,
   FileSpreadsheet,
   FileText,
-  X
+  X,
+  Coins,
+  CreditCard,
+  Landmark
 } from 'lucide-react';
 import { InventoryItem, Appointment, MedicalRecord, Invoice, CATEGORY_DISPLAY_MAP } from '../types';
 import { fetchShiftMetrics, fetchLowStockCount, fetchActiveShiftId, openShift, closeShift } from '../lib/db';
@@ -462,38 +464,84 @@ export default function DashboardAnalytics({
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
         </div>
 
-        {/* Clinical Sales */}
-        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Clinical Care</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">{currencySign}{clinicalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
-            </div>
-            <div className="p-3 bg-sky-50 rounded-xl text-sky-600 group-hover:bg-sky-100 transition-all duration-300">
-              <HeartPulse className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="mt-4 flex gap-2 text-xs text-slate-500 font-mono">
-            <span>{records.length} patients monitored</span>
-          </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 to-indigo-400" />
-        </div>
+        {/* Payment Tender Reconciliation — replaces Clinical Care & Pet Supplies Shop */}
+        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 w-full h-full rounded-2xl border border-indigo-900/60 shadow-lg relative overflow-hidden col-span-1 md:col-span-3 xl:col-span-2 flex flex-col gap-3">
+          {/* Glassmorphic backdrop blobs */}
+          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-sky-500/15 blur-2xl pointer-events-none" />
 
-        {/* Pet Shop Items Sales */}
-        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
-          <div className="flex justify-between items-start">
+          <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Pet Supplies Shop</p>
-              <h3 className="text-2xl font-bold text-slate-800 mt-1">{currencySign}{retailRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+              <p className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest">Tender Reconciliation</p>
+              <p className="text-xs text-indigo-200/60 font-medium mt-0.5">Current shift · Realized revenue only</p>
             </div>
-            <div className="p-3 bg-amber-50 rounded-xl text-amber-500 group-hover:bg-amber-100 transition-all duration-300">
-              <ShoppingBag className="h-5 w-5" />
+            <div className="p-2 bg-indigo-500/20 backdrop-blur-sm rounded-xl border border-indigo-500/30">
+              <Landmark className="h-4 w-4 text-indigo-300" />
             </div>
           </div>
-          <div className="mt-4 flex gap-4 text-xs text-slate-500 font-mono font-bold">
-            <span>{inventory.filter(i => i.category === 'retail').length} products in stock</span>
+
+          <div className="grid grid-cols-3 gap-2 relative z-10 flex-1">
+            {(() => {
+              const pb = shiftMetrics?.payment_breakdown || [];
+              const getTender = (method: string) => {
+                const row = pb.find(p => p.method?.toLowerCase() === method);
+                return row?.total || 0;
+              };
+              const cashTotal = getTender('cash');
+              const cardTotal = getTender('card');
+              const bankTotal = getTender('bank_transfer');
+              const allKnown = ['cash', 'card', 'bank_transfer'];
+              const otherTotal = pb.filter(p => !allKnown.includes(p.method?.toLowerCase())).reduce((s, p) => s + p.total, 0);
+
+              return (
+                <>
+                  {/* Cash */}
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-white/10 transition-colors">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 bg-emerald-400/20 rounded-lg">
+                        <Coins className="h-3 w-3 text-emerald-300" />
+                      </div>
+                      <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-wider">Cash</span>
+                    </div>
+                    <p className="text-sm font-black text-white font-mono leading-none">
+                      {currencySign}{cashTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  {/* Card */}
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-white/10 transition-colors">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 bg-sky-400/20 rounded-lg">
+                        <CreditCard className="h-3 w-3 text-sky-300" />
+                      </div>
+                      <span className="text-[9px] font-bold text-sky-300 uppercase tracking-wider">Card</span>
+                    </div>
+                    <p className="text-sm font-black text-white font-mono leading-none">
+                      {currencySign}{cardTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  {/* Bank Transfer */}
+                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-white/10 transition-colors">
+                    <div className="flex items-center gap-1.5">
+                      <div className="p-1 bg-violet-400/20 rounded-lg">
+                        <FileText className="h-3 w-3 text-violet-300" />
+                      </div>
+                      <span className="text-[9px] font-bold text-violet-300 uppercase tracking-wider">Transfer</span>
+                    </div>
+                    <p className="text-sm font-black text-white font-mono leading-none">
+                      {currencySign}{bankTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  {otherTotal > 0 && (
+                    <div className="col-span-3 bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex justify-between items-center">
+                      <span className="text-[9px] font-bold text-amber-300 uppercase tracking-wider">Other Channels</span>
+                      <span className="text-xs font-black text-white font-mono">{currencySign}{otherTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-300 to-yellow-500" />
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-400 to-violet-500" />
         </div>
 
         {/* Under Stock Alarms */}

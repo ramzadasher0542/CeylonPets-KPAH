@@ -428,10 +428,12 @@ export async function upsertAlert(alert: SystemAlert): Promise<void> {
 export interface ShiftMetrics {
   gross_sales: number;
   total_cogs?: number;
-  cogs?: number; // the RPC returns 'cogs'
+  cogs?: number;
   net_profit: number;
   category_breakdown: { category: string; total: number }[];
+  payment_breakdown?: { method: string; total: number }[];
 }
+
 
 export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
   const { data, error } = await supabase.rpc('get_current_shift_metrics');

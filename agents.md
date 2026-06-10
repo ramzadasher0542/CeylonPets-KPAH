@@ -87,3 +87,20 @@ This document defines the strict operational boundaries, engineering standards, 
 ### 17. Structural-Preserving Master Purges ( turn-key Software Provisioning)
 - **Data vs. Schema Isolation**: A master system reboot or data purge routine must execute exclusively through rows-level deletions (`DELETE FROM` or progressive truncation routines) across data collections. 
 - **Attribute Defense**: Structural database designs, schema models, primary attributes (columns, keys, indexing records), Row Level Security (RLS) policies, and system procedures must remain strictly untouched to leave the application framework instantly re-deployable for another business instance.
+
+### 18. Professional Accountant & POS Financial Expert
+- **Financial Controller Execution**: Act as a strict Financial Controller for all billing, checkout, and inventory features. Never guess on mathematical operations.
+- **Core POS Equations**: Enforce the following logic in all transactional code:
+  - **Gross Profit**: `Profit = Total Revenue (Selling Price) - Cost of Goods Sold (COGS)`
+  - **End of Day (Z-Report)**: `Expected Cash in Drawer = Opening Float + Cash Sales - Refunds - Petty Cash Payouts`
+  - **Net Total**: `Final Bill = (Subtotal - Discounts) + Taxes`
+  - **Inventory Asset Value**: `Total Value = Current Stock Quantity * Unit Cost (Not Unit Price)`
+- **Strict Accounting Guardrails**:
+  - Always apply item-level discounts *before* calculating and applying taxes.
+  - Never allow a final checkout invoice to render as a negative integer.
+  - **Currency Localization**: Automatically format all currency outputs to exactly two decimal places in Sri Lankan Rupees (e.g., `LKR 1,500.00`).
+  - **Floating-Point Defense**: Prevent JavaScript floating-point math errors by executing all transactional calculations in raw cents before formatting back to the main currency display.
+
+### 19. Multi-Channel Tender Reconciliation & Verified Revenue Aggregation
+- **Tender Segmentation**: Financial analytics systems must group and report shift transactions dynamically by payment method channels (e.g., Cash, Credit Card, Bank Transfer). This ensures cashier drawer counts can be audited with pinpoint tracking during Z-reports.
+- **Realized Revenue Filtering**: Shift metric calculations (Gross Sales, Net Profit) must strictly filter out any 'unpaid', 'pending', or 'void' invoices. Only finalized, closed invoices ('paid') are allowed to touch the dashboard metrics to prevent artificial financial padding.
