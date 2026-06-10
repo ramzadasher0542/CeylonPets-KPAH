@@ -204,21 +204,35 @@ export default function DashboardAnalytics({
     return { x, y, val, date: last7Days[idx] };
   });
 
-  // Dynamic Category revenue calculation for the current shift
-  // Now reads from resolvedBreakdown which is always accurate (frontend fallback included)
-  const allCategories = resolvedBreakdown
-    .map((item) => ({ name: item.category, rev: item.total }))
-    .sort((a, b) => b.rev - a.rev);
+  // Map categories with fixed styling to ensure consistent UI colors
+  const CATEGORY_STYLE_MAP: Record<string, any> = {
+    'retail': { color: 'text-sky-500', hex: '#38bdf8', bg: 'bg-sky-400', hoverBg: 'bg-sky-50' }, // Pet Supplies
+    'service': { color: 'text-emerald-500', hex: '#34d399', bg: 'bg-emerald-400', hoverBg: 'bg-emerald-50' }, // Clinical Care
+    'vaccine': { color: 'text-amber-500', hex: '#fbbf24', bg: 'bg-amber-400', hoverBg: 'bg-amber-50' }, // Vaccinations
+    'prescription': { color: 'text-purple-500', hex: '#a855f7', bg: 'bg-purple-400', hoverBg: 'bg-purple-50' }, // Pharmacy Rx
+    'lab_service': { color: 'text-rose-500', hex: '#fb7185', bg: 'bg-rose-400', hoverBg: 'bg-rose-50' }, // Labs
+    'other': { color: 'text-slate-500', hex: '#94a3b8', bg: 'bg-slate-400', hoverBg: 'bg-slate-50' } // Other
+  };
 
-  // Group into 'Other' if > 5 categories
-  let displayCategories: { name: string, rev: number }[] = [];
-  if (allCategories.length > 5) {
-    displayCategories = allCategories.slice(0, 4);
-    const otherRev = allCategories.slice(4).reduce((sum, c) => sum + c.rev, 0);
-    displayCategories.push({ name: 'other', rev: otherRev });
-  } else {
-    displayCategories = allCategories;
+  // Seed all known core categories so they always appear in the legend
+  const CORE_CATEGORIES = ['retail', 'service', 'vaccine', 'prescription', 'lab_service'];
+  
+  const allCategories = CORE_CATEGORIES.map(key => {
+    const found = resolvedBreakdown.find(item => item.category === key);
+    return { name: key, rev: found ? found.total : 0 };
+  });
+
+  // Calculate any unexpected categories and group them into 'other'
+  const otherTotal = resolvedBreakdown
+    .filter(item => !CORE_CATEGORIES.includes(item.category) && item.category !== 'Taxes & Adjustments')
+    .reduce((sum, item) => sum + item.total, 0);
+
+  if (otherTotal > 0) {
+    allCategories.push({ name: 'other', rev: otherTotal });
   }
+
+  // Sort strictly by revenue descending, but keep 0 items so they still show in the legend
+  const displayCategories = allCategories.sort((a, b) => b.rev - a.rev);
 
   // Use gross_sales from RPC as the primary truth; fall back to summing paid invoices directly
   const currentShiftTotal = activeShiftId
@@ -227,26 +241,16 @@ export default function DashboardAnalytics({
   const finalTotalRevSum = totalRevenue > 0 ? totalRevenue : currentShiftTotal;
   const hasData = finalTotalRevSum > 0;
 
-
-  // Add colors and compute percentages/Doughnut math
-  const palette = [
-    { color: 'text-sky-500', hex: '#38bdf8', bg: 'bg-sky-400', hoverBg: 'bg-sky-50' },
-    { color: 'text-emerald-500', hex: '#34d399', bg: 'bg-emerald-400', hoverBg: 'bg-emerald-50' },
-    { color: 'text-amber-500', hex: '#fbbf24', bg: 'bg-amber-400', hoverBg: 'bg-amber-50' },
-    { color: 'text-purple-500', hex: '#a855f7', bg: 'bg-purple-400', hoverBg: 'bg-purple-50' },
-    { color: 'text-rose-500', hex: '#fb7185', bg: 'bg-rose-400', hoverBg: 'bg-rose-50' },
-    { color: 'text-slate-500', hex: '#94a3b8', bg: 'bg-slate-400', hoverBg: 'bg-slate-50' }
-  ];
-
   const circ = 251.32; // 2 * pi * r (r=40)
   let currentOffset = 0;
 
-  const dynamicSegments = displayCategories.map((c, idx) => {
+  const dynamicSegments = displayCategories.map((c) => {
     const pct = hasData ? Math.round((c.rev / finalTotalRevSum) * 100) : 0;
+    // For visual aesthetics, if it has 0 revenue but we want it in the legend, dash=0
     const dash = (pct / 100) * circ;
     const offset = currentOffset;
     currentOffset += dash;
-    const style = palette[idx % palette.length];
+    const style = CATEGORY_STYLE_MAP[c.name] || CATEGORY_STYLE_MAP['other'];
     
     return {
       ...c,
@@ -465,22 +469,18 @@ export default function DashboardAnalytics({
         </div>
 
         {/* Payment Tender Reconciliation — replaces Clinical Care & Pet Supplies Shop */}
-        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 p-5 w-full h-full rounded-2xl border border-indigo-900/60 shadow-lg relative overflow-hidden col-span-1 md:col-span-3 xl:col-span-2 flex flex-col gap-3">
-          {/* Glassmorphic backdrop blobs */}
-          <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-indigo-500/20 blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-sky-500/15 blur-2xl pointer-events-none" />
-
+        <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden col-span-1 md:col-span-3 xl:col-span-2 flex flex-col gap-3 group hover:border-sky-300 transition-all duration-300 hover:-translate-y-0.5">
           <div className="flex items-center justify-between relative z-10">
             <div>
-              <p className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest">Tender Reconciliation</p>
-              <p className="text-xs text-indigo-200/60 font-medium mt-0.5">Current shift · Realized revenue only</p>
+              <p className="text-[10px] font-extrabold text-indigo-600 uppercase tracking-widest">Tender Reconciliation</p>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Current shift · Realized revenue only</p>
             </div>
-            <div className="p-2 bg-indigo-500/20 backdrop-blur-sm rounded-xl border border-indigo-500/30">
-              <Landmark className="h-4 w-4 text-indigo-300" />
+            <div className="p-2 bg-indigo-50 rounded-xl border border-indigo-100 text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+              <Landmark className="h-5 w-5" />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 relative z-10 flex-1">
+          <div className="grid grid-cols-3 gap-3 relative z-10 flex-1 mt-2">
             {(() => {
               // --- MATH FIX: Guaranteed frontend payment breakdown ---
               const frontendPaymentBreakdown = (() => {
@@ -513,52 +513,52 @@ export default function DashboardAnalytics({
               return (
                 <>
                   {/* Cash */}
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-white/10 transition-colors">
-                    <div className="flex items-center gap-1.5">
-                      <div className="p-1 bg-emerald-400/20 rounded-lg">
-                        <Coins className="h-3 w-3 text-emerald-300" />
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col gap-2 hover:bg-white hover:border-emerald-200 transition-all duration-300 hover:shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-emerald-100 rounded-lg">
+                        <Coins className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-wider">Cash</span>
+                      <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Cash</span>
                     </div>
-                    <p className="text-sm font-black text-white font-mono leading-none">
+                    <p className="text-xl font-black text-slate-800 font-mono leading-none mt-1">
                       {currencySign}{cashTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                   {/* Card */}
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-white/10 transition-colors">
-                    <div className="flex items-center gap-1.5">
-                      <div className="p-1 bg-sky-400/20 rounded-lg">
-                        <CreditCard className="h-3 w-3 text-sky-300" />
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col gap-2 hover:bg-white hover:border-sky-200 transition-all duration-300 hover:shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-sky-100 rounded-lg">
+                        <CreditCard className="h-4 w-4 text-sky-600" />
                       </div>
-                      <span className="text-[9px] font-bold text-sky-300 uppercase tracking-wider">Card</span>
+                      <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Card</span>
                     </div>
-                    <p className="text-sm font-black text-white font-mono leading-none">
+                    <p className="text-xl font-black text-slate-800 font-mono leading-none mt-1">
                       {currencySign}{cardTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                   {/* Bank Transfer */}
-                  <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-3 flex flex-col gap-1.5 hover:bg-white/10 transition-colors">
-                    <div className="flex items-center gap-1.5">
-                      <div className="p-1 bg-violet-400/20 rounded-lg">
-                        <FileText className="h-3 w-3 text-violet-300" />
+                  <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col gap-2 hover:bg-white hover:border-violet-200 transition-all duration-300 hover:shadow-sm">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-violet-100 rounded-lg">
+                        <FileText className="h-4 w-4 text-violet-600" />
                       </div>
-                      <span className="text-[9px] font-bold text-violet-300 uppercase tracking-wider">Transfer</span>
+                      <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">Transfer</span>
                     </div>
-                    <p className="text-sm font-black text-white font-mono leading-none">
+                    <p className="text-xl font-black text-slate-800 font-mono leading-none mt-1">
                       {currencySign}{bankTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                   {otherTotal > 0 && (
-                    <div className="col-span-3 bg-white/5 border border-white/10 rounded-xl px-3 py-2 flex justify-between items-center">
-                      <span className="text-[9px] font-bold text-amber-300 uppercase tracking-wider">Other Channels</span>
-                      <span className="text-xs font-black text-white font-mono">{currencySign}{otherTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    <div className="col-span-3 bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Other Channels</span>
+                      <span className="text-sm font-black text-slate-800 font-mono">{currencySign}{otherTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   )}
                 </>
               );
             })()}
           </div>
-          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 via-sky-400 to-violet-500" />
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 via-sky-400 to-violet-400" />
         </div>
 
         {/* Under Stock Alarms */}
