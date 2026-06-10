@@ -89,16 +89,34 @@ export default function POSRegister({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Filter records based on search or active check-ins
-  const filteredRecords = records.filter(rec => {
+  // Active selected entity logic
+  const activeSelectedApt = appointments.find(a => a.id === selectedPetId);
+  const activeSelectedRecord = records.find(r => r.id === selectedPetId);
+
+  const getDropdownOptions = () => {
     if (petSearchQuery.trim() === '') {
-      // Show only active check-ins when query is empty
-      return appointments.some(a => a.patientId === rec.patientId && a.status === 'in-progress');
+      return appointments
+        .filter(a => a.status === 'in-progress')
+        .map(a => ({
+          type: 'appointment' as const, id: a.id, petName: a.petName, petType: a.petType, ownerName: a.ownerName, ownerPhone: a.ownerPhone, isActive: true
+        }));
     }
-    // Dual-parameter historical lookup
     const q = petSearchQuery.toLowerCase();
-    return rec.petName.toLowerCase().includes(q) || rec.ownerPhone.toLowerCase().includes(q);
-  });
+    const matchedApts = appointments
+      .filter(a => a.status === 'in-progress' || a.status === 'booked')
+      .filter(a => a.petName.toLowerCase().includes(q) || a.ownerPhone.toLowerCase().includes(q))
+      .map(a => ({
+        type: 'appointment' as const, id: a.id, petName: a.petName, petType: a.petType, ownerName: a.ownerName, ownerPhone: a.ownerPhone, isActive: a.status === 'in-progress'
+      }));
+    const matchedRecs = records
+      .filter(rec => rec.petName.toLowerCase().includes(q) || rec.ownerPhone.toLowerCase().includes(q))
+      .filter(rec => !matchedApts.some(ma => ma.petName === rec.petName && ma.ownerPhone === rec.ownerPhone))
+      .map(rec => ({
+        type: 'record' as const, id: rec.id, petName: rec.petName, petType: rec.petType, ownerName: rec.ownerName, ownerPhone: rec.ownerPhone, isActive: false
+      }));
+    return [...matchedApts, ...matchedRecs];
+  };
+  const dropdownOptions = getDropdownOptions();
 
   // Checkout modal
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -361,9 +379,6 @@ export default function POSRegister({
   const total = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
 
   // 1. Process Checkout
-  let selectedRecord = records.find(r => r.id === selectedPetId);
-
-  // Trigger Checkout
   const handleCheckoutSubmit = async (): Promise<boolean> => {
     if (cart.length === 0) {
       showToast('Cannot checkout: Cart is empty.', 'error');
@@ -396,15 +411,44 @@ export default function POSRegister({
 
     const profit = total - totalCogs;
 
+    let finalAppointmentId: string | undefined = undefined;
+    let finalPatientId = 'anonymous_walkin';
+    let finalPetName = 'Walk-in Pet / Guest';
+    let finalOwnerName = 'General Guest';
+    let finalOwnerPhone = 'N/A';
+    let notes = 'Quick shop checkout';
+
+    if (activeSelectedApt) {
+      finalAppointmentId = activeSelectedApt.id;
+      finalPetName = activeSelectedApt.petName;
+      finalOwnerName = activeSelectedApt.ownerName;
+      finalOwnerPhone = activeSelectedApt.ownerPhone;
+      
+      // Try to bind historical patientId
+      const matchedRec = records.find(r => r.petName === activeSelectedApt.petName && r.ownerPhone === activeSelectedApt.ownerPhone);
+      finalPatientId = matchedRec ? matchedRec.patientId : `new_patient_${Date.now()}`;
+      notes = `Clinical checkout for active appointment: ${activeSelectedApt.id}`;
+    } else if (activeSelectedRecord) {
+      finalPatientId = activeSelectedRecord.patientId;
+      finalPetName = activeSelectedRecord.petName;
+      finalOwnerName = activeSelectedRecord.ownerName;
+      finalOwnerPhone = activeSelectedRecord.ownerPhone;
+      
+      // Check if this record has an active appointment to complete
+      const activeApt = appointments.find(a => a.status === 'in-progress' && a.petName === activeSelectedRecord.petName && a.ownerPhone === activeSelectedRecord.ownerPhone);
+      if (activeApt) {
+        finalAppointmentId = activeApt.id;
+      }
+      notes = `Retail checkout for historical profile: ${activeSelectedRecord.patientId}`;
+    }
+
     const invoiceObj: Invoice = {
       id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
-      appointmentId: selectedRecord 
-        ? appointments.find(a => a.patientId === selectedRecord.patientId && (a.status === 'in-progress' || a.status === 'booked'))?.id 
-        : undefined,
-      patientId: selectedRecord ? selectedRecord.patientId : 'anonymous_walkin',
-      petName: selectedRecord ? selectedRecord.petName : 'Walk-in Pet / Guest',
-      ownerName: selectedRecord ? selectedRecord.ownerName : 'General Guest',
-      ownerPhone: selectedRecord ? selectedRecord.ownerPhone : 'N/A',
+      appointmentId: finalAppointmentId,
+      patientId: finalPatientId,
+      petName: finalPetName,
+      ownerName: finalOwnerName,
+      ownerPhone: finalOwnerPhone,
       date: new Date().toISOString().split('T')[0],
       items: newInvItems,
       subtotal: subtotal,
@@ -417,7 +461,7 @@ export default function POSRegister({
       paymentMethod: paymentMethod,
       paymentStatus: 'paid',
       createdBy: currentUser?.name || 'Unknown',
-      notes: selectedRecord ? `General clinical checkout for patient profile: ${selectedRecord.patientId}` : 'Quick shop checkout'
+      notes: notes
     };
 
     try {
@@ -970,7 +1014,7 @@ export default function POSRegister({
                   <Search className="w-4 h-4 text-slate-400" />
                   <input 
                     type="text" 
-                    value={isPetDropdownOpen ? petSearchQuery : (selectedPetId === 'walkin' ? 'Walk-in Pet Shop Customer (No Clinical EHR link)' : records.find(r => r.id === selectedPetId)?.petName || '')}
+                    value={isPetDropdownOpen ? petSearchQuery : (selectedPetId === 'walkin' ? 'Walk-in Pet Shop Customer (No Clinical EHR link)' : (activeSelectedApt?.petName || activeSelectedRecord?.petName || ''))}
                     onChange={(e) => {
                       setPetSearchQuery(e.target.value);
                       setIsPetDropdownOpen(true);
@@ -1000,23 +1044,23 @@ export default function POSRegister({
                     <div className="text-[10px] text-slate-500">No Clinical EHR link</div>
                   </div>
                   
-                  {filteredRecords.length > 0 ? (
-                    filteredRecords.map(rec => (
+                  {dropdownOptions.length > 0 ? (
+                    dropdownOptions.map(opt => (
                       <div 
-                        key={rec.id}
-                        className={`p-2.5 border-b border-slate-50 hover:bg-slate-50 cursor-pointer ${selectedPetId === rec.id ? 'bg-sky-50' : ''}`}
+                        key={opt.id}
+                        className={`p-2.5 border-b border-slate-50 hover:bg-slate-50 cursor-pointer ${selectedPetId === opt.id ? 'bg-sky-50' : ''}`}
                         onClick={() => {
-                          setSelectedPetId(rec.id);
+                          setSelectedPetId(opt.id);
                           setIsPetDropdownOpen(false);
                           setPetSearchQuery('');
                         }}
                       >
                         <div className="flex justify-between items-start">
                           <div>
-                            <div className="font-bold text-slate-800">{rec.petName} <span className="text-[10px] text-slate-400 font-normal">({rec.petType})</span></div>
-                            <div className="text-[10px] text-slate-500">Owner: {rec.ownerName} <span className="font-mono">[{rec.ownerPhone}]</span></div>
+                            <div className="font-bold text-slate-800">{opt.petName} <span className="text-[10px] text-slate-400 font-normal">({opt.petType})</span></div>
+                            <div className="text-[10px] text-slate-500">Owner: {opt.ownerName} <span className="font-mono">[{opt.ownerPhone}]</span></div>
                           </div>
-                          {appointments.some(a => a.patientId === rec.patientId && a.status === 'in-progress') && (
+                          {opt.isActive && (
                             <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold uppercase rounded-md flex items-center gap-1">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Active
                             </span>
