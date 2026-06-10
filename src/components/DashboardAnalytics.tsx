@@ -109,11 +109,16 @@ export default function DashboardAnalytics({
   };
 
   const totalRevenue = shiftMetrics?.gross_sales || 0;
-  const retailRevenue = shiftMetrics?.pet_shop_revenue || 0;
-  const clinicalRevenue = shiftMetrics?.clinical_care_revenue || 0;
-  const totalCost = shiftMetrics?.total_cogs || 0;
-  
   const netProfit = shiftMetrics?.net_profit || 0;
+  const totalCost = shiftMetrics?.cogs || shiftMetrics?.total_cogs || 0;
+
+  const getCatTotal = (catName: string) => {
+    return shiftMetrics?.category_breakdown?.find(c => c.category === catName)?.total || 0;
+  };
+
+  const retailRevenue = getCatTotal('retail');
+  const clinicalRevenue = getCatTotal('service') + getCatTotal('lab_service') + getCatTotal('vaccine');
+
   const lowStockItemsCount = lowStockCount || 0;
   const activeConsultations = appointments.filter(apt => apt.status === 'in-progress' || apt.status === 'booked').length;
   const patientsCount = records.length;
@@ -169,19 +174,9 @@ export default function DashboardAnalytics({
     return { x, y, val, date: last7Days[idx] };
   });
 
-  // Dynamic Category revenue calculation for the current shift
-  const categoryRevMap = new Map<string, number>();
-  invoices.forEach(inv => {
-    if (inv.paymentStatus === 'paid' && inv.shiftId === activeShiftId) {
-      inv.items.forEach(it => {
-        const cat = it.category || 'uncategorized';
-        categoryRevMap.set(cat, (categoryRevMap.get(cat) || 0) + it.totalPrice);
-      });
-    }
-  });
-
-  const allCategories = Array.from(categoryRevMap.entries())
-    .map(([name, rev]) => ({ name, rev }))
+  // Dynamic Category revenue calculation for the current shift (now strictly pulled from backend RPC)
+  const allCategories = (shiftMetrics?.category_breakdown || [])
+    .map((item) => ({ name: item.category, rev: item.total }))
     .sort((a, b) => b.rev - a.rev);
 
   // Group into 'Other' if > 5 categories
@@ -194,7 +189,7 @@ export default function DashboardAnalytics({
     displayCategories = allCategories;
   }
 
-  const finalTotalRevSum = displayCategories.reduce((sum, c) => sum + c.rev, 0);
+  const finalTotalRevSum = shiftMetrics?.gross_sales || 0;
   const hasData = finalTotalRevSum > 0;
 
   // Add colors and compute percentages/Doughnut math

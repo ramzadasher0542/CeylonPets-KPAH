@@ -387,11 +387,10 @@ export async function upsertAlert(alert: SystemAlert): Promise<void> {
 
 export interface ShiftMetrics {
   gross_sales: number;
-  total_cogs: number;
+  total_cogs?: number;
+  cogs?: number; // the RPC returns 'cogs'
   net_profit: number;
-  clinical_care_revenue: number;
-  pet_shop_revenue: number;
-  prescription_revenue: number;
+  category_breakdown: { category: string; total: number }[];
 }
 
 export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
@@ -400,8 +399,8 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
     console.error('[CeylonPets] Error fetching shift metrics:', error);
     return null;
   }
-  // The RPC returns a TABLE, so data is an array of rows
-  return data && data.length > 0 ? (data[0] as ShiftMetrics) : null;
+  // The RPC now returns a JSON object directly
+  return data ? (data as ShiftMetrics) : null;
 }
 
 export async function fetchLowStockCount(): Promise<number> {
