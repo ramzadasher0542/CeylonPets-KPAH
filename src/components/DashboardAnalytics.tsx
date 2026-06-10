@@ -116,8 +116,12 @@ export default function DashboardAnalytics({
     return shiftMetrics?.category_breakdown?.find(c => c.category === catName)?.total || 0;
   };
 
+  const taxesAndAdjustments = getCatTotal('Taxes & Adjustments');
   const retailRevenue = getCatTotal('retail');
-  const clinicalRevenue = getCatTotal('service') + getCatTotal('lab_service') + getCatTotal('vaccine');
+  // Safely group all non-retail and non-tax categories into Clinical Care to prevent UI omissions
+  const clinicalRevenue = (shiftMetrics?.category_breakdown || [])
+    .filter(c => c.category !== 'retail' && c.category !== 'Taxes & Adjustments')
+    .reduce((sum, c) => sum + c.total, 0);
 
   const lowStockItemsCount = lowStockCount || 0;
   const activeConsultations = appointments.filter(apt => apt.status === 'in-progress' || apt.status === 'booked').length;
@@ -416,6 +420,11 @@ export default function DashboardAnalytics({
           </div>
           <div className="mt-4 flex flex-col justify-end text-xs text-slate-400 font-mono">
             <span>Total COGS: {currencySign}{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            {Math.abs(taxesAndAdjustments) > 0 && (
+              <span className="text-amber-500 font-bold mt-0.5">
+                Ledger Gap: {currencySign}{taxesAndAdjustments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            )}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
         </div>
