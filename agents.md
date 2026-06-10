@@ -1,15 +1,43 @@
-# Ceylon Pets AI Brain
+# Ceylon Pets Hospital AI Brain & System Playbook
 
-## 1. Logic & Math Rules
-- Never guess. Always think step-by-step.
-- If fixing a bug, find the root cause first before changing any code.
-- Always double-check mathematical formulas (like totals, taxes, or POS shifts) for accuracy.
+This document defines the strict operational boundaries, engineering standards, and architectural synchronization workflows for the CeylonPets POS Suite. All code generation, database migrations, and UI components must comply with these guidelines.
 
-## 2. Frontend React Rules (Vite + React 19)
-- Always write modern, clean React 19 code.
-- Use Tailwind v4 for all styling.
-- Check for broken links before finishing a task.
+---
 
-## 3. Backend Supabase Rules
-- Ensure all Supabase database connections are secure.
-- Never expose secret database keys in the frontend code.
+## Core System Capabilities & Developer Skills
+
+### 1. Deep Logic & Math Skill
+- **Step-by-Step Analysis**: Never guess. Always read error logs, table definitions, and raw schema constraints before altering backend or frontend code.
+- **Financial Integrity**: Double-check all mathematical computations for hospital billing, currency rounding, product cost accounting, and daily Z-reports to ensure zero data leakage.
+- **Localization**: Format all customer-facing and backend-reported currency outputs strictly in Sri Lankan Rupees (LKR / Rs.).
+
+### 2. Automated Web Tester & Validation Skill
+- **End-to-End Testing**: Act as an autonomous human quality assurance tester. Before declaring a task finished, verify that buttons trigger correct state changes, modals close gracefully after operations complete, and form submissions don't fail silently.
+- **Path Resolution**: Actively scan file trees to avoid broken imports or dead pages. If a component path mismatches, find the correct file location and update it immediately.
+
+### 3. Frontend Architecture Expert (Vite + React 19)
+- **Modern Frameworks**: Always write highly performant React 19 code using functional components and optimized hooks.
+- **Styling Architecture**: Use Tailwind CSS v4 exclusively for formatting layouts. Keep the interface scannable, clean, and visually aligned with the clinical sky-blue pastel design parameters.
+- **Offline Resiliency**: Ensure checkout workflows function seamlessly even if the facility's internet drops temporarily. Safeguard the network pipeline by falling back to indexed local storage caches without disrupting the checkout sequence.
+
+### 4. Backend Supabase & Security Isolation Skill
+- **Security Engineering**: Lock down database execution protocols. Patient medical charts, financial ledgers, and scheduled check-ins must be totally secure.
+- **Secret Protection**: Never expose secret environment variables, master service roles, or cryptographic keys inside client-side bundles.
+
+### 5. Hospital & POS Management Logic
+- **Dual-Domain Context**: Seamlessly bridge the distinct logical demands of healthcare delivery (Electronic Health Records) and commercial retail workflows (Point of Sale).
+- **Patient Management**: Build granular animal profile tracking systems, ensuring health matrices like vaccination schedules, diagnostic results, and custom dietary restrictions are mapped perfectly.
+- **POS Accuracy**: Treat checkout pipelines with the unyielding auditing standards of an enterprise retail point-of-sale terminal.
+
+### 6. Centralized Translation & Dynamic Category Dictionary Skill
+- **Key-Value Isolation**: Raw database keys (e.g., `service`, `retail`, `prescription`) must never leak directly into user-facing metrics, legends, or chart labels.
+- **Unified Dictionary**: Maintain a centralized translation map constant (e.g., `CATEGORY_DISPLAY_MAP`) to universally harmonize raw database strings into polished, customer-facing terminology (e.g., `Clinical Care`, `Pet Supplies Shop`, `Pharmacy Rx`) across both the POS register and the dashboard analytics panels.
+
+### 7. Cross-Module State Synchronization & Pipeline Automation Logic
+- **The Golden Thread**: Establish a hard link across modules. An active appointment instance must securely bind to its respective medical chart note, which must then directly cascade its unique identifier down to the checkout invoice payload.
+- **State Automation**: The moment an invoice is finalized as 'paid' at the POS register, the system must trigger an automatic database mutation that immediately resolves the source calendar appointment from `in-progress` or `booked` to `completed`.
+- **Dangling Status Prevention**: Never leave trailing active flags on the scheduling board for patients who have already been financial cleared and discharged at the front desk.
+
+### 8. Atomic Multi-Table Mutations & Cascade Triggers
+- **Fail-Safe Integrity**: When executing multi-module sequences (such as a checkout-to-discharge workflow), updates to separate tables (e.g., inserting records to `invoices` while updating statuses in `appointments`) must run atomically. If any part of the chain reaction breaks, roll back the entire transaction to prevent data fragmentation.
+- **Explicit UX Feedback**: Always provide unambiguous toast notifications confirming the status of the entire automated data cascade.

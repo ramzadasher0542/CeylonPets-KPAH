@@ -303,6 +303,19 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       shift_id:       inv.shiftId,
       data:           inv,   // full object stored as JSONB
     });
+
+    if (inv.shiftId && inv.appointmentId) {
+      const { error } = await supabase
+        .from(DB_TABLES.APPOINTMENTS)
+        .update({ status: 'completed' })
+        .eq('id', inv.appointmentId);
+      
+      if (error) {
+        console.error('[CeylonPets] Failed to cascade appointment resolution:', error);
+      } else {
+        console.log(`[CeylonPets] Appointment ${inv.appointmentId} automatically resolved to completed.`);
+      }
+    }
   } catch (err) {
     console.warn('[CeylonPets] upsertInvoice offline:', err);
     throw err;

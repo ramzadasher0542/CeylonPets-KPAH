@@ -372,7 +372,9 @@ export default function POSRegister({
 
     const invoiceObj: Invoice = {
       id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
-      appointmentId: undefined, // Detached from appointment as requested
+      appointmentId: selectedRecord 
+        ? appointments.find(a => a.patientId === selectedRecord.patientId && (a.status === 'in-progress' || a.status === 'booked'))?.id 
+        : undefined,
       patientId: selectedRecord ? selectedRecord.patientId : 'anonymous_walkin',
       petName: selectedRecord ? selectedRecord.petName : 'Walk-in Pet / Guest',
       ownerName: selectedRecord ? selectedRecord.ownerName : 'General Guest',
@@ -408,6 +410,7 @@ export default function POSRegister({
       setCart([]);
       setDiscountVal(0);
       setSelectedPetId('walkin');
+      showToast('Checkout complete! Invoice generated and appointment resolved.', 'success');
       return true;
     } catch (err: any) {
       console.error('Supabase Rejection:', err);
