@@ -482,7 +482,24 @@ export default function DashboardAnalytics({
 
           <div className="grid grid-cols-3 gap-2 relative z-10 flex-1">
             {(() => {
-              const pb = shiftMetrics?.payment_breakdown || [];
+              // --- MATH FIX: Guaranteed frontend payment breakdown ---
+              const frontendPaymentBreakdown = (() => {
+                const payMap: Record<string, number> = {};
+                const currentShiftInvoices = activeShiftId
+                  ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid')
+                  : invoices.filter(inv => inv.paymentStatus === 'paid');
+
+                for (const inv of currentShiftInvoices) {
+                  const method = (inv.paymentMethod || 'cash').toLowerCase();
+                  payMap[method] = (payMap[method] || 0) + inv.total;
+                }
+                return Object.entries(payMap).map(([method, total]) => ({ method, total }));
+              })();
+
+              const pb = (shiftMetrics?.payment_breakdown && shiftMetrics.payment_breakdown.length > 0)
+                ? shiftMetrics.payment_breakdown
+                : frontendPaymentBreakdown;
+
               const getTender = (method: string) => {
                 const row = pb.find(p => p.method?.toLowerCase() === method);
                 return row?.total || 0;
