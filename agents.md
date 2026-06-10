@@ -75,3 +75,15 @@ This document defines the strict operational boundaries, engineering standards, 
 - **Fuzzy Database Translation**: When processing operational instructions, code modifications, or table configurations, never interpret table or column names with literal rigidity. If a specific component or system entity is referenced using alternate terminology or casual synonyms (e.g., interpreting 'stock table' as `inventory`, 'sales/billing ledger' as `invoices`, or 'register/till data' as `pos_shifts`), automatically resolve the intent to the corresponding physical Supabase database target.
 - **Codebase Context Scans**: Before writing code or altering configurations based on literal text strings, cross-reference user phrases against existing system types inside `types.ts`, file directories, and live schema endpoints to maintain architecture alignment.
 - **Defensive Synonym Alignment**: If a stated table name, variable identifier, or UI option mismatches existing parameters, identify the closest logical match using context clues. Never generate a duplicate, phantom table or new state variable if a semantic equivalent is already functional within the CeylonPets codebase.
+
+### 15. Transactional Data Serialization & Reconstitution Logic
+- **Full-State Aggregation**: Backup engines must cleanly compile all database collection states and local system parameters into a single unified JSON backup packet to ensure holistic ecosystem preservation.
+- **Dependency-Aware Reconstitution**: Restoration pipelines must clear and insert data rows sequentially, tracking strict relational constraints (e.g., reconstructing pos_shifts before appending invoices) to prevent database foreign key assignment failures.
+
+### 16. Local File Stream Automations & Non-Duplicative Directory Mirroring
+- **Stream Overwrites**: Automated local backups must bypass recurring system download prompts by utilizing the native browser File System Access API (`showDirectoryPicker`) to acquire persistent directory stream write access.
+- **Zero Drive Pollution**: Background backup loops must monitor the local operating system clock and overwrite a single, static snapshot file instance at defined intervals (e.g., every 60 minutes) instead of generating duplicate files.
+
+### 17. Structural-Preserving Master Purges ( turn-key Software Provisioning)
+- **Data vs. Schema Isolation**: A master system reboot or data purge routine must execute exclusively through rows-level deletions (`DELETE FROM` or progressive truncation routines) across data collections. 
+- **Attribute Defense**: Structural database designs, schema models, primary attributes (columns, keys, indexing records), Row Level Security (RLS) policies, and system procedures must remain strictly untouched to leave the application framework instantly re-deployable for another business instance.

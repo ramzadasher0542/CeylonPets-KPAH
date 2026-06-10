@@ -525,3 +525,94 @@ export async function closeShift(shiftId: string, actualCash: number, expectedCa
     throw error;
   }
 }
+
+// ---------------------------------------------------------------
+// DISASTER RECOVERY & ECOSYSTEM SERIALIZATION
+// ---------------------------------------------------------------
+
+export async function fetchFullSystemState(): Promise<any> {
+  const [
+    { data: inventory },
+    { data: appointments },
+    { data: records },
+    { data: invoices },
+    { data: posShifts },
+    { data: alerts },
+    { data: notifications }
+  ] = await Promise.all([
+    supabase.from(DB_TABLES.INVENTORY).select('*'),
+    supabase.from(DB_TABLES.APPOINTMENTS).select('*'),
+    supabase.from(DB_TABLES.RECORDS).select('*'),
+    supabase.from(DB_TABLES.INVOICES).select('*'),
+    supabase.from('pos_shifts').select('*'),
+    supabase.from('system_alerts').select('*'),
+    supabase.from('client_notifications').select('*')
+  ]);
+
+  return {
+    app: 'CeylonPets',
+    version: '2.0.0',
+    timestamp: new Date().toISOString(),
+    collections: {
+      inventory: inventory || [],
+      appointments: appointments || [],
+      records: records || [],
+      invoices: invoices || [],
+      pos_shifts: posShifts || [],
+      system_alerts: alerts || [],
+      client_notifications: notifications || []
+    }
+  };
+}
+
+export async function masterSystemPurge(): Promise<void> {
+  const tables = [
+    DB_TABLES.INVOICES,
+    'client_notifications',
+    'system_alerts',
+    DB_TABLES.RECORDS,
+    DB_TABLES.APPOINTMENTS,
+    'pos_shifts',
+    DB_TABLES.INVENTORY
+  ];
+
+  for (const table of tables) {
+    // Structural-safe deletion using rows-level removal
+    const { error } = await supabase.from(table).delete().neq('id', 'master_purge_safeguard_uuid');
+    if (error) throw error;
+  }
+  
+  // Clear local storage caches
+  localStorage.removeItem('ceylon_inventory_v2');
+  localStorage.removeItem('ceylon_appointments_v2');
+  localStorage.removeItem('ceylon_records_v2');
+  localStorage.removeItem('ceylon_invoices_v2');
+}
+
+export async function reconstituteSystemState(payload: any): Promise<void> {
+  if (!payload || !payload.collections) throw new Error("Invalid payload structure");
+
+  // Phase 1: Structural Purge
+  await masterSystemPurge();
+
+  // Phase 2: Dependency-Aware Reconstitution
+  const tablesOrder = [
+    { name: DB_TABLES.INVENTORY, data: payload.collections.inventory },
+    { name: 'pos_shifts', data: payload.collections.pos_shifts },
+    { name: DB_TABLES.APPOINTMENTS, data: payload.collections.appointments },
+    { name: DB_TABLES.RECORDS, data: payload.collections.records },
+    { name: DB_TABLES.INVOICES, data: payload.collections.invoices },
+    { name: 'system_alerts', data: payload.collections.system_alerts },
+    { name: 'client_notifications', data: payload.collections.client_notifications }
+  ];
+
+  for (const table of tablesOrder) {
+    if (table.data && table.data.length > 0) {
+      const { error } = await supabase.from(table.name).insert(table.data);
+      if (error) {
+        console.error(`Reconstitution failed on table ${table.name}`, error);
+        throw error;
+      }
+    }
+  }
+}

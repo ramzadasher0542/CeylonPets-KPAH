@@ -31,6 +31,7 @@ import { showToast } from './Toast';
 import { uploadImageToStorage } from '../lib/supabase';
 import { upsertSystemConfig, deleteStaffUser, upsertStaffUser } from '../lib/auth';
 import emailjs from '@emailjs/browser';
+import { fetchFullSystemState, masterSystemPurge, reconstituteSystemState } from '../lib/db';
 
 export interface SystemConfig {
   appName: string;
@@ -166,6 +167,35 @@ export default function SystemSettings({
     'System initialization successful.',
     'Local backup directory linked to client storage browser state.'
   ]);
+
+  // File System Access API
+  const [directoryHandle, setDirectoryHandle] = useState<any>(null);
+  const [isMirrorActive, setIsMirrorActive] = useState(false);
+  const [showMasterPurgePrompt, setShowMasterPurgePrompt] = useState(false);
+  const [masterPasscode, setMasterPasscode] = useState('');
+
+  React.useEffect(() => {
+    let interval: any;
+    if (isMirrorActive && directoryHandle) {
+      interval = setInterval(async () => {
+        const now = new Date();
+        if (now.getMinutes() === 0) {
+          try {
+            const payload = await fetchFullSystemState();
+            const jsonString = JSON.stringify(payload, null, 2);
+            const fileHandle = await directoryHandle.getFileHandle('ceylon_pets_vault_mirror.json', { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(jsonString);
+            await writable.close();
+            setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL MIRROR SUCCESS]: Overwrote automated database snapshot instance.`]);
+          } catch (err: any) {
+            setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL MIRROR ERROR]: ${err.message}`]);
+          }
+        }
+      }, 60000); // Check every minute
+    }
+    return () => clearInterval(interval);
+  }, [isMirrorActive, directoryHandle]);
 
   // Email digest action feedback
   const [emailStatusMessage, setEmailStatusMessage] = useState<string | null>(null);
@@ -498,77 +528,76 @@ export default function SystemSettings({
     }
   };
 
-  // Mock backup generator
-  const triggerBackupDownload = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-      app: 'CeylonPets',
-      poweredBy: 'ASH POINT SOLUTIONS',
-      license: 'PRO-ENTERPRISE-UNLIMITED',
-      inventory,
-      config,
-      timestamp: new Date().toISOString()
-    }, null, 2));
-    
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href",     dataStr);
-    downloadAnchor.setAttribute("download", `ceylonpets_backup_${Date.now()}.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-
-    setBackupLogs(prev => [
-      ...prev,
-      `[DATABASE EXPORT]: Instantly backed up inventory list successfully. Spooled JSON download package.`
-    ]);
+  const triggerBackupDownload = async () => {
+    try {
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [SERIALIZING]: Compiling holistic ecosystem state...`]);
+      const payload = await fetchFullSystemState();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.href = url;
+      downloadAnchor.download = `ceylonpets_backup_${Date.now()}.json`;
+      downloadAnchor.click();
+      URL.revokeObjectURL(url);
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL EXPORT SUCCESS]: Triggered ecosystem download.`]);
+    } catch (err: any) {
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL EXPORT FAILED]: ${err.message}`]);
+    }
   };
 
-  // Cloud backup sync
-  const triggerCloudBackupSync = () => {
-    const endpoint = config.cloudEndpoint || "https://vault.ashpointsolutions.lk/api/backup";
-    setBackupLogs(prev => [...prev, `[CLOUD VAULT ACTIVE]: Linking to backup target server: ${endpoint}`]);
-    
-    const attemptBackup = (attempt: number) => {
-      fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          config,
-          inventory,
-          invoices,
-          timestamp: new Date().toISOString()
-        })
-      })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Backup server returned ${response.status}`);
-        }
-        const secureHash = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        setBackupLogs(prev => [
-          ...prev, 
-          `[CLOUD SECURED SHA-256]: Generated cryptographic snapshot checksum...`,
-          `[CLOUD MERGE SUCCESS]: Synchronized databases smoothly! Vault ID: ${secureHash.toUpperCase()}`
-        ]);
-        alert('Reseller Cloud Backup Successful! Database safely pushed to AWS/GCP secure bucket storage.');
-      })
-      .catch((error) => {
-        console.error(`Backup attempt ${attempt} failed:`, error);
-        if (attempt < 3) {
-          setBackupLogs(prev => [...prev, `[CLOUD RETRY]: Retry attempt ${attempt + 1} for backup target...`]);
-          setTimeout(() => attemptBackup(attempt + 1), 1500);
-        } else {
-          setBackupLogs(prev => [
-            ...prev,
-            `[CLOUD ERROR]: Failed to backup databases to: ${endpoint}. Error: ${error.message || error}`,
-            `[CLOUD STANDALONE SAFE]: Backup saved to local storage sandbox instead.`
-          ]);
-          alert(`Backup warning: Cloud server at ${endpoint} could not be reached.\n\nYour configuration and databases are safely backed up locally.`);
-        }
-      });
+  const handleRestoreJson = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [RESTORE INITIATED]: Validating payload...`]);
+        const parsed = JSON.parse(reader.result as string);
+        await reconstituteSystemState(parsed);
+        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [RESTORE SUCCESS]: Dynamic database snapshot loaded completely.`]);
+        showToast('System reconstituted successfully. Please refresh the page.', 'success');
+        setTimeout(() => window.location.reload(), 2000);
+      } catch (err: any) {
+        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [RESTORE ERROR]: Malformed schema or constraint failure.`]);
+        showToast('Restore Failed: ' + err.message, 'error');
+      }
     };
+    reader.readAsText(file);
+  };
 
-    setTimeout(() => {
-      attemptBackup(1);
-    }, 1000);
+  const requestDirectoryAccess = async () => {
+    try {
+      if ('showDirectoryPicker' in window) {
+        const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
+        setDirectoryHandle(handle);
+        setIsMirrorActive(true);
+        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [MIRROR CONFIGURED]: Local sandbox bound to OS directory.`]);
+      } else {
+        alert('Your browser does not support the File System Access API. Please use a modern Chromium browser.');
+      }
+    } catch (err: any) {
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [MIRROR ERROR]: Directory access denied or cancelled.`]);
+    }
+  };
+
+  const executeMasterPurge = async () => {
+    if (masterPasscode !== 'ADMIN_PURGE_999') {
+      showToast('Master validation failed. Action aborted.', 'error');
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE BLOCKED]: Invalid master passcode.`]);
+      return;
+    }
+    
+    try {
+      setShowMasterPurgePrompt(false);
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE AUTHORIZED]: Initiating structural-safe system wipe...`]);
+      await masterSystemPurge();
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE COMPLETE]: Databases cleared. Ecosystem reset to blank slate.`]);
+      showToast('Master system purge successful. Please reload the dashboard.', 'success');
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err: any) {
+      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE FAILED]: Database integrity violation. Aborting.`]);
+      showToast('Purge Failed: ' + err.message, 'error');
+    }
   };
 
   return (
@@ -1539,12 +1568,12 @@ export default function SystemSettings({
                 <div className="space-y-4">
                   
                   {/* Local Backup Section */}
-                  <div className="p-5 border bg-white rounded-2xl space-y-3.5 border-slate-100 shadow-xs">
-                    <div className="flex items-center gap-1.5 text-slate-800 font-black">
+                  <div className="p-5 border bg-white/70 backdrop-blur-md rounded-2xl space-y-3.5 border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-1.5 text-slate-800 font-black border-b border-slate-100 pb-2">
                       <Database className="h-5 w-5 text-indigo-500 font-bold" />
                       <span>Local Sandbox backups controls</span>
                     </div>
-                    <p className="text-slate-450 leading-relaxed font-semibold">
+                    <p className="text-slate-600 leading-relaxed font-semibold">
                       Spool local inventory stock charts, consultation histories, and checkout invoices into a physical JSON backup document. Keep safe locally on target computer.
                     </p>
 
@@ -1552,140 +1581,108 @@ export default function SystemSettings({
                       <button
                         type="button"
                         onClick={triggerBackupDownload}
-                        className="py-2 px-3 border border-indigo-600 hover:bg-indigo-50 text-indigo-805 leading-none transition-colors rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        className="py-2.5 px-3 border border-indigo-600 hover:bg-indigo-50 text-indigo-805 leading-none transition-colors rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                       >
                         <Download className="h-4.5 w-4.5 shrink-0" />
                         <span>Download Back</span>
                       </button>
 
-                      {/* Restore Simulator file input directly */}
-                      <label className="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap">
+                      <label className="py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs whitespace-nowrap">
                         <Upload className="h-4.5 w-4.5 shrink-0" />
                         <span>Restore JSON</span>
                         <input name="inputFile72" id="input-file-72" 
                           type="file" 
                           accept=".json" 
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files.length > 0) {
-                              const fileReader = new FileReader();
-                              fileReader.onload = () => {
-                                try {
-                                  const parsed = JSON.parse(fileReader.result as string);
-                                  if (parsed.app === 'CeylonPets' || parsed.inventory || parsed.config) {
-                                    if (onRestoreSnapshot) {
-                                      onRestoreSnapshot(parsed);
-                                    }
-                                    alert('Valid CeylonPets backup snapshot found! Successfully restored configuration settings, user roles, diagnostics ledger, inventory matrices, and client databases dynamically!');
-                                    setBackupLogs(prev => [...prev, `[RESTORE FILE SUCCESS]: Loaded previous dynamic database snapshot.`]);
-                                  } else {
-                                    alert('Unrecognized schema inside backup document.');
-                                  }
-                                } catch (_) {
-                                  alert('Unstable file structure. Failed to read JSON.');
-                                }
-                              };
-                              fileReader.readAsText(e.target.files[0]);
-                            }
-                          }} 
+                          onChange={handleRestoreJson} 
                           className="hidden" 
                         />
                       </label>
                     </div>
                   </div>
 
-                  {/* Cloud vault config Section */}
-                  <div className="p-5 border bg-sky-50/20 rounded-2xl space-y-3.5 border-sky-100">
-                    <span className="font-extrabold text-indigo-950 block text-xs underline">{config.hospitalName || 'CeylonPets'} Secure Cloud Vault</span>
-
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-750">Enable Cloud vaults backups sync:</span>
-                      <input name="inputCheckbox609" id="input-checkbox-609"
-                        type="checkbox"
-                        checked={config.cloudBackupEnabled}
-                        onChange={(e) => setConfigValue('cloudBackupEnabled', e.target.checked)}
-                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-                      />
+                  {/* Automated Local Directory Mirror */}
+                  <div className="p-5 border bg-sky-50/50 rounded-2xl space-y-3.5 border-sky-200 backdrop-blur-md shadow-sm">
+                    <div className="flex items-center gap-1.5 text-indigo-950 font-black text-sm border-b border-indigo-100 pb-2">
+                      <Cloud className="h-5 w-5 text-indigo-600 font-bold" />
+                      <span>Automated Local Directory Mirror</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="space-y-1">
-                        <label className="font-bold text-slate-700 block text-[10px]" htmlFor="autosave-sync-frequency">Autosave Sync frequency</label>
-                        <select name="autosaveSyncFrequency" id="autosave-sync-frequency"
-                          value={config.cloudBackupSchedule}
-                          onChange={(e: any) => setConfigValue('cloudBackupSchedule', e.target.value)}
-                          className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800"
-                          disabled={!config.cloudBackupEnabled}
-                        >
-                          <option value="hourly">Every 1 Hour (Critical POS)</option>
-                          <option value="daily">Every day end (Closing routine)</option>
-                          <option value="manual">Manual dispatch vault trigger</option>
-                        </select>
-                      </div>
+                    <p className="text-slate-700 leading-relaxed font-semibold">
+                      Stream database records directly into a linked local OS folder. Re-writes occur exactly at minute 00 of every hour.
+                    </p>
 
-                      <div className="space-y-1">
-                        <span className="font-bold text-slate-700 block text-[10px]">Actions Control</span>
-                        <button
-                          type="button"
-                          onClick={triggerCloudBackupSync}
-                          disabled={!config.cloudBackupEnabled}
-                          className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg cursor-pointer disabled:opacity-40 text-xs text-center"
-                        >
-                          Sync Cloud Snapshot
-                        </button>
-                      </div>
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <button
+                        type="button"
+                        onClick={requestDirectoryAccess}
+                        className={`w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer shadow-xs transition-colors ${isMirrorActive ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'}`}
+                      >
+                        {isMirrorActive ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        {isMirrorActive ? 'Mirror Active - Directory Linked' : 'Select Backup Folder'}
+                      </button>
                     </div>
                   </div>
 
                   {/* Danger Zone Section */}
-                  <div className="p-5 border bg-rose-50/30 rounded-2xl space-y-3.5 border-rose-200 shadow-xs">
-                    <div className="flex items-center gap-1.5 text-rose-800 font-black">
-                      <AlertTriangle className="h-5 w-5 text-rose-500 font-bold" />
+                  <div className="p-5 border bg-rose-50/50 rounded-2xl space-y-4 border-rose-200 shadow-sm backdrop-blur-md">
+                    <div className="flex items-center gap-1.5 text-rose-800 font-black text-sm border-b border-rose-200/50 pb-2">
+                      <AlertTriangle className="h-5 w-5 text-rose-600 font-bold" />
                       <span>Danger Zone</span>
                     </div>
-                    <p className="text-rose-600/80 leading-relaxed font-semibold">
-                      Critical system actions. Use with extreme caution as these operations cannot be fully undone without a cloud backup.
+                    <p className="text-rose-700 leading-relaxed font-semibold">
+                      Critical system actions. Master purges are completely unrecoverable without a backup JSON file.
                     </p>
 
-                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm("Are you sure you want to perform a HARD REBOOT? This will clear all corrupted local state and refresh the UI framework.")) {
-                            onHardReboot?.();
-                          }
-                        }}
-                        className="py-2.5 px-3 border border-rose-300 hover:bg-rose-100 text-rose-800 leading-none transition-colors rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <RefreshCw className="h-4 w-4 shrink-0" />
-                        <span>Hard Reboot</span>
-                      </button>
+                    {showMasterPurgePrompt ? (
+                      <div className="space-y-3 bg-white p-3 rounded-xl border border-rose-200 shadow-inner">
+                        <p className="text-[10px] font-bold text-slate-700">Enter Master Passcode to execute purge:</p>
+                        <input
+                          type="password"
+                          value={masterPasscode}
+                          onChange={(e) => setMasterPasscode(e.target.value)}
+                          placeholder="Passcode..."
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setShowMasterPurgePrompt(false)}
+                            className="flex-1 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg font-bold transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={executeMasterPurge}
+                            className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold flex items-center justify-center gap-1 transition-colors shadow-sm"
+                          >
+                            <Trash2 className="h-4 w-4" /> Confirm Purge
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm("Are you sure you want to perform a HARD REBOOT? This will clear all corrupted local state and refresh the UI framework.")) {
+                              onHardReboot?.();
+                            }
+                          }}
+                          className="py-2.5 px-3 border border-rose-300 hover:bg-rose-100 text-rose-800 leading-none transition-colors rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          <RefreshCw className="h-4 w-4 shrink-0" />
+                          <span>Hard Reboot</span>
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm("CRITICAL WARNING: Are you absolutely sure you want to purge all local databases? You will lose all offline unsynced data!")) {
-                            onPurgeDatabases?.();
-                          }
-                        }}
-                        className="py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <Trash2 className="h-4 w-4 shrink-0" />
-                        <span>Purge Data</span>
-                      </button>
-                      
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm("Are you sure you want to FORCE OVERWRITE local storage with Cloud data? All unsynced offline changes will be destroyed and replaced!")) {
-                            onForceCloudSync?.();
-                          }
-                        }}
-                        className="py-2.5 px-3 col-span-2 bg-indigo-600 hover:bg-indigo-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                      >
-                        <Cloud className="h-4 w-4 shrink-0" />
-                        <span>Force Overwrite from Cloud</span>
-                      </button>
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowMasterPurgePrompt(true)}
+                          className="py-2.5 px-3 bg-rose-600 hover:bg-rose-700 text-white text-center leading-none rounded-xl font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4 shrink-0" />
+                          <span>Master Purge</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                 </div>
