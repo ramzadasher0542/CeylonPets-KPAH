@@ -16,14 +16,10 @@ import {
   Coins, 
   QrCode, 
   FileText, 
-  Check, 
+  Check,
   AlertTriangle,
-  User,
-  Flame,
-  FileCheck2,
   ChevronDown,
   Sparkles,
-  HeartPulse,
   Printer
 } from 'lucide-react';
 import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord, CATEGORY_DISPLAY_MAP } from '../types';
@@ -369,14 +365,22 @@ export default function POSRegister({
     setCustomItemPrice('');
   };
 
-  // Calculations
-  const rawSubtotal = cart.reduce((sum, item) => sum + (item.item.price * item.quantity), 0);
+  // Calculations (Enforcing raw cents and Net Total rule)
   const taxRate = systemConfig ? systemConfig.taxRate : 0.0825;
   const currencySign = systemConfig ? systemConfig.currencySymbol : '$';
-  const subtotal = Math.round(rawSubtotal * 100) / 100;
-  const tax = Math.round((subtotal * taxRate) * 100) / 100;
-  const discount = Math.round((discountVal || 0) * 100) / 100;
-  const total = Math.max(0, Math.round((subtotal + tax - discount) * 100) / 100);
+  
+  const centsSubtotal = cart.reduce((sum, item) => sum + Math.round(item.item.price * 100) * item.quantity, 0);
+  const centsDiscount = Math.round((discountVal || 0) * 100);
+  
+  // Rule 18: Net Total = (Subtotal - Discounts) + Taxes
+  const netCentsSubtotal = Math.max(0, centsSubtotal - centsDiscount);
+  const centsTax = Math.round(netCentsSubtotal * taxRate);
+  const centsTotal = netCentsSubtotal + centsTax;
+
+  const subtotal = centsSubtotal / 100;
+  const discount = centsDiscount / 100;
+  const tax = centsTax / 100;
+  const total = centsTotal / 100;
 
   // 1. Process Checkout
   const handleCheckoutSubmit = async (): Promise<boolean> => {
@@ -405,7 +409,7 @@ export default function POSRegister({
         category: c.item.category,
         quantity: c.quantity,
         unitPrice: c.item.price,
-        totalPrice: Math.round((c.item.price * c.quantity) * 100) / 100
+        totalPrice: (Math.round(c.item.price * 100) * c.quantity) / 100
       };
     });
 
@@ -473,7 +477,6 @@ export default function POSRegister({
           await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
         }
       }
-      console.log('Supabase Payload:', invoiceObj);
       await onAddInvoice(invoiceObj);
 
       setCheckoutSuccess(invoiceObj);
@@ -1178,9 +1181,9 @@ export default function POSRegister({
       {/* Checkout Modal Overlay */}
       {showCheckoutModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 space-y-6 shadow-xl animate-fade-in text-xs">
+          <div className="bg-white rounded-3xl border border-sky-100 flex flex-col max-h-[calc(100vh-40px)] max-w-xl w-full overflow-hidden shadow-xl animate-fade-in text-xs">
             
-            <div className="flex justify-between items-start">
+            <div className="p-6 shrink-0 border-b border-slate-100 flex justify-between items-start">
               <div>
                 <h4 className="text-base font-extrabold text-slate-800 leading-none">Complete Payment Transaction</h4>
                 <p className="text-[11px] text-slate-400 mt-1">Select customer billing type and collect funds</p>
@@ -1193,105 +1196,105 @@ export default function POSRegister({
               </button>
             </div>
 
-            <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
-              <div>
-                <span className="text-slate-400 block font-medium">Owner / Billing For</span>
-                <span className="font-bold text-slate-800 text-sm">{selectedApt ? selectedApt.ownerName : 'Anonymous / Walk-in'}</span>
-                {selectedApt && <span className="text-[10px] text-indigo-600 font-semibold block">Pet Patient: {selectedApt.petName}</span>}
-              </div>
-              <div className="text-right">
-                <span className="text-slate-400 block font-medium">Grand Total</span>
-                <span className="text-xl font-black text-emerald-600 font-mono">{currencySign}{total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Payment Method Picker */}
-            <div className="space-y-2">
-              <span className="font-bold text-slate-700 block">Collection System</span>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('cash')}
-                  className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
-                    paymentMethod === 'cash' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <Coins className="h-4 w-4" /> Cash Ledger
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
-                    paymentMethod === 'card' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <CreditCard className="h-4 w-4" /> Credit Card
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('bank_transfer')}
-                  className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
-                    paymentMethod === 'bank_transfer' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <FileText className="h-4 w-4" /> Bank Transfer
-                </button>
-              </div>
-            </div>
-
-            {/* Cash details math */}
-            {paymentMethod === 'cash' && (
-              <div className="space-y-2 p-3 bg-teal-50/50 rounded-xl border border-teal-100">
-                <span className="font-semibold text-teal-800 block">Cash Received calculator</span>
-                <div className="flex gap-2">
-                  <input name="inputNumber739" id="input-number-739"
-                    ref={cashInputRef}
-                    type="number"
-                    placeholder={`Enter cash amount (${currencySign})`}
-                    value={amountReceived}
-                    onChange={(e) => setAmountReceived(e.target.value)}
-                    onKeyDown={async (e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        const success = await handleCheckoutSubmit();
-                        if (success) setShowCheckoutModal(false);
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs font-bold"
-                  />
+            <div className="p-6 flex-1 overflow-y-auto custom-scrollbar space-y-6">
+              <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
+                <div>
+              <span className="text-slate-400 block font-medium">Owner / Billing For</span>
+                  <span className="font-bold text-slate-800 text-sm">{selectedApt ? selectedApt.ownerName : 'Anonymous / Walk-in'}</span>
+                  {selectedApt && <span className="text-[10px] text-indigo-600 font-semibold block">Pet Patient: {selectedApt.petName}</span>}
                 </div>
-                {amountReceived && (
-                  <div className="pt-1 flex justify-between items-center font-mono">
-                    {parseFloat(amountReceived) < total ? (
-                      <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{(total - parseFloat(amountReceived)).toFixed(2)}</span>
-                    ) : (
-                      <>
-                        <span className="text-sm font-bold text-teal-800">Change Due:</span>
-                        <span className="text-emerald-600 font-bold text-lg">{currencySign}{(parseFloat(amountReceived) - total).toFixed(2)}</span>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div className="text-right">
+                  <span className="text-slate-400 block font-medium">Grand Total</span>
+                  <span className="text-xl font-black text-emerald-600 font-mono">{currencySign}{(centsTotal / 100).toFixed(2)}</span>
+                </div>
               </div>
-            )}
 
-            <div className="flex gap-2.5 pt-2">
+              {/* Payment Method Picker */}
+              <div className="space-y-2">
+                <span className="font-bold text-slate-700 block">Collection System</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('cash')}
+                    className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+                      paymentMethod === 'cash' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Coins className="h-4 w-4" /> Cash Ledger
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('card')}
+                    className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+                      paymentMethod === 'card' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <CreditCard className="h-4 w-4" /> Credit Card
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('bank_transfer')}
+                    className={`p-3 border rounded-xl flex items-center justify-center gap-1.5 font-bold cursor-pointer transition-all ${
+                      paymentMethod === 'bank_transfer' ? 'border-sky-500 bg-sky-50 text-sky-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <FileText className="h-4 w-4" /> Bank Transfer
+                  </button>
+                </div>
+              </div>
+
+              {/* Cash details math */}
+              {paymentMethod === 'cash' && (
+                <div className="space-y-2 p-3 bg-teal-50/50 rounded-xl border border-teal-100">
+                  <span className="font-semibold text-teal-800 block">Cash Received calculator</span>
+                  <div className="flex gap-2">
+                    <input name="inputNumber739" id="input-number-739"
+                      ref={cashInputRef}
+                      type="number"
+                      placeholder={`Enter cash amount (${currencySign})`}
+                      value={amountReceived}
+                      onChange={(e) => setAmountReceived(e.target.value)}
+                      onKeyDown={async (e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          const success = await handleCheckoutSubmit();
+                          if (success) setShowCheckoutModal(false);
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs font-bold"
+                    />
+                  </div>
+                  {amountReceived && (
+                    <div className="pt-1 flex justify-between items-center font-mono">
+                      {parseFloat(amountReceived) < (centsTotal / 100) ? (
+                        <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{((centsTotal / 100) - parseFloat(amountReceived)).toFixed(2)}</span>
+                      ) : (
+                        <>
+                          <span className="text-sm font-bold text-teal-800">Change Due:</span>
+                          <span className="text-emerald-600 font-bold text-lg">{currencySign}{(parseFloat(amountReceived) - (centsTotal / 100)).toFixed(2)}</span>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 shrink-0 border-t border-slate-100 flex gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowCheckoutModal(false)}
-                className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 cursor-pointer"
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3.5 rounded-xl font-bold transition-colors"
               >
-                Cancel
+                Cancel Checkout
               </button>
               <button
-                type="button"
-                onClick={async () => {
-                  const success = await handleCheckoutSubmit();
-                  if (success) setShowCheckoutModal(false);
-                }}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl cursor-pointer shadow-xs"
+                onClick={handleCheckoutSubmit}
+                disabled={paymentMethod === 'cash' && Number(amountReceived) < (centsTotal / 100)}
+                className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 font-bold transition-colors shadow-md shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {!isOnline ? 'Save Offline (Queue)' : 'Confirm & Print Receipt'}
+                <Check className="w-5 h-5" />
+                Finalize & Record ({currencySign}{(centsTotal / 100).toFixed(2)})
               </button>
             </div>
           </div>
@@ -1301,23 +1304,26 @@ export default function POSRegister({
       {/* Feedback banner of successful billing */}
       {checkoutSuccess && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-center space-y-4 animate-scale-up text-xs">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-center space-y-4 animate-scale-up text-xs overflow-hidden">
             <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl">
               ✓
             </div>
             <div>
-              <h4 className="text-sm font-black text-slate-800">Transaction Complete!</h4>
-              <p className="text-xs text-slate-500 mt-0.5">Invoice {checkoutSuccess.id} created successfully</p>
+              <h3 className="text-lg font-black text-slate-800">Payment Secured</h3>
+              <p className="text-slate-500 mt-0.5">Invoice {checkoutSuccess.id} created successfully.</p>
             </div>
-
-            <div className="p-4 bg-slate-50 rounded-2xl text-left font-mono space-y-1 divide-y divide-slate-100">
-              <div className="pb-1.5 flex justify-between">
-                <span className="text-slate-400">Owner:</span>
-                <span className="font-bold text-slate-800">{checkoutSuccess.ownerName}</span>
+            
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-left space-y-1">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Payment Method:</span>
+                <span className="font-semibold text-slate-700 capitalize">
+                  {checkoutSuccess.paymentMethod === 'cash' ? 'Cash Register' : 
+                   checkoutSuccess.paymentMethod === 'card' ? 'Credit/Debit Card' : 'Bank Transfer'}
+                </span>
               </div>
               <div className="py-1.5 flex justify-between">
                 <span className="text-slate-400">Total Charged:</span>
-                <span className="font-bold text-emerald-600 font-black">{currencySign}{checkoutSuccess.total.toFixed(2)}</span>
+                <span className="font-bold text-emerald-600 font-black">{currencySign}{(checkoutSuccess.total).toFixed(2)}</span>
               </div>
               <div className="pt-1.5 flex justify-between text-[10px]">
                 <span className="text-slate-400">Sync Status:</span>
@@ -1348,7 +1354,7 @@ export default function POSRegister({
       {/* 1. Passcode PIN Challenge Modal Overlay */}
       {showPinChallenge && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-center space-y-5 shadow-2xl animate-scale-up text-xs font-sans">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-center space-y-5 shadow-2xl animate-scale-up text-xs font-sans overflow-hidden">
             <div className="w-12 h-12 bg-rose-50 text-rose-600 border border-rose-100 rounded-full flex items-center justify-center mx-auto text-lg animate-bounce">
               🔒
             </div>
@@ -1448,9 +1454,9 @@ export default function POSRegister({
       {/* 2. Invoice Details Sheet Modal Overlay */}
       {selectedInvoiceDetails && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 space-y-4 shadow-2xl animate-scale-up text-xs font-sans text-left">
+          <div className="bg-white rounded-3xl border border-sky-100 max-h-[calc(100vh-40px)] w-full max-w-md flex flex-col shadow-2xl animate-scale-up text-xs font-sans text-left overflow-hidden">
             
-            <div className="flex justify-between items-start">
+            <div className="p-6 shrink-0 flex justify-between items-start border-b border-slate-50">
               <div>
                 <h4 className="text-sm font-extrabold text-slate-800 leading-none">Invoice Transaction Sheet</h4>
                 <p className="text-[10px] text-slate-400 mt-1">Audit sheet for invoice checkout records</p>
@@ -1463,89 +1469,91 @@ export default function POSRegister({
               </button>
             </div>
 
-            {/* Audit log strip */}
-            <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5">
-              <div className="flex justify-between">
-                <span className="text-slate-400 font-medium">Invoice ID:</span>
-                <span className="font-mono font-bold text-slate-800">{selectedInvoiceDetails.id}</span>
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-4">
+              {/* Audit log strip */}
+              <div className="p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Invoice ID:</span>
+                  <span className="font-mono font-bold text-slate-800">{selectedInvoiceDetails.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Checkout Date:</span>
+                  <span className="font-mono text-slate-650 font-semibold">{selectedInvoiceDetails.date}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-400 font-medium">Billed Cashier:</span>
+                  <span className="font-semibold text-slate-650">{selectedInvoiceDetails.createdBy || 'Authorized Staff'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 font-medium">Discharge Status:</span>
+                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
+                    selectedInvoiceDetails.paymentStatus === 'void' 
+                      ? 'bg-slate-205 text-slate-500 border border-slate-250' 
+                      : 'bg-emerald-100 text-emerald-800'
+                  }`}>
+                    {selectedInvoiceDetails.paymentStatus.toUpperCase()}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400 font-medium">Checkout Date:</span>
-                <span className="font-mono text-slate-650 font-semibold">{selectedInvoiceDetails.date}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400 font-medium">Billed Cashier:</span>
-                <span className="font-semibold text-slate-650">{selectedInvoiceDetails.createdBy || 'Authorized Staff'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 font-medium">Discharge Status:</span>
-                <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${
-                  selectedInvoiceDetails.paymentStatus === 'void' 
-                    ? 'bg-slate-205 text-slate-500 border border-slate-250' 
-                    : 'bg-emerald-100 text-emerald-800'
-                }`}>
-                  {selectedInvoiceDetails.paymentStatus.toUpperCase()}
-                </span>
-              </div>
-            </div>
 
-            {/* Client / Pet linkage info */}
-            <div className="p-3 bg-indigo-50/20 border border-indigo-100/50 rounded-xl text-left">
-              <span className="text-[8px] font-bold text-indigo-500 uppercase tracking-wider block font-mono">Billed Customer / Patient</span>
-              <span className="font-bold text-slate-800 block text-xs mt-0.5">Owner: {selectedInvoiceDetails.ownerName}</span>
-              <span className="text-[10px] text-indigo-600 font-semibold block mt-0.5">Pet Patient: {selectedInvoiceDetails.petName}</span>
-              <span className="text-[9px] text-slate-400 block font-mono mt-0.5">Phone: {selectedInvoiceDetails.ownerPhone}</span>
-            </div>
+              {/* Client / Pet linkage info */}
+              <div className="p-3 bg-indigo-50/20 border border-indigo-100/50 rounded-xl text-left">
+                <span className="text-[8px] font-bold text-indigo-500 uppercase tracking-wider block font-mono">Billed Customer / Patient</span>
+                <span className="font-bold text-slate-800 block text-xs mt-0.5">Owner: {selectedInvoiceDetails.ownerName}</span>
+                <span className="text-[10px] text-indigo-600 font-semibold block mt-0.5">Pet Patient: {selectedInvoiceDetails.petName}</span>
+                <span className="text-[9px] text-slate-400 block font-mono mt-0.5">Phone: {selectedInvoiceDetails.ownerPhone}</span>
+              </div>
 
-            {/* Itemized Table */}
-            <div className="border border-slate-100 rounded-xl overflow-hidden">
-              <table className="w-full text-left text-[10px]">
-                <thead className="bg-slate-50 font-bold text-slate-500 border-b border-slate-100">
-                  <tr>
-                    <th className="p-2 w-[55%]">Item Description</th>
-                    <th className="p-2 text-center w-[15%]">Qty</th>
-                    <th className="p-2 text-right w-[30%]">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50 font-semibold text-slate-700">
-                  {selectedInvoiceDetails.items.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="p-2">
-                        <span className="text-[8px] font-mono text-slate-400 block">{item.sku}</span>
-                        <div className="truncate max-w-[200px]">{item.name}</div>
-                      </td>
-                      <td className="p-2 text-center font-mono">{item.quantity}</td>
-                      <td className="p-2 text-right font-mono">{currencySign}{item.totalPrice.toFixed(2)}</td>
+              {/* Itemized Table */}
+              <div className="border border-slate-100 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-[10px]">
+                  <thead className="bg-slate-50 font-bold text-slate-500 border-b border-slate-100">
+                    <tr>
+                      <th className="p-2 w-[55%]">Item Description</th>
+                      <th className="p-2 text-center w-[15%]">Qty</th>
+                      <th className="p-2 text-right w-[30%]">Total</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 font-semibold text-slate-700">
+                    {selectedInvoiceDetails.items.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/50">
+                        <td className="p-2">
+                          <span className="text-[8px] font-mono text-slate-400 block">{item.sku}</span>
+                          <div className="truncate max-w-[200px]">{item.name}</div>
+                        </td>
+                        <td className="p-2 text-center font-mono">{item.quantity}</td>
+                        <td className="p-2 text-right font-mono">{currencySign}{(item.totalPrice).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Math break downs */}
-            <div className="space-y-1.5 pt-1.5 text-[10px] font-semibold text-slate-500">
-              <div className="flex justify-between">
-                <span>Items Subtotal:</span>
-                <span className="font-mono text-slate-700">{currencySign}{selectedInvoiceDetails.subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Discount Applied:</span>
-                <span className="font-mono text-slate-700">-{currencySign}{selectedInvoiceDetails.discount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                <span>Vet Sales Tax:</span>
-                <span className="font-mono text-slate-700">{currencySign}{selectedInvoiceDetails.tax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-xs font-bold text-slate-800 pt-0.5">
-                <span>Discharged Total:</span>
-                <span className="font-mono text-emerald-600 font-black text-sm">
-                  {currencySign}{selectedInvoiceDetails.total.toFixed(2)}
-                </span>
+              {/* Math break downs */}
+              <div className="space-y-1.5 pt-1.5 text-[10px] font-semibold text-slate-500">
+                <div className="flex justify-between">
+                  <span>Items Subtotal:</span>
+                  <span className="font-mono text-slate-700">{currencySign}{(selectedInvoiceDetails.subtotal).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Discount Applied:</span>
+                  <span className="font-mono text-slate-700">-{currencySign}{(selectedInvoiceDetails.discount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
+                  <span>Vet Sales Tax:</span>
+                  <span className="font-mono text-slate-700">{currencySign}{(selectedInvoiceDetails.tax).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold text-slate-800 pt-0.5">
+                  <span>Discharged Total:</span>
+                  <span className="font-mono text-emerald-600 font-black text-sm">
+                    {currencySign}{(selectedInvoiceDetails.total).toFixed(2)}
+                  </span>
+                </div>
               </div>
             </div>
 
             {/* Quick sheet controls */}
-            <div className="flex gap-2 pt-2">
+            <div className="p-6 shrink-0 flex gap-2 pt-2 border-t border-slate-50">
               <button
                 type="button"
                 onClick={() => handlePrintReceipt(selectedInvoiceDetails)}

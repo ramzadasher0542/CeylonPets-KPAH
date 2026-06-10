@@ -7,16 +7,12 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import { 
   TrendingUp, 
-  Users, 
   AlertTriangle, 
   Activity, 
-  Calendar, 
   Download, 
   DollarSign, 
-  HeartPulse, 
   RefreshCw, 
   CheckCircle,
-  FileSpreadsheet,
   FileText,
   X,
   Coins,
@@ -138,19 +134,7 @@ export default function DashboardAnalytics({
       ? shiftMetrics.category_breakdown
       : frontendCategoryBreakdown;
 
-  const getCatTotal = (catName: string) => {
-    return resolvedBreakdown.find(c => c.category === catName)?.total || 0;
-  };
-
-  const taxesAndAdjustments = getCatTotal('Taxes & Adjustments');
-  const retailRevenue = getCatTotal('retail');
-  // Safely group all non-retail and non-tax categories into Clinical Care to prevent UI omissions
-  const clinicalRevenue = resolvedBreakdown
-    .filter(c => c.category !== 'retail' && c.category !== 'Taxes & Adjustments')
-    .reduce((sum, c) => sum + c.total, 0);
-
   const lowStockItemsCount = lowStockCount || 0;
-  const activeConsultations = appointments.filter(apt => apt.status === 'in-progress' || apt.status === 'booked').length;
   const patientsCount = records.length;
 
   // Find max date or fallback to today
@@ -214,8 +198,8 @@ export default function DashboardAnalytics({
     'other': { color: 'text-slate-500', hex: '#94a3b8', bg: 'bg-slate-400', hoverBg: 'bg-slate-50' } // Other
   };
 
-  // Seed all known core categories so they always appear in the legend
-  const CORE_CATEGORIES = ['retail', 'service', 'vaccine', 'prescription', 'lab_service'];
+  // Seed all known core categories dynamically
+  const CORE_CATEGORIES = Object.keys(CATEGORY_DISPLAY_MAP);
   
   const allCategories = CORE_CATEGORIES.map(key => {
     const found = resolvedBreakdown.find(item => item.category === key);
@@ -234,11 +218,8 @@ export default function DashboardAnalytics({
   // Sort strictly by revenue descending, but keep 0 items so they still show in the legend
   const displayCategories = allCategories.sort((a, b) => b.rev - a.rev);
 
-  // Use gross_sales from RPC as the primary truth; fall back to summing paid invoices directly
-  const currentShiftTotal = activeShiftId
-    ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid').reduce((s, inv) => s + inv.total, 0)
-    : invoices.filter(inv => inv.paymentStatus === 'paid').reduce((s, inv) => s + inv.total, 0);
-  const finalTotalRevSum = totalRevenue > 0 ? totalRevenue : currentShiftTotal;
+  // Use gross_sales from RPC as the primary truth; DO NOT fall back to summing paid invoices directly to enforce single-source-of-truth
+  const finalTotalRevSum = totalRevenue;
   const hasData = finalTotalRevSum > 0;
 
   const circ = 251.32; // 2 * pi * r (r=40)
@@ -298,8 +279,14 @@ export default function DashboardAnalytics({
     rtext += `  * Gross Total Revenue     : ${currencySign}${totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
     rtext += `  * Total cost of Goods Sold : ${currencySign}${totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (COGS based on actual item units)\n`;
     rtext += `  * Net Hospital Profit     : ${currencySign}${netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-    rtext += `  * Clinical Care Revenue   : ${currencySign}${clinicalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-    rtext += `  * Pet Retail Shop Revenue : ${currencySign}${retailRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+    
+    // Dynamically iterate over resolved categories for Z-Report instead of hardcoded strings
+    resolvedBreakdown.forEach(cat => {
+      if (cat.category === 'Taxes & Adjustments') return;
+      const displayLabel = CATEGORY_DISPLAY_MAP[cat.category] || cat.category;
+      rtext += `  * ${displayLabel.padEnd(23, ' ')} : ${currencySign}${cat.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+    });
+
     rtext += `  * Total Patients Served   : ${patientsCount} active pet profiles registered in system\n`;
     rtext += `  * EHR Sync Status         : ${isOnline ? 'Online Synced' : 'Offline Pending Sync'}\n`;
     rtext += `${thinSeparator}\n\n`;
@@ -459,11 +446,6 @@ export default function DashboardAnalytics({
           </div>
           <div className="mt-4 flex flex-col justify-end text-xs text-slate-400 font-mono">
             <span>Total COGS: {currencySign}{totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            {Math.abs(taxesAndAdjustments) > 0 && (
-              <span className="text-amber-500 font-bold mt-0.5">
-                Ledger Gap: {currencySign}{taxesAndAdjustments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </span>
-            )}
           </div>
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-teal-500" />
         </div>
@@ -482,23 +464,8 @@ export default function DashboardAnalytics({
 
           <div className="grid grid-cols-3 gap-3 relative z-10 flex-1 mt-2">
             {(() => {
-              // --- MATH FIX: Guaranteed frontend payment breakdown ---
-              const frontendPaymentBreakdown = (() => {
-                const payMap: Record<string, number> = {};
-                const currentShiftInvoices = activeShiftId
-                  ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid')
-                  : invoices.filter(inv => inv.paymentStatus === 'paid');
-
-                for (const inv of currentShiftInvoices) {
-                  const method = (inv.paymentMethod || 'cash').toLowerCase();
-                  payMap[method] = (payMap[method] || 0) + inv.total;
-                }
-                return Object.entries(payMap).map(([method, total]) => ({ method, total }));
-              })();
-
-              const pb = (shiftMetrics?.payment_breakdown && shiftMetrics.payment_breakdown.length > 0)
-                ? shiftMetrics.payment_breakdown
-                : frontendPaymentBreakdown;
+              // --- MATH FIX: Strict single source of truth (RPC Only) ---
+              const pb = shiftMetrics?.payment_breakdown || [];
 
               const getTender = (method: string) => {
                 const row = pb.find(p => p.method?.toLowerCase() === method);
@@ -791,8 +758,8 @@ export default function DashboardAnalytics({
       {/* Z-Report Modal */}
       {isZReportModalOpen && (
         <div className="fixed inset-0 bg-slate-800/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+          <div className="bg-white rounded-2xl flex flex-col max-h-[calc(100vh-40px)] max-w-xl w-full overflow-hidden shadow-2xl">
+            <div className="p-6 shrink-0 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <CheckCircle className="w-6 h-6 text-indigo-600" />
                 Close Shift (Z-Report)
@@ -841,10 +808,10 @@ export default function DashboardAnalytics({
               </div>
             </div>
             
-            <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+            <div className="p-6 shrink-0 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
               <button 
                 onClick={() => setIsZReportModalOpen(false)}
-                className="px-6 py-2.5 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors"
+                className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
                 disabled={isClosingShift}
               >
                 Cancel

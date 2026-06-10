@@ -18,8 +18,7 @@ import {
   Invoice,
   ClientNotification,
   User,
-  SystemAlert,
-  ShiftMetrics
+  SystemAlert
 } from '../types';
 
 // ---------------------------------------------------------------
@@ -331,7 +330,7 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       data:           inv,   // full object stored as JSONB
     });
 
-    if (inv.shiftId && inv.appointmentId) {
+    if (inv.appointmentId) {
       const { error } = await supabase
         .from(DB_TABLES.APPOINTMENTS)
         .update({ status: 'completed' })
@@ -339,8 +338,6 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       
       if (error) {
         console.error('[CeylonPets] Failed to cascade appointment resolution:', error);
-      } else {
-        console.log(`[CeylonPets] Appointment ${inv.appointmentId} automatically resolved to completed.`);
       }
     }
   } catch (err) {
