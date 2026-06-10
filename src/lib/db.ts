@@ -545,8 +545,8 @@ export async function fetchFullSystemState(): Promise<any> {
     supabase.from(DB_TABLES.RECORDS).select('*'),
     supabase.from(DB_TABLES.INVOICES).select('*'),
     supabase.from('pos_shifts').select('*'),
-    supabase.from('system_alerts').select('*'),
-    supabase.from('client_notifications').select('*')
+    supabase.from(DB_TABLES.ALERTS).select('*'),
+    supabase.from(DB_TABLES.NOTIFICATIONS).select('*')
   ]);
 
   return {
@@ -560,7 +560,7 @@ export async function fetchFullSystemState(): Promise<any> {
       invoices: invoices || [],
       pos_shifts: posShifts || [],
       system_alerts: alerts || [],
-      client_notifications: notifications || []
+      notifications: notifications || []
     }
   };
 }
@@ -568,8 +568,8 @@ export async function fetchFullSystemState(): Promise<any> {
 export async function masterSystemPurge(): Promise<void> {
   const tables = [
     DB_TABLES.INVOICES,
-    'client_notifications',
-    'system_alerts',
+    DB_TABLES.NOTIFICATIONS,
+    DB_TABLES.ALERTS,
     DB_TABLES.RECORDS,
     DB_TABLES.APPOINTMENTS,
     'pos_shifts',
@@ -579,7 +579,10 @@ export async function masterSystemPurge(): Promise<void> {
   for (const table of tables) {
     // Structural-safe deletion using rows-level removal
     const { error } = await supabase.from(table).delete().neq('id', 'master_purge_safeguard_uuid');
-    if (error) throw error;
+    if (error) {
+      // Non-critical tables (alerts/notifications) should not abort the entire purge
+      console.warn(`[MasterPurge] Could not clear table '${table}':`, error.message);
+    }
   }
   
   // Clear local storage caches
@@ -590,20 +593,20 @@ export async function masterSystemPurge(): Promise<void> {
 }
 
 export async function reconstituteSystemState(payload: any): Promise<void> {
-  if (!payload || !payload.collections) throw new Error("Invalid payload structure");
+  if (!payload || !payload.collections) throw new Error("Invalid backup payload. Ensure this file is a valid CeylonPets JSON export.");
 
   // Phase 1: Structural Purge
   await masterSystemPurge();
 
-  // Phase 2: Dependency-Aware Reconstitution
+  // Phase 2: Dependency-Aware Reconstitution (in foreign-key safe order)
   const tablesOrder = [
-    { name: DB_TABLES.INVENTORY, data: payload.collections.inventory },
-    { name: 'pos_shifts', data: payload.collections.pos_shifts },
-    { name: DB_TABLES.APPOINTMENTS, data: payload.collections.appointments },
-    { name: DB_TABLES.RECORDS, data: payload.collections.records },
-    { name: DB_TABLES.INVOICES, data: payload.collections.invoices },
-    { name: 'system_alerts', data: payload.collections.system_alerts },
-    { name: 'client_notifications', data: payload.collections.client_notifications }
+    { name: DB_TABLES.INVENTORY,     data: payload.collections.inventory },
+    { name: 'pos_shifts',            data: payload.collections.pos_shifts },
+    { name: DB_TABLES.APPOINTMENTS,  data: payload.collections.appointments },
+    { name: DB_TABLES.RECORDS,       data: payload.collections.records },
+    { name: DB_TABLES.INVOICES,      data: payload.collections.invoices },
+    { name: DB_TABLES.ALERTS,        data: payload.collections.system_alerts },
+    { name: DB_TABLES.NOTIFICATIONS, data: payload.collections.notifications ?? payload.collections.client_notifications }
   ];
 
   for (const table of tablesOrder) {
@@ -611,7 +614,7 @@ export async function reconstituteSystemState(payload: any): Promise<void> {
       const { error } = await supabase.from(table.name).insert(table.data);
       if (error) {
         console.error(`Reconstitution failed on table ${table.name}`, error);
-        throw error;
+        throw new Error(`Failed to restore table '${table.name}': ${error.message}`);
       }
     }
   }
