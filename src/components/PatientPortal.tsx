@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Heart, 
   Search, 
@@ -513,7 +514,7 @@ export default function PatientPortal({
       </div>
 
       {/* Book Booster Checklist Slide and Modal */}
-      {bookingPet && (
+      {bookingPet && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
@@ -603,7 +604,8 @@ export default function PatientPortal({
               </form>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
