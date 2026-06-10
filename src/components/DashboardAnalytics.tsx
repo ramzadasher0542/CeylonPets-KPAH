@@ -134,6 +134,25 @@ export default function DashboardAnalytics({
       ? shiftMetrics.category_breakdown
       : frontendCategoryBreakdown;
 
+  // --- MATH FIX: Guaranteed frontend payment breakdown ---
+  const frontendPaymentBreakdown = React.useMemo(() => {
+    const payMap: Record<string, number> = {};
+    const currentShiftInvoices = activeShiftId
+      ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid')
+      : invoices.filter(inv => inv.paymentStatus === 'paid');
+
+    for (const inv of currentShiftInvoices) {
+      const method = inv.paymentMethod || 'cash';
+      payMap[method] = (payMap[method] || 0) + inv.total;
+    }
+    return Object.entries(payMap).map(([method, total]) => ({ method, total }));
+  }, [invoices, activeShiftId]);
+
+  const resolvedPaymentBreakdown: { method: string; total: number }[] =
+    (shiftMetrics?.payment_breakdown && shiftMetrics.payment_breakdown.length > 0)
+      ? shiftMetrics.payment_breakdown
+      : frontendPaymentBreakdown;
+
   const lowStockItemsCount = lowStockCount || 0;
   const patientsCount = records.length;
 
@@ -464,8 +483,8 @@ export default function DashboardAnalytics({
 
           <div className="grid grid-cols-3 gap-3 relative z-10 flex-1 mt-2">
             {(() => {
-              // --- MATH FIX: Strict single source of truth (RPC Only) ---
-              const pb = shiftMetrics?.payment_breakdown || [];
+              // --- MATH FIX: Fallback applied for tender reconciliation ---
+              const pb = resolvedPaymentBreakdown;
 
               const getTender = (method: string) => {
                 const row = pb.find(p => p.method?.toLowerCase() === method);
