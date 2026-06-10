@@ -514,10 +514,10 @@ export default function PatientPortal({
 
       {/* Book Booster Checklist Slide and Modal */}
       {bookingPet && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 text-xs shadow-xl animate-fade-in space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
                 <h4 className="text-base font-extrabold text-slate-800 leading-none flex items-center gap-1.5">
                   <Calendar className="w-5 h-5 text-indigo-500" /> Request Care Booking
@@ -533,53 +533,59 @@ export default function PatientPortal({
             </div>
 
             {bookingOutcome ? (
-              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-2 text-center animate-pulse">
-                <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
-                <h5 className="font-black text-emerald-900 text-xs">Booster Request Submitted!</h5>
-                <p className="text-[10px] text-slate-500">
-                  We've successfully registered your appointment request for {bookingPet.petName} on his medical record ledger. Kandy staff will text/email confirmation soon.
-                </p>
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 space-y-2 text-center animate-pulse">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-600 mx-auto" />
+                  <h5 className="font-black text-emerald-900 text-xs">Booster Request Submitted!</h5>
+                  <p className="text-[10px] text-slate-500">
+                    We've successfully registered your appointment request for {bookingPet.petName} on his medical record ledger. Kandy staff will text/email confirmation soon.
+                  </p>
+                </div>
               </div>
             ) : (
-              <form onSubmit={handleBookNextBooster} className="space-y-3">
-                <div className="space-y-1">
-                  <label className="font-semibold text-slate-700 block" htmlFor="booster-goal-requested-vaccine">Booster Goal / Requested vaccine</label>
-                  <select name="boosterGoalRequestedVaccine" id="booster-goal-requested-vaccine"
-                    value={bookingReason}
-                    onChange={(e) => setBookingReason(e.target.value)}
-                    className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs"
-                    required
-                  >
-                    <option value="">-- Choose Protection Type --</option>
-                    <option value="Annual DHPP Vaccine Booster">Annual DHPP Vaccine Booster</option>
-                    <option value="Rabies (3-Year) Vaccine Dose">Rabies (3-Year) Vaccine Dose</option>
-                    <option value="Bordetella Kennel Cough Spray">Bordetella Kennel Cough Spray</option>
-                    <option value="General Health Medical checkup">General Health Medical checkup</option>
-                  </select>
+              <form onSubmit={handleBookNextBooster} className="flex flex-col min-h-0 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
+                  <div className="space-y-1">
+                    <label className="font-semibold text-slate-700 block" htmlFor="booster-goal-requested-vaccine">Booster Goal / Requested vaccine</label>
+                    <select name="boosterGoalRequestedVaccine" id="booster-goal-requested-vaccine"
+                      value={bookingReason}
+                      onChange={(e) => setBookingReason(e.target.value)}
+                      className="w-full px-2.5 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-semibold text-xs"
+                      required
+                    >
+                      <option value="">-- Choose Protection Type --</option>
+                      <option value="Annual DHPP Vaccine Booster">Annual DHPP Vaccine Booster</option>
+                      <option value="Rabies (3-Year) Vaccine Dose">Rabies (3-Year) Vaccine Dose</option>
+                      <option value="Bordetella Kennel Cough Spray">Bordetella Kennel Cough Spray</option>
+                      <option value="General Health Medical checkup">General Health Medical checkup</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="space-y-1">
+                      <label className="font-semibold text-slate-700 block" htmlFor="desired-date">Desired Date</label>
+                      <input name="desiredDate" id="desired-date"
+                        type="date"
+                        value={bookingDate}
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="font-semibold text-slate-700 block" htmlFor="desired-hours">Desired Hours</label>
+                      <input name="desiredHours" id="desired-hours"
+                        type="time"
+                        value={bookingTime}
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono"
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 block" htmlFor="desired-date">Desired Date</label>
-                    <input name="desiredDate" id="desired-date"
-                      type="date"
-                      value={bookingDate}
-                      onChange={(e) => setBookingDate(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="font-semibold text-slate-700 block" htmlFor="desired-hours">Desired Hours</label>
-                    <input name="desiredHours" id="desired-hours"
-                      type="time"
-                      value={bookingTime}
-                      onChange={(e) => setBookingTime(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2 flex gap-2">
+                <div className="shrink-0 p-6 pt-4 border-t border-slate-100 flex gap-2 bg-white">
                   <button
                     type="button"
                     onClick={() => setBookingPet(null)}

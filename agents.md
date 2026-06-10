@@ -47,3 +47,9 @@ This document defines the strict operational boundaries, engineering standards, 
 - **Form Keyboard Navigation**: All data entry modals must support native keyboard form submission. Pressing the `Enter` key within active form fields must trigger submission automatically.
 - **Sticky UI Controllers**: Global action triggers (like 'Create Appointment') must remain anchored or sticky to the viewport container, eliminating unnecessary scrolling.
 - **Relational Integrity**: Dropdowns requiring clinical staff names must pull verified user accounts containing the 'veterinarian' or 'admin' roles from the database rather than placeholders.
+
+### 10. Universal Viewport Isolation & Modal Scroll Containment
+- **Zero Browser Stretching**: Under no circumstances should a modal overlay, card, or popup dialog extend past the viewport boundaries or generate a window-level browser scrollbar.
+- **Strict Layout Constraints**: Every system modal wrapper must use a fixed backdrop centered via Flexbox or Grid (`fixed inset-0 flex items-center justify-center p-4`).
+- **Internal Card Architecture**: The modal card itself must use a flex-column layout with a strict maximum height constraint (`flex flex-col max-h-[calc(100vh-40px)] max-w-xl w-full overflow-hidden`).
+- **Isolated Body Scrolling**: The header and the action button footer must remain structurally frozen at the top and bottom (`shrink-0`). Only the inner form or content body is permitted to scroll, using isolated internal overflow controls (`flex-1 overflow-y-auto custom-scrollbar`).

@@ -307,10 +307,10 @@ export default function AppointmentsManager({
 
       {/* Add Appointment Modal Overlay */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-2xl w-full p-5 text-xs shadow-xl animate-fade-in max-h-[90vh] overflow-y-auto custom-scrollbar">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-2xl w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
-            <div className="flex justify-between items-start mb-3">
+            <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
                 <h4 className="text-sm font-extrabold text-slate-800 leading-none">Schedule Veterinary Check-up</h4>
                 <p className="text-[10px] text-slate-400 mt-1">Add details regarding patient and primary clinic complaint</p>
@@ -325,7 +325,7 @@ export default function AppointmentsManager({
 
             <form 
               onSubmit={handleCreateAppointment} 
-              className="space-y-3"
+              className="flex flex-col min-h-0 overflow-hidden"
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   const target = e.target as HTMLElement;
@@ -335,146 +335,148 @@ export default function AppointmentsManager({
                 }
               }}
             >
-              {formError && (
-                <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
-                  {formError}
-                </div>
-              )}
-              <div className="grid grid-cols-3 gap-2.5 text-[11px]">
-                
-                {/* Pet info */}
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-name">Patient Name *</label>
-                  <input name="patientName" id="patient-name"
-                    type="text"
-                    required
-                    maxLength={100}
-                    placeholder="Coco, Buster, etc."
-                    value={petName}
-                    onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }}
-                    className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !petName ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`}
-                  />
-                </div>
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
+                {formError && (
+                  <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
+                    {formError}
+                  </div>
+                )}
+                <div className="grid grid-cols-3 gap-2.5 text-[11px]">
+                  
+                  {/* Pet info */}
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-name">Patient Name *</label>
+                    <input name="patientName" id="patient-name"
+                      type="text"
+                      required
+                      maxLength={100}
+                      placeholder="Coco, Buster, etc."
+                      value={petName}
+                      onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }}
+                      className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !petName ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`}
+                    />
+                  </div>
 
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="animal-classification">Animal Classification</label>
-                  <select name="animalClassification" id="animal-classification"
-                    value={petType}
-                    onChange={(e) => setPetType(e.target.value as any)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                  >
-                    <option value="Dog">Dog</option>
-                    <option value="Cat">Cat</option>
-                    <option value="Rabbit">Rabbit</option>
-                    <option value="Bird">Bird</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="animal-classification">Animal Classification</label>
+                    <select name="animalClassification" id="animal-classification"
+                      value={petType}
+                      onChange={(e) => setPetType(e.target.value as any)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    >
+                      <option value="Dog">Dog</option>
+                      <option value="Cat">Cat</option>
+                      <option value="Rabbit">Rabbit</option>
+                      <option value="Bird">Bird</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
 
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="breed-description">Breed / Description</label>
-                  <input name="breedDescription" id="breed-description"
-                    type="text"
-                    maxLength={100}
-                    placeholder="Goldendoodle, etc."
-                    value={breed}
-                    onChange={(e) => setBreed(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                  />
-                </div>
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="breed-description">Breed / Description</label>
+                    <input name="breedDescription" id="breed-description"
+                      type="text"
+                      maxLength={100}
+                      placeholder="Goldendoodle, etc."
+                      value={breed}
+                      onChange={(e) => setBreed(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    />
+                  </div>
 
-                {/* Owner info */}
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-name">Owner Name *</label>
-                  <input name="ownerName" id="owner-name"
-                    type="text"
-                    required
-                    maxLength={100}
-                    placeholder="Isabella Bennett"
-                    value={ownerName}
-                    onChange={(e) => setOwnerName(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                  />
-                </div>
+                  {/* Owner info */}
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-name">Owner Name *</label>
+                    <input name="ownerName" id="owner-name"
+                      type="text"
+                      required
+                      maxLength={100}
+                      placeholder="Isabella Bennett"
+                      value={ownerName}
+                      onChange={(e) => setOwnerName(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    />
+                  </div>
 
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone">Owner Phone *</label>
-                  <input name="ownerPhone" id="owner-phone"
-                    type="text"
-                    required
-                    maxLength={25}
-                    placeholder="+1 (555) 781-4200"
-                    value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono"
-                  />
-                </div>
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone">Owner Phone *</label>
+                    <input name="ownerPhone" id="owner-phone"
+                      type="text"
+                      required
+                      maxLength={25}
+                      placeholder="+1 (555) 781-4200"
+                      value={ownerPhone}
+                      onChange={(e) => setOwnerPhone(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono"
+                    />
+                  </div>
 
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-email-address">Owner Email Address</label>
-                  <input name="ownerEmailAddress" id="owner-email-address"
-                    type="email"
-                    maxLength={100}
-                    placeholder="isabella.b@example.com"
-                    value={ownerEmail}
-                    onChange={(e) => setOwnerEmail(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                  />
-                </div>
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-email-address">Owner Email Address</label>
+                    <input name="ownerEmailAddress" id="owner-email-address"
+                      type="email"
+                      maxLength={100}
+                      placeholder="isabella.b@example.com"
+                      value={ownerEmail}
+                      onChange={(e) => setOwnerEmail(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    />
+                  </div>
 
-                {/* Scheduling meta */}
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="visit-date">Visit Date</label>
-                  <input name="visitDate" id="visit-date"
-                    type="date"
-                    value={date}
-                    onChange={(e) => { setDate(e.target.value); if (formError) setFormError(''); }}
-                    className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !date ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`}
-                  />
-                </div>
+                  {/* Scheduling meta */}
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="visit-date">Visit Date</label>
+                    <input name="visitDate" id="visit-date"
+                      type="date"
+                      value={date}
+                      onChange={(e) => { setDate(e.target.value); if (formError) setFormError(''); }}
+                      className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !date ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`}
+                    />
+                  </div>
 
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="hour-slot">Hour Slot</label>
-                  <input name="hourSlot" id="hour-slot"
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                  />
-                </div>
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="hour-slot">Hour Slot</label>
+                    <input name="hourSlot" id="hour-slot"
+                      type="time"
+                      value={time}
+                      onChange={(e) => setTime(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    />
+                  </div>
 
-                <div className="space-y-0.5 col-span-1">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="assigned-doctor-vet">Assigned Doctor/Vet</label>
-                  <select name="assignedDoctorVet" id="assigned-doctor-vet"
-                    value={veterinarian}
-                    onChange={(e) => setVeterinarian(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
-                  >
-                    {vetList.length > 0 ? (
-                      vetList.map(vet => (
-                        <option key={vet.id} value={vet.name}>{vet.name}</option>
-                      ))
-                    ) : (
-                      <option value="">No vets available</option>
-                    )}
-                  </select>
-                </div>
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="assigned-doctor-vet">Assigned Doctor/Vet</label>
+                    <select name="assignedDoctorVet" id="assigned-doctor-vet"
+                      value={veterinarian}
+                      onChange={(e) => setVeterinarian(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    >
+                      {vetList.length > 0 ? (
+                        vetList.map(vet => (
+                          <option key={vet.id} value={vet.name}>{vet.name}</option>
+                        ))
+                      ) : (
+                        <option value="">No vets available</option>
+                      )}
+                    </select>
+                  </div>
 
-                <div className="space-y-0.5 col-span-3">
-                  <label className="font-bold text-slate-600 block text-[10px]" htmlFor="reason-for-care-chief-complaint">Reason for Care / Chief Complaint *</label>
-                  <textarea name="reasonForCareChiefComplaint" id="reason-for-care-chief-complaint"
-                    required
-                    maxLength={1000}
-                    rows={1}
-                    placeholder="e.g. Coughing, rabies vaccines booster need, ear canal check-up"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-normal focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[11px]"
-                  />
+                  <div className="space-y-0.5 col-span-3">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="reason-for-care-chief-complaint">Reason for Care / Chief Complaint *</label>
+                    <textarea name="reasonForCareChiefComplaint" id="reason-for-care-chief-complaint"
+                      required
+                      maxLength={1000}
+                      rows={2}
+                      placeholder="e.g. Coughing, rabies vaccines booster need, ear canal check-up"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-normal focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[11px]"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-1 justify-end">
+              <div className="shrink-0 flex gap-2 p-6 pt-4 justify-end border-t border-slate-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
