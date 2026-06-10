@@ -1205,7 +1205,7 @@ export default function POSRegister({
                 </div>
                 <div className="text-right">
                   <span className="text-slate-400 block font-medium">Grand Total</span>
-                  <span className="text-xl font-black text-emerald-600 font-mono">{currencySign}{(centsTotal / 100).toFixed(2)}</span>
+                  <span className="text-xl font-black text-emerald-600 font-mono">{currencySign}{total.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -1266,12 +1266,12 @@ export default function POSRegister({
                   </div>
                   {amountReceived && (
                     <div className="pt-1 flex justify-between items-center font-mono">
-                      {parseFloat(amountReceived) < (centsTotal / 100) ? (
-                        <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{((centsTotal / 100) - parseFloat(amountReceived)).toFixed(2)}</span>
+                      {parseFloat(amountReceived) < total ? (
+                        <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{(total - parseFloat(amountReceived)).toFixed(2)}</span>
                       ) : (
                         <>
                           <span className="text-sm font-bold text-teal-800">Change Due:</span>
-                          <span className="text-emerald-600 font-bold text-lg">{currencySign}{(parseFloat(amountReceived) - (centsTotal / 100)).toFixed(2)}</span>
+                          <span className="text-emerald-600 font-bold text-lg">{currencySign}{(parseFloat(amountReceived) - total).toFixed(2)}</span>
                         </>
                       )}
                     </div>
@@ -1290,11 +1290,11 @@ export default function POSRegister({
               </button>
               <button
                 onClick={handleCheckoutSubmit}
-                disabled={paymentMethod === 'cash' && Number(amountReceived) < (centsTotal / 100)}
+                disabled={paymentMethod === 'cash' && Number(amountReceived) < total}
                 className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 font-bold transition-colors shadow-md shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Check className="w-5 h-5" />
-                Finalize & Record ({currencySign}{(centsTotal / 100).toFixed(2)})
+                Finalize & Record ({currencySign}{total.toFixed(2)})
               </button>
             </div>
           </div>
@@ -1341,7 +1341,13 @@ export default function POSRegister({
                 <Printer className="h-4 w-4" /> Print Receipt <span className="text-[9px] opacity-75 font-normal ml-0.5">(Enter)</span>
               </button>
               <button
-                onClick={() => setCheckoutSuccess(null)}
+                onClick={() => {
+                  setCheckoutSuccess(null);
+                  setShowCheckoutModal(false);
+                  setAmountReceived('');
+                  setDiscountVal(0);
+                  setPaymentMethod('cash');
+                }}
                 className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl cursor-pointer flex items-center justify-center"
               >
                 Close Panel <span className="text-[9px] text-slate-400 font-normal ml-1">(Esc)</span>
