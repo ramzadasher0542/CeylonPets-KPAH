@@ -46,7 +46,7 @@ export default function DashboardAnalytics({
   systemConfig,
   currentUser
 }: DashboardProps) {
-  const currencySign = systemConfig?.currencySymbol || '$';
+  const currencySign = systemConfig?.currencySymbol || 'Rs. ';
   const [reportMonth, setReportMonth] = useState('2026-05');
   const [exportSuccess, setExportSuccess] = useState(false);
   const [chartType, setChartType] = useState<'revenue' | 'appointments'>('revenue');
@@ -106,19 +106,30 @@ export default function DashboardAnalytics({
     }
   };
 
-  const totalRevenue = shiftMetrics?.gross_sales || 0;
-  const netProfit = shiftMetrics?.net_profit || 0;
-  const totalCost = shiftMetrics?.cogs || shiftMetrics?.total_cogs || 0;
+  const currentShiftInvoices = React.useMemo(() => {
+    if (!activeShiftId) return [];
+    return invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid');
+  }, [invoices, activeShiftId]);
+
+  const totalRevenue = React.useMemo(() => {
+    if (!activeShiftId) return 0;
+    return currentShiftInvoices.reduce((sum, inv) => sum + (inv.sales_total || 0), 0);
+  }, [currentShiftInvoices, activeShiftId]);
+
+  const totalCost = React.useMemo(() => {
+    if (!activeShiftId) return 0;
+    return currentShiftInvoices.reduce((sum, inv) => sum + (inv.cogs || 0), 0);
+  }, [currentShiftInvoices, activeShiftId]);
+
+  const netProfit = React.useMemo(() => {
+    if (!activeShiftId) return 0;
+    return currentShiftInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
+  }, [currentShiftInvoices, activeShiftId]);
 
   // --- MATH FIX: Guaranteed frontend category breakdown ---
-  // Build category totals directly from current shift invoices.
-  // This is the ground truth — used as fallback when RPC category_breakdown is empty.
   const frontendCategoryBreakdown = React.useMemo(() => {
+    if (!activeShiftId) return [];
     const catMap: Record<string, number> = {};
-    const currentShiftInvoices = activeShiftId
-      ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid')
-      : invoices.filter(inv => inv.paymentStatus === 'paid');
-
     for (const inv of currentShiftInvoices) {
       for (const item of inv.items || []) {
         const cat = item.category || 'service';
@@ -126,29 +137,28 @@ export default function DashboardAnalytics({
       }
     }
     return Object.entries(catMap).map(([category, total]) => ({ category, total }));
-  }, [invoices, activeShiftId]);
+  }, [currentShiftInvoices, activeShiftId]);
 
   // Use RPC breakdown if it has data, otherwise use frontend-computed breakdown
   const resolvedBreakdown: { category: string; total: number }[] =
+    (!activeShiftId) ? [] :
     (shiftMetrics?.category_breakdown && shiftMetrics.category_breakdown.length > 0)
       ? shiftMetrics.category_breakdown
       : frontendCategoryBreakdown;
 
   // --- MATH FIX: Guaranteed frontend payment breakdown ---
   const frontendPaymentBreakdown = React.useMemo(() => {
+    if (!activeShiftId) return [];
     const payMap: Record<string, number> = {};
-    const currentShiftInvoices = activeShiftId
-      ? invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid')
-      : invoices.filter(inv => inv.paymentStatus === 'paid');
-
     for (const inv of currentShiftInvoices) {
       const method = inv.paymentMethod || 'cash';
       payMap[method] = (payMap[method] || 0) + inv.sales_total;
     }
     return Object.entries(payMap).map(([method, total]) => ({ method, total }));
-  }, [invoices, activeShiftId]);
+  }, [currentShiftInvoices, activeShiftId]);
 
   const resolvedPaymentBreakdown: { method: string; total: number }[] =
+    (!activeShiftId) ? [] :
     (shiftMetrics?.payment_breakdown && shiftMetrics.payment_breakdown.length > 0)
       ? shiftMetrics.payment_breakdown
       : frontendPaymentBreakdown;
@@ -173,13 +183,15 @@ export default function DashboardAnalytics({
 
   // Calculate dynamic data points for the trend chart
   const dailyRevenue = last7Days.map(date => {
-    return invoices
-      .filter(inv => inv.date === date && inv.paymentStatus === 'paid')
+    if (!activeShiftId) return 0;
+    return currentShiftInvoices
+      .filter(inv => inv.date === date)
       .reduce((sum, inv) => sum + inv.sales_total, 0);
   });
 
   const dailyAppointments = last7Days.map(date => {
-    return appointments.filter(apt => apt.date === date).length;
+    if (!activeShiftId) return 0;
+    return appointments.filter(apt => apt.date === date && apt.status === 'completed').length;
   });
 
   const activeChartData = chartType === 'revenue' ? dailyRevenue : dailyAppointments;
@@ -202,7 +214,6 @@ export default function DashboardAnalytics({
 
   const points = activeChartData.map((val, idx) => {
     const x = 50 + idx * 64;
-    // Map value to y-axis: grid goes from y=25 (max) to y=155 (min)
     const y = 155 - ((val / maxChartVal) * 125);
     return { x, y, val, date: last7Days[idx] };
   });
@@ -218,7 +229,7 @@ export default function DashboardAnalytics({
   };
 
   // Seed all known core categories dynamically
-  const CORE_CATEGORIES = Object.keys(CATEGORY_DISPLAY_MAP);
+  const CORE_CATEGORIES = ['retail', 'prescription', 'lab_service', 'service', 'vaccine'];
   
   const allCategories = CORE_CATEGORIES.map(key => {
     const found = resolvedBreakdown.find(item => item.category === key);
@@ -237,7 +248,6 @@ export default function DashboardAnalytics({
   // Sort strictly by revenue descending, but keep 0 items so they still show in the legend
   const displayCategories = allCategories.sort((a, b) => b.rev - a.rev);
 
-  // Use gross_sales from RPC as the primary truth; DO NOT fall back to summing paid invoices directly to enforce single-source-of-truth
   const finalTotalRevSum = totalRevenue;
   const hasData = finalTotalRevSum > 0;
 
