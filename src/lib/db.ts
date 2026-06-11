@@ -485,10 +485,10 @@ export async function fetchLowStockCount(): Promise<number> {
   return Number(data) || 0;
 }
 
-export async function fetchActiveShiftId(): Promise<string | undefined> {
+export async function fetchActiveShiftId(): Promise<string | null> {
   const { data, error } = await supabase.rpc('get_active_shift_id');
   if (error || !data) {
-    return undefined;
+    return null;
   }
   return data as string;
 }
