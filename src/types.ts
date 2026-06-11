@@ -124,7 +124,7 @@ export interface Invoice {
   subtotal: number;
   tax: number;
   discount: number;
-  total: number;
+  sales_total: number;
   cogs?: number;
   profit?: number;
   paymentMethod?: PaymentMethod;

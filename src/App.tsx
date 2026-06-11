@@ -1160,7 +1160,7 @@ export default function App() {
     }
 
     setInvoices(prev => [invoice, ...prev]);
-    showToast(`Invoice added: $${invoice.total.toFixed(2)}.`);
+    showToast(`Invoice added: $${invoice.sales_total.toFixed(2)}.`);
 
     // Also look for corresponding appointment and mark it 'completed'
     if (invoice.appointmentId) {

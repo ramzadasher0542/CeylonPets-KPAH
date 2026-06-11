@@ -63,7 +63,7 @@ export default function DashboardAnalytics({
 
   const expectedDrawerCash = invoices
     .filter(inv => inv.shiftId === activeShiftId && inv.paymentMethod === 'cash')
-    .reduce((sum, inv) => sum + inv.total, 0);
+    .reduce((sum, inv) => sum + inv.sales_total, 0);
 
   const handleOpenShift = async () => {
     try {
@@ -143,7 +143,7 @@ export default function DashboardAnalytics({
 
     for (const inv of currentShiftInvoices) {
       const method = inv.paymentMethod || 'cash';
-      payMap[method] = (payMap[method] || 0) + inv.total;
+      payMap[method] = (payMap[method] || 0) + inv.sales_total;
     }
     return Object.entries(payMap).map(([method, total]) => ({ method, total }));
   }, [invoices, activeShiftId]);
@@ -175,7 +175,7 @@ export default function DashboardAnalytics({
   const dailyRevenue = last7Days.map(date => {
     return invoices
       .filter(inv => inv.date === date && inv.paymentStatus === 'paid')
-      .reduce((sum, inv) => sum + inv.total, 0);
+      .reduce((sum, inv) => sum + inv.sales_total, 0);
   });
 
   const dailyAppointments = last7Days.map(date => {
@@ -321,7 +321,7 @@ export default function DashboardAnalytics({
       const dateStr = inv.date.padEnd(10, ' ');
       const petStr = inv.petName.slice(0, 10).padEnd(10, ' ');
       const ownerStr = inv.ownerName.slice(0, 18).padEnd(18, ' ');
-      const amtStr = (`${currencySign}${inv.total.toFixed(2)}`).padEnd(9, ' ');
+      const amtStr = (`${currencySign}${inv.sales_total.toFixed(2)}`).padEnd(9, ' ');
       const statStr = inv.paymentStatus.toUpperCase().padEnd(7, ' ');
       const payMethStr = (inv.paymentMethod || 'N/A').padEnd(10, ' ');
       

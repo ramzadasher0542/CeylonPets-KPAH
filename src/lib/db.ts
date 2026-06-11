@@ -300,7 +300,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.INVOICES)
-      .select('id, pet_name, owner_name, date, total, payment_status, status, data')
+      .select('id, pet_name, owner_name, date, sales_total, payment_status, status, data')
       .neq('payment_status', 'void')
       .order('date', { ascending: false });
 
@@ -311,11 +311,15 @@ export async function fetchInvoices(): Promise<Invoice[]> {
     }
 
     const invoices: Invoice[] = data.map((row: any) => {
-      const inv = row.data as Invoice;
+      const inv = row.data as any;
+      if (inv.sales_total === undefined) {
+        inv.sales_total = inv.total ?? row.sales_total ?? 0;
+        delete inv.total;
+      }
       if (row.status && row.status !== inv.paymentStatus) {
         inv.paymentStatus = row.status as any;
       }
-      return inv;
+      return inv as Invoice;
     });
 
     localStorage.setItem('ceylon_invoices_v2', JSON.stringify(invoices));
@@ -334,7 +338,7 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       pet_name:       inv.petName,
       owner_name:     inv.ownerName,
       date:           inv.date,
-      total:          inv.total,
+      sales_total:    inv.sales_total,
       profit:         inv.profit || 0,
       cogs:           inv.cogs || 0,
       status:         inv.paymentStatus,

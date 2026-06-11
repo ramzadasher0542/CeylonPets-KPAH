@@ -458,7 +458,7 @@ export default function POSRegister({
       subtotal: subtotal,
       tax: tax,
       discount: discount,
-      total: total,
+      sales_total: total,
       cogs: totalCogs,
       profit: profit,
       shiftId: activeShiftId,
@@ -595,7 +595,7 @@ export default function POSRegister({
             </tr>
             <tr class="bold" style="font-size: 12px;">
               <td>TOTAL DUE:</td>
-              <td class="right">${currencySign}${inv.total.toFixed(2)}</td>
+              <td class="right">${currencySign}${inv.sales_total.toFixed(2)}</td>
             </tr>
           </table>
           
@@ -946,7 +946,7 @@ export default function POSRegister({
                       <div className="flex items-center gap-3">
                         <div className="text-right font-mono min-w-[70px]">
                           <span className={`text-sm font-black ${isVoid ? 'text-slate-400 line-through' : 'text-slate-800'}`}>
-                            {currencySign}{inv.total.toFixed(2)}
+                            {currencySign}{inv.sales_total.toFixed(2)}
                           </span>
                           <span className="block text-[8px] text-slate-400 mt-0.5">{inv.items.length} items</span>
                         </div>
@@ -1323,7 +1323,7 @@ export default function POSRegister({
               </div>
               <div className="py-1.5 flex justify-between">
                 <span className="text-slate-400">Total Charged:</span>
-                <span className="font-bold text-emerald-600 font-black">{currencySign}{(checkoutSuccess.total).toFixed(2)}</span>
+                <span className="font-bold text-emerald-600 font-black">{currencySign}{(checkoutSuccess.sales_total).toFixed(2)}</span>
               </div>
               <div className="pt-1.5 flex justify-between text-[10px]">
                 <span className="text-slate-400">Sync Status:</span>
@@ -1552,7 +1552,7 @@ export default function POSRegister({
                 <div className="flex justify-between text-xs font-bold text-slate-800 pt-0.5">
                   <span>Discharged Total:</span>
                   <span className="font-mono text-emerald-600 font-black text-sm">
-                    {currencySign}{(selectedInvoiceDetails.total).toFixed(2)}
+                    {currencySign}{(selectedInvoiceDetails.sales_total).toFixed(2)}
                   </span>
                 </div>
               </div>
