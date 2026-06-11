@@ -11,6 +11,7 @@
  */
 
 import { supabase, DB_TABLES } from './supabase';
+import { formatDisplayDate, formatDisplayTime } from '../utils/time';
 import {
   InventoryItem,
   Appointment,
@@ -248,8 +249,8 @@ export async function upsertAppointment(apt: Appointment): Promise<void> {
       owner_name:   apt.ownerName,
       owner_phone:  apt.ownerPhone,
       owner_email:  apt.ownerEmail,
-      date:         apt.date,
-      time:         apt.time,
+      date:         formatDisplayDate(apt.date),
+      time:         formatDisplayTime(apt.time),
       veterinarian: apt.veterinarian,
       reason:       apt.reason,
       status:       apt.status,
@@ -327,7 +328,7 @@ export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
       patient_id:    rec.patientId,
       pet_name:      rec.petName,
       owner_phone:   rec.ownerPhone,
-      visit_date:    rec.visitDate,
+      visit_date:    formatDisplayDate(rec.visitDate),
       attending_vet: rec.attendingVet ?? null,
       data:          rec,   // full object stored as JSONB
     });
@@ -391,7 +392,7 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       id:             inv.id,
       pet_name:       inv.petName,
       owner_name:     inv.ownerName,
-      date:           inv.date,
+      date:           formatDisplayDate(inv.date),
       sales_total:    inv.sales_total,
       profit:         inv.profit || 0,
       cogs:           inv.cogs || 0,

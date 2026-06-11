@@ -80,3 +80,8 @@ This document defines the definitive operational boundaries, engineering specifi
 ### 12. Server-Side Data Tiering & Paginated Archive Partitioning
 - **Server-Side Payload Reduction**: Main live application planners and operational views must never load monolithic historical arrays from the cloud database. Always enforce server-side status filters (`.in()`, `.eq()`) to restrict data transfers to active, open records only.
 - **Lazy-Loaded Archive Isolation**: Move completed, finalized, or cancelled ledger logs to independent sub-views or paginated list tables. These logs must run on decoupled, paginated fetch sequences (`limit`, `range`) that execute exclusively on explicit user initialization to preserve client-side browser rendering velocity.
+
+### 2b. Global Temporal & Time Zone Standardization
+- **Database Storage Standard**: All structural tables tracking historical logs, invoices, or scheduler mutations must store times utilizing the PostgreSQL `TIMESTAMPTZ` structure to protect data from client time zone drift.
+- **Frontend Serialization**: All user-facing display layers must parse timestamps into a unified 24-Hour clock format (`HH:mm:ss` for telemetry feeds, and `HH:mm` for scheduling intervals). Raw dates must strictly render in ISO `YYYY-MM-DD` standard format.
+- **Centralized Temporal Extraction**: To prevent logic fragmentation, components must parse or format temporal values via shared application formatting primitives rather than defining independent timezone mutations inside component views.

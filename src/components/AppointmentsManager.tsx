@@ -25,6 +25,7 @@ import {
 import { Appointment, AppointmentStatus, MedicalRecord, User as StaffUser } from '../types';
 import { showToast } from './Toast';
 import { fetchVeterinarians, fetchHistoricalAppointmentsArchive } from '../lib/db';
+import { formatDisplayDate, formatDisplayTime } from '../utils/time';
 
 interface AppointmentsProps {
   appointments: Appointment[];
@@ -95,8 +96,8 @@ export default function AppointmentsManager({
   const [ownerName, setOwnerName] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [date, setDate] = useState(formatDisplayDate(new Date()));
+  const [time, setTime] = useState(formatDisplayTime(new Date()));
   const [veterinarian, setVeterinarian] = useState('');
   const [reason, setReason] = useState('');
   const [formError, setFormError] = useState('');
@@ -150,8 +151,8 @@ export default function AppointmentsManager({
       ownerName,
       ownerPhone,
       ownerEmail: ownerEmail || 'not-provided@example.com',
-      date,
-      time,
+      date: formatDisplayDate(date),
+      time: formatDisplayTime(time),
       veterinarian,
       reason,
       status: 'booked'
@@ -169,8 +170,8 @@ export default function AppointmentsManager({
     setReason('');
     setFormError('');
     // Reset date/time to current so the next modal open is fresh
-    setDate(new Date().toISOString().split('T')[0]);
-    setTime(new Date().toTimeString().slice(0, 5));
+    setDate(formatDisplayDate(new Date()));
+    setTime(formatDisplayTime(new Date()));
   };
 
   const handleCheckIn = (apt: Appointment) => {
@@ -315,11 +316,11 @@ export default function AppointmentsManager({
                 <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-dashed border-slate-100 pt-3">
                   <div className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5 text-sky-500" />
-                    <span>Scheduled Date: {apt.date}</span>
+                    <span>Scheduled Date: {formatDisplayDate(apt.date)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5 text-sky-500" />
-                    <span>Scheduled Time: {apt.time}</span>
+                    <span>Scheduled Time: {formatDisplayTime(apt.time)}</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Stethoscope className="h-3.5 w-3.5 text-emerald-500" />
@@ -443,8 +444,8 @@ export default function AppointmentsManager({
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 font-semibold">{apt.veterinarian || 'N/A'}</td>
                       <td className="py-3.5 px-4 text-slate-600">
-                        <div className="font-bold">{apt.date}</div>
-                        <div className="text-[10px] text-slate-400 font-medium">{apt.time}</div>
+                        <div className="font-bold">{formatDisplayDate(apt.date)}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{formatDisplayTime(apt.time)}</div>
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         {getStatusBadge(apt.status)}

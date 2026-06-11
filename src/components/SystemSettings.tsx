@@ -32,6 +32,7 @@ import { uploadImageToStorage } from '../lib/supabase';
 import { upsertSystemConfig, deleteStaffUser, upsertStaffUser } from '../lib/auth';
 import emailjs from '@emailjs/browser';
 import { fetchFullSystemState, masterSystemPurge, reconstituteSystemState } from '../lib/db';
+import { formatTelemetryTime } from '../utils/time';
 
 export interface SystemConfig {
   appName: string;
@@ -187,9 +188,9 @@ export default function SystemSettings({
             const writable = await fileHandle.createWritable();
             await writable.write(jsonString);
             await writable.close();
-            setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL MIRROR SUCCESS]: Overwrote automated database snapshot instance.`]);
+            setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [LOCAL MIRROR SUCCESS]: Overwrote automated database snapshot instance.`]);
           } catch (err: any) {
-            setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL MIRROR ERROR]: ${err.message}`]);
+            setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [LOCAL MIRROR ERROR]: ${err.message}`]);
           }
         }
       }, 60000); // Check every minute
@@ -530,7 +531,7 @@ export default function SystemSettings({
 
   const triggerBackupDownload = async () => {
     try {
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [SERIALIZING]: Compiling holistic ecosystem state...`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [SERIALIZING]: Compiling holistic ecosystem state...`]);
       const payload = await fetchFullSystemState();
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -539,9 +540,9 @@ export default function SystemSettings({
       downloadAnchor.download = `ceylonpets_backup_${Date.now()}.json`;
       downloadAnchor.click();
       URL.revokeObjectURL(url);
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL EXPORT SUCCESS]: Triggered ecosystem download.`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [LOCAL EXPORT SUCCESS]: Triggered ecosystem download.`]);
     } catch (err: any) {
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [LOCAL EXPORT FAILED]: ${err.message}`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [LOCAL EXPORT FAILED]: ${err.message}`]);
     }
   };
 
@@ -551,14 +552,14 @@ export default function SystemSettings({
     const reader = new FileReader();
     reader.onload = async () => {
       try {
-        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [RESTORE INITIATED]: Validating payload...`]);
+        setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [RESTORE INITIATED]: Validating payload...`]);
         const parsed = JSON.parse(reader.result as string);
         await reconstituteSystemState(parsed);
-        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [RESTORE SUCCESS]: Dynamic database snapshot loaded completely.`]);
+        setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [RESTORE SUCCESS]: Dynamic database snapshot loaded completely.`]);
         showToast('System reconstituted successfully. Please refresh the page.', 'success');
         setTimeout(() => window.location.reload(), 2000);
       } catch (err: any) {
-        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [RESTORE ERROR]: Malformed schema or constraint failure.`]);
+        setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [RESTORE ERROR]: Malformed schema or constraint failure.`]);
         showToast('Restore Failed: ' + err.message, 'error');
       }
     };
@@ -571,31 +572,31 @@ export default function SystemSettings({
         const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' });
         setDirectoryHandle(handle);
         setIsMirrorActive(true);
-        setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [MIRROR CONFIGURED]: Local sandbox bound to OS directory.`]);
+        setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [MIRROR CONFIGURED]: Local sandbox bound to OS directory.`]);
       } else {
         alert('Your browser does not support the File System Access API. Please use a modern Chromium browser.');
       }
     } catch (err: any) {
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [MIRROR ERROR]: Directory access denied or cancelled.`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [MIRROR ERROR]: Directory access denied or cancelled.`]);
     }
   };
 
   const executeMasterPurge = async () => {
     if (masterPasscode !== 'ADMIN_PURGE_999') {
       showToast('Master validation failed. Action aborted.', 'error');
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE BLOCKED]: Invalid master passcode.`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [PURGE BLOCKED]: Invalid master passcode.`]);
       return;
     }
     
     try {
       setShowMasterPurgePrompt(false);
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE AUTHORIZED]: Initiating structural-safe system wipe...`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [PURGE AUTHORIZED]: Initiating structural-safe system wipe...`]);
       await masterSystemPurge();
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE COMPLETE]: Databases cleared. Ecosystem reset to blank slate.`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [PURGE COMPLETE]: Databases cleared. Ecosystem reset to blank slate.`]);
       showToast('Master system purge successful. Please reload the dashboard.', 'success');
       setTimeout(() => window.location.reload(), 2000);
     } catch (err: any) {
-      setBackupLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] [PURGE FAILED]: Database integrity violation. Aborting.`]);
+      setBackupLogs(prev => [...prev, `[${formatTelemetryTime(new Date())}] [PURGE FAILED]: Database integrity violation. Aborting.`]);
       showToast('Purge Failed: ' + err.message, 'error');
     }
   };
@@ -1696,7 +1697,7 @@ export default function SystemSettings({
                     <div className="bg-black/40 p-4 border rounded-2xl border-slate-800 h-44 overflow-y-auto scrollbar-thin text-[9px] font-mono leading-relaxed space-y-1">
                       {backupLogs.map((log, i) => (
                         <p key={i} className="text-slate-300">
-                          <span className="text-slate-500">[{new Date().toLocaleTimeString()}]</span> {log}
+                          <span className="text-slate-500">[{formatTelemetryTime(new Date())}]</span> {log}
                         </p>
                       ))}
                     </div>
