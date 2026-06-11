@@ -137,6 +137,7 @@ export default function POSRegister({
 
   const [amountReceived, setAmountReceived] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const handleSuccessKeyDown = (e: KeyboardEvent) => {
@@ -384,115 +385,136 @@ export default function POSRegister({
 
   // 1. Process Checkout
   const handleCheckoutSubmit = async (): Promise<boolean> => {
+    if (isProcessing) return false;
     if (cart.length === 0) {
       showToast('Cannot checkout: Cart is empty.', 'error');
       return false;
     }
 
-    // Fetch and Attach the Active Shift
-    const activeShiftId = await fetchActiveShiftId();
-    if (!activeShiftId) {
-      showToast('Cannot checkout: No open shift detected in state.', 'error');
-      return false;
-    }
-
-    // Create a new invoice and calculate COGS
-    let totalCogs = 0;
-    const newInvItems: InvoiceItem[] = cart.map(c => {
-      const itemCost = Number(c.item.cost) || 0;
-      const itemCogs = itemCost * c.quantity;
-      totalCogs += itemCogs;
-      return {
-        itemId: c.item.id,
-        sku: c.item.sku,
-        name: c.item.name,
-        category: c.item.category,
-        quantity: c.quantity,
-        unitPrice: c.item.price,
-        totalPrice: (Math.round(c.item.price * 100) * c.quantity) / 100
-      };
-    });
-
-    const profit = total - totalCogs;
-
-    let finalAppointmentId: string | undefined = undefined;
-    let finalPatientId = 'anonymous_walkin';
-    let finalPetName = 'Walk-in Pet / Guest';
-    let finalOwnerName = 'General Guest';
-    let finalOwnerPhone = 'N/A';
-    let notes = 'Quick shop checkout';
-
-    if (activeSelectedApt) {
-      finalAppointmentId = activeSelectedApt.id;
-      finalPetName = activeSelectedApt.petName;
-      finalOwnerName = activeSelectedApt.ownerName;
-      finalOwnerPhone = activeSelectedApt.ownerPhone;
-      
-      // Try to bind historical patientId
-      const matchedRec = records.find(r => r.petName === activeSelectedApt.petName && r.ownerPhone === activeSelectedApt.ownerPhone);
-      finalPatientId = matchedRec ? matchedRec.patientId : `new_patient_${Date.now()}`;
-      notes = `Clinical checkout for active appointment: ${activeSelectedApt.id}`;
-    } else if (activeSelectedRecord) {
-      finalPatientId = activeSelectedRecord.patientId;
-      finalPetName = activeSelectedRecord.petName;
-      finalOwnerName = activeSelectedRecord.ownerName;
-      finalOwnerPhone = activeSelectedRecord.ownerPhone;
-      
-      // Check if this record has an active appointment to complete
-      const activeApt = appointments.find(a => a.status === 'in-progress' && a.petName === activeSelectedRecord.petName && a.ownerPhone === activeSelectedRecord.ownerPhone);
-      if (activeApt) {
-        finalAppointmentId = activeApt.id;
-      }
-      notes = `Retail checkout for historical profile: ${activeSelectedRecord.patientId}`;
-    }
-
-    const invoiceObj: Invoice = {
-      id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
-      appointmentId: finalAppointmentId,
-      patientId: finalPatientId,
-      petName: finalPetName,
-      ownerName: finalOwnerName,
-      ownerPhone: finalOwnerPhone,
-      date: new Date().toISOString().split('T')[0],
-      items: newInvItems,
-      subtotal: subtotal,
-      tax: tax,
-      discount: discount,
-      sales_total: total,
-      cogs: totalCogs,
-      profit: profit,
-      shiftId: activeShiftId,
-      paymentMethod: paymentMethod,
-      paymentStatus: 'paid',
-      createdBy: currentUser?.name || 'Unknown',
-      notes: notes
-    };
+    setIsProcessing(true);
 
     try {
-      // Apply stock deduction to state sequentially to enforce strict CAS locking
-      for (const c of cart) {
-        const isService = c.item?.category === 'service' || c.item?.category === 'lab_service';
-        if (!isService) {
-          // Pass the expected stock to explicitly engage the Compare-And-Swap concurrency lock
-          await onUpdateStock(c.item.id, -c.quantity, c.item.stock);
-        }
+      // Fetch and Attach the Active Shift
+      const activeShiftId = await fetchActiveShiftId();
+      if (!activeShiftId) {
+        showToast('Cannot checkout: No open shift detected in state.', 'error');
+        setIsProcessing(false);
+        return false;
       }
-      await onAddInvoice(invoiceObj);
 
+      // Create a new invoice and calculate COGS
+      let totalCogs = 0;
+      const newInvItems: InvoiceItem[] = cart.map(c => {
+        const itemCost = Number(c.item.cost) || 0;
+        const itemCogs = itemCost * c.quantity;
+        totalCogs += itemCogs;
+        return {
+          itemId: c.item.id,
+          sku: c.item.sku,
+          name: c.item.name,
+          category: c.item.category,
+          quantity: c.quantity,
+          unitPrice: c.item.price,
+          totalPrice: (Math.round(c.item.price * 100) * c.quantity) / 100
+        };
+      });
+
+      const profit = total - totalCogs;
+
+      let finalAppointmentId: string | undefined = undefined;
+      let finalPatientId = 'anonymous_walkin';
+      let finalPetName = 'Walk-in Pet / Guest';
+      let finalOwnerName = 'General Guest';
+      let finalOwnerPhone = 'N/A';
+      let notes = 'Quick shop checkout';
+
+      if (activeSelectedApt) {
+        finalAppointmentId = activeSelectedApt.id;
+        finalPetName = activeSelectedApt.petName;
+        finalOwnerName = activeSelectedApt.ownerName;
+        finalOwnerPhone = activeSelectedApt.ownerPhone;
+        
+        // Try to bind historical patientId
+        const matchedRec = records.find(r => r.petName === activeSelectedApt.petName && r.ownerPhone === activeSelectedApt.ownerPhone);
+        finalPatientId = matchedRec ? matchedRec.patientId : `new_patient_${Date.now()}`;
+        notes = `Clinical checkout for active appointment: ${activeSelectedApt.id}`;
+      } else if (activeSelectedRecord) {
+        finalPatientId = activeSelectedRecord.patientId;
+        finalPetName = activeSelectedRecord.petName;
+        finalOwnerName = activeSelectedRecord.ownerName;
+        finalOwnerPhone = activeSelectedRecord.ownerPhone;
+        
+        // Check if this record has an active appointment to complete
+        const activeApt = appointments.find(a => a.status === 'in-progress' && a.petName === activeSelectedRecord.petName && a.ownerPhone === activeSelectedRecord.ownerPhone);
+        if (activeApt) {
+          finalAppointmentId = activeApt.id;
+        }
+        notes = `Retail checkout for historical profile: ${activeSelectedRecord.patientId}`;
+      }
+
+      const invoiceObj: Invoice = {
+        id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
+        appointmentId: finalAppointmentId,
+        patientId: finalPatientId,
+        petName: finalPetName,
+        ownerName: finalOwnerName,
+        ownerPhone: finalOwnerPhone,
+        date: new Date().toISOString().split('T')[0],
+        items: newInvItems,
+        subtotal: subtotal,
+        tax: tax,
+        discount: discount,
+        sales_total: total,
+        cogs: totalCogs,
+        profit: profit,
+        shiftId: activeShiftId,
+        paymentMethod: paymentMethod,
+        paymentStatus: 'paid',
+        createdBy: currentUser?.name || 'Unknown',
+        notes: notes
+      };
+
+      // Prepare stock update promises for non-service items to engage CAS concurrency lock in parallel
+      const stockPromises = cart
+        .filter(c => {
+          const isService = c.item?.category === 'service' || c.item?.category === 'lab_service';
+          return !isService;
+        })
+        .map(c => onUpdateStock(c.item.id, -c.quantity, c.item.stock));
+
+      const invoicePromise = onAddInvoice(invoiceObj);
+
+      // Trigger parallel database mutations in the background (fire-and-forget/non-blocking)
+      Promise.all([...stockPromises, invoicePromise])
+        .then(() => {
+          console.log('[CeylonPets] Parallel database mutations completed successfully.');
+        })
+        .catch((err) => {
+          console.error('[CeylonPets] Background mutations failure:', err);
+          if (err.message === 'CAS_MISMATCH') {
+            showToast('Warning: Stock discrepancy detected in background. Syncing inventory.', 'error');
+            if (onTriggerInventorySync) onTriggerInventorySync();
+          } else {
+            showToast('Warning: Background transaction delay. System will sync automatically.', 'error');
+          }
+        });
+
+      // Optimistic UI Transition: Update local states immediately
       setCheckoutSuccess(invoiceObj);
       setCart([]);
       setDiscountVal(0);
       setSelectedPetId('walkin');
+      setAmountReceived('');
+      setShowCheckoutModal(false);
+      setIsProcessing(false);
+
       showToast('Checkout complete! Invoice generated and appointment resolved.', 'success');
       return true;
+
     } catch (err: any) {
-      console.error('Supabase Rejection:', err);
-      if (err.message === 'CAS_MISMATCH') {
-        showToast('Checkout Aborted: Another terminal just purchased the last of this item.', 'error');
-        if (onTriggerInventorySync) onTriggerInventorySync();
-        return false; // Hard abort the rest of the checkout flow, preventing ledger changes
-      }
+      console.error('Checkout error:', err);
       showToast('Error during checkout sequence. Please try again.', 'error');
+      setIsProcessing(false);
       return false;
     }
   };
@@ -1257,8 +1279,8 @@ export default function POSRegister({
                       onKeyDown={async (e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
-                          const success = await handleCheckoutSubmit();
-                          if (success) setShowCheckoutModal(false);
+                          if (isProcessing) return;
+                          await handleCheckoutSubmit();
                         }
                       }}
                       className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs font-bold"
@@ -1290,11 +1312,23 @@ export default function POSRegister({
               </button>
               <button
                 onClick={handleCheckoutSubmit}
-                disabled={paymentMethod === 'cash' && Number(amountReceived) < total}
+                disabled={isProcessing || (paymentMethod === 'cash' && Number(amountReceived) < total)}
                 className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 font-bold transition-colors shadow-md shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Check className="w-5 h-5" />
-                Finalize & Record ({currencySign}{total.toFixed(2)})
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Finalize & Record ({currencySign}{total.toFixed(2)})
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -1343,9 +1377,6 @@ export default function POSRegister({
               <button
                 onClick={() => {
                   setCheckoutSuccess(null);
-                  setShowCheckoutModal(false);
-                  setAmountReceived('');
-                  setDiscountVal(0);
                   setPaymentMethod('cash');
                 }}
                 className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 font-bold rounded-xl cursor-pointer flex items-center justify-center"

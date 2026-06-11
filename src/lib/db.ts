@@ -404,14 +404,20 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
     });
 
     if (inv.appointmentId) {
-      const { error } = await supabase
+      supabase
         .from(DB_TABLES.APPOINTMENTS)
         .update({ status: 'completed' })
-        .eq('id', inv.appointmentId);
-      
-      if (error) {
-        console.error('[CeylonPets] Failed to cascade appointment resolution:', error);
-      }
+        .eq('id', inv.appointmentId)
+        .then(
+          ({ error }) => {
+            if (error) {
+              console.error('[CeylonPets] Failed to cascade appointment resolution:', error);
+            }
+          },
+          (err) => {
+            console.error('[CeylonPets] Error in background appointment status update cascade:', err);
+          }
+        );
     }
   } catch (err) {
     console.warn('[CeylonPets] upsertInvoice offline:', err);
