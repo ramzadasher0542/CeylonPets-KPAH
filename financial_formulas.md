@@ -33,3 +33,18 @@ All shift metrics are segmented by tender channels according to their specified 
 ## Realized vs. Unrealized Revenue
 * Invoices set to `void` are explicitly excluded from all Shift Calculations.
 * Invoices set to `unpaid` are treated as accounts receivable/unrealized and are **not** mixed into shift metrics.
+
+---
+
+## 4. POS Billing Breakdown & Category Share Calculations
+
+To reconcile the exact revenue share of each clinical and retail department during a shift:
+
+### Category Revenue ($Rev_{cat}$)
+The sum of item totals belonging to a specific category (e.g. `retail`, `prescription`, `lab_service`, `service`, `vaccine`) across paid invoices of the active shift:
+$$Rev_{cat} = \sum (\text{item.totalPrice}) \quad \text{where} \quad \text{item.category} = cat \ \text{and} \ \text{payment\_status} = \text{'paid'} \ \text{and} \ \text{shift\_id} = \text{active\_shift\_id}$$
+
+### Category Share Percentage ($Share_{cat}$)
+The proportion of total shift sales attributed to a specific category:
+$$Share_{cat} = \left( \frac{Rev_{cat}}{\text{Gross Sales}} \right) \times 100$$
+

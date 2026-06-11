@@ -129,22 +129,51 @@ export default function DashboardAnalytics({
   // --- MATH FIX: Guaranteed frontend category breakdown ---
   const frontendCategoryBreakdown = React.useMemo(() => {
     if (!activeShiftId) return [];
-    const catMap: Record<string, number> = {};
+    
+    // Initialize accumulator with all 5 active database categories exactly
+    const catMap: Record<string, number> = {
+      'service': 0,
+      'retail': 0,
+      'prescription': 0,
+      'lab_service': 0,
+      'vaccine': 0
+    };
+
     for (const inv of currentShiftInvoices) {
       for (const item of inv.items || []) {
         const cat = item.category || 'service';
-        catMap[cat] = (catMap[cat] || 0) + item.totalPrice;
+        if (cat in catMap) {
+          catMap[cat] += item.totalPrice || 0;
+        }
       }
     }
     return Object.entries(catMap).map(([category, total]) => ({ category, total }));
   }, [currentShiftInvoices, activeShiftId]);
 
-  // Use RPC breakdown if it has data, otherwise use frontend-computed breakdown
-  const resolvedBreakdown: { category: string; total: number }[] =
-    (!activeShiftId) ? [] :
-    (shiftMetrics?.category_breakdown && shiftMetrics.category_breakdown.length > 0)
+  // Use RPC breakdown if it has data, otherwise use frontend-computed breakdown.
+  // We merge it with our 5 core categories to ensure all 5 are always represented.
+  const resolvedBreakdown: { category: string; total: number }[] = React.useMemo(() => {
+    if (!activeShiftId) return [];
+
+    const baseMap: Record<string, number> = {
+      'service': 0,
+      'retail': 0,
+      'prescription': 0,
+      'lab_service': 0,
+      'vaccine': 0
+    };
+
+    const source = (shiftMetrics?.category_breakdown && shiftMetrics.category_breakdown.length > 0)
       ? shiftMetrics.category_breakdown
       : frontendCategoryBreakdown;
+
+    for (const item of source) {
+      const cat = item.category || 'service';
+      baseMap[cat] = (baseMap[cat] || 0) + item.total;
+    }
+
+    return Object.entries(baseMap).map(([category, total]) => ({ category, total }));
+  }, [shiftMetrics?.category_breakdown, frontendCategoryBreakdown, activeShiftId]);
 
   // --- MATH FIX: Guaranteed frontend payment breakdown ---
   const frontendPaymentBreakdown = React.useMemo(() => {
