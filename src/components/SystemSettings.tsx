@@ -2358,7 +2358,7 @@ export default function SystemSettings({
 
             <button
               onClick={() => setShowPrintModal(false)}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-750 text-white font-bold rounded-xl cursor-pointer"
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl cursor-pointer"
             >
               Close test page Spooler
             </button>

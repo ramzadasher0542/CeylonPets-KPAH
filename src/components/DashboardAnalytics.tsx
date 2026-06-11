@@ -309,7 +309,7 @@ export default function DashboardAnalytics({
         return { name: displayName, rev: seg.rev, pct: seg.pct, color: seg.style.color };
       }
     }
-    return { name: 'Total Revenue', rev: finalTotalRevSum, pct: 100, color: 'text-indigo-650' };
+    return { name: 'Total Revenue', rev: finalTotalRevSum, pct: 100, color: 'text-indigo-600' };
   };
 
   const sliceInfo = getSliceDetails();
@@ -495,7 +495,7 @@ export default function DashboardAnalytics({
         <div className="bg-white p-5 w-full h-full rounded-2xl border border-sky-100 shadow-sm relative overflow-hidden group hover:border-emerald-300 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-amber-605 font-extrabold uppercase tracking-wider text-emerald-600">Net Profit</p>
+              <p className="text-xs font-extrabold uppercase tracking-wider text-emerald-600">Net Profit</p>
               <h3 className="text-2xl font-black text-emerald-600 mt-1">{currencySign}{netProfit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
             </div>
             <div className="p-3 bg-emerald-50 rounded-xl text-emerald-600 group-hover:bg-emerald-100 transition-all duration-300">

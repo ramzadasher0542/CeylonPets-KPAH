@@ -710,7 +710,7 @@ export default function POSRegister({
                     onClick={() => setLedgerStatusFilter(status)}
                     className={`px-3 py-1.5 rounded-lg text-[10px] font-bold capitalize cursor-pointer transition-all ${
                       ledgerStatusFilter === status 
-                        ? 'bg-indigo-650 text-white shadow-xs' 
+                        ? 'bg-indigo-600 text-white shadow-xs' 
                         : 'text-slate-500 hover:text-slate-800'
                     }`}
                   >
@@ -1477,7 +1477,7 @@ export default function POSRegister({
                 disabled={enteredChallengePin.length !== 4}
                 className={`flex-1 py-2 text-white font-extrabold rounded-xl cursor-pointer transition-all shadow-xs ${
                   enteredChallengePin.length === 4 
-                    ? 'bg-indigo-650 hover:bg-indigo-750 active:scale-95' 
+                    ? 'bg-indigo-600 hover:bg-indigo-700 active:scale-95' 
                     : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                 }`}
               >

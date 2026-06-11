@@ -1880,7 +1880,7 @@ export default function App() {
               <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 text-xs font-sans print:hidden">
                 <button
                   onClick={() => setActiveView('settings')}
-                  className="px-4 py-2 rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer bg-indigo-600 text-white border-indigo-650 shadow-sm"
+                  className="px-4 py-2 rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer bg-indigo-600 text-white border-indigo-700 shadow-sm"
                 >
                   <Printer className="h-4.5 w-4.5" />
                   <span>Printer Setup (Hardware Panel Only)</span>
