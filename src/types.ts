@@ -107,6 +107,9 @@ export interface PosShift {
   closedAt?: string;
   status: 'open' | 'closed';
   openedBy: string;
+  expectedDrawerCash?: number;
+  actualDrawerCash?: number;
+  notes?: string;
 }
 
 export interface Invoice {

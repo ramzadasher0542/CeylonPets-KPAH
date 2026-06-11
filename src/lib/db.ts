@@ -239,7 +239,7 @@ export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.RECORDS)
-      .select('id, patient_id, pet_name, owner_phone, visit_date, data')
+      .select('id, patient_id, pet_name, owner_phone, visit_date, attending_vet, data')
       .order('visit_date', { ascending: false });
 
     if (error) throw error;
@@ -249,7 +249,13 @@ export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
     }
 
     // Full record is stored in the `data` JSONB column
-    const records: MedicalRecord[] = data.map((row: any) => row.data as MedicalRecord);
+    const records: MedicalRecord[] = data.map((row: any) => {
+      const rec = row.data as MedicalRecord;
+      if (row.attending_vet && !rec.attendingVet) {
+        rec.attendingVet = row.attending_vet;
+      }
+      return rec;
+    });
 
     localStorage.setItem('ceylon_records_v2', JSON.stringify(records));
     return records;
@@ -263,12 +269,13 @@ export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
 export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
   try {
     await supabaseUpsert(DB_TABLES.RECORDS, {
-      id:          rec.id,
-      patient_id:  rec.patientId,
-      pet_name:    rec.petName,
-      owner_phone: rec.ownerPhone,
-      visit_date:  rec.visitDate,
-      data:        rec,   // full object stored as JSONB
+      id:            rec.id,
+      patient_id:    rec.patientId,
+      pet_name:      rec.petName,
+      owner_phone:   rec.ownerPhone,
+      visit_date:    rec.visitDate,
+      attending_vet: rec.attendingVet ?? null,
+      data:          rec,   // full object stored as JSONB
     });
   } catch (err) {
     console.warn('[CeylonPets] upsertMedicalRecord offline:', err);
@@ -293,7 +300,7 @@ export async function fetchInvoices(): Promise<Invoice[]> {
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.INVOICES)
-      .select('id, pet_name, owner_name, date, total, payment_status, data')
+      .select('id, pet_name, owner_name, date, total, payment_status, status, data')
       .neq('payment_status', 'void')
       .order('date', { ascending: false });
 
@@ -303,7 +310,13 @@ export async function fetchInvoices(): Promise<Invoice[]> {
       return [];
     }
 
-    const invoices: Invoice[] = data.map((row: any) => row.data as Invoice);
+    const invoices: Invoice[] = data.map((row: any) => {
+      const inv = row.data as Invoice;
+      if (row.status && row.status !== inv.paymentStatus) {
+        inv.paymentStatus = row.status as any;
+      }
+      return inv;
+    });
 
     localStorage.setItem('ceylon_invoices_v2', JSON.stringify(invoices));
     return invoices;
@@ -325,6 +338,7 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
       profit:         inv.profit || 0,
       cogs:           inv.cogs || 0,
       status:         inv.paymentStatus,
+      payment_status: inv.paymentStatus,
       payment_method: inv.paymentMethod,
       shift_id:       inv.shiftId,
       data:           inv,   // full object stored as JSONB
