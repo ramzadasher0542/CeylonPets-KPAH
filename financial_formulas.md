@@ -48,3 +48,20 @@ $$Rev_{cat} = \sum (\text{item.totalPrice}) \quad \text{where} \quad \text{item.
 The proportion of total shift sales attributed to a specific category:
 $$Share_{cat} = \left( \frac{Rev_{cat}}{\text{Gross Sales}} \right) \times 100$$
 
+---
+
+## 5. Automated Appointment Expiry & No-Show Protocols
+
+To prevent expired consultations from remaining active on the operational board, a daily sweeper runs on the backend to transition legacy bookings.
+
+### Expiry Sweeper Target Selection
+The set of appointments ($A_{\text{expired}}$) to auto-cancel comprises records where the status is `'booked'` and the scheduled calendar date has passed:
+$$A_{\text{expired}} = \{ a \in \text{Appointments} \mid a.\text{status} = \text{'booked'} \land a.\text{date} < \text{CURRENT\_DATE} \}$$
+
+### Telemetry Logging Rule
+Upon executing the cancellation of $N$ expired bookings, a system telemetry record ($T_{\text{log}}$) is logged directly to `public.system_alerts`:
+$$T_{\text{log}}.\text{message} = \text{"Automated Appointment Expiry Sweeper executed: } N \text{ expired bookings auto-cancelled."}$$
+$$T_{\text{log}}.\text{timestamp} = \text{CURRENT\_TIMESTAMP}$$
+$$T_{\text{log}}.\text{category} = \text{'appointment'}$$
+$$T_{\text{log}}.\text{severity} = \text{'info'}$$
+
