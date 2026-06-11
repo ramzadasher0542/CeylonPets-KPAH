@@ -18,11 +18,13 @@ import {
   RefreshCw,
   Phone,
   Bookmark,
-  Stethoscope
+  Stethoscope,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Appointment, AppointmentStatus, MedicalRecord, User as StaffUser } from '../types';
 import { showToast } from './Toast';
-import { fetchVeterinarians } from '../lib/db';
+import { fetchVeterinarians, fetchHistoricalAppointmentsArchive } from '../lib/db';
 
 interface AppointmentsProps {
   appointments: Appointment[];
@@ -41,9 +43,49 @@ export default function AppointmentsManager({
   onUpdateStatus,
   onAddRecord
 }: AppointmentsProps) {
-  // Filters
+  // Navigation tabs: 'planner' or 'history'
+  const [activeSubTab, setActiveSubTab] = useState<'planner' | 'history'>('planner');
+
+  // Filters for Live Planner
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // History panel states
+  const [historyAppointments, setHistoryAppointments] = useState<Appointment[]>([]);
+  const [historyCount, setHistoryCount] = useState(0);
+  const [historyPage, setHistoryPage] = useState(0);
+  const [historySearch, setHistorySearch] = useState('');
+  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+  const historyLimit = 10;
+
+  // Fetch function for history
+  const loadHistory = async (page: number, search: string) => {
+    setIsHistoryLoading(true);
+    try {
+      const result = await fetchHistoricalAppointmentsArchive(page, historyLimit, search);
+      setHistoryAppointments(result.appointments);
+      setHistoryCount(result.count);
+    } catch (err) {
+      console.error('Failed to load historical appointments:', err);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  };
+
+  // Debounced/lazy loading of history when tab is open, page changes, or search filter changes
+  useEffect(() => {
+    if (activeSubTab === 'history') {
+      const delayDebounce = setTimeout(() => {
+        loadHistory(historyPage, historySearch);
+      }, historySearch ? 300 : 0);
+      return () => clearTimeout(delayDebounce);
+    }
+  }, [activeSubTab, historyPage, historySearch]);
+
+  // Reset page when search term changes
+  useEffect(() => {
+    setHistoryPage(0);
+  }, [historySearch]);
   
   // New appointment form states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -168,143 +210,281 @@ export default function AppointmentsManager({
   return (
     <div className="space-y-4" id="appointments-tab-system">
       
-      {/* Header operations */}
-      <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3 text-xs sticky top-0 z-10">
-        
-        {/* Search Input */}
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-          <input name="searchAppointmentLogByPet461" id="search-appointment-log-by-pet--461"
-            type="text"
-            placeholder="Search appointment log by pet, owner, or medical reasons..."
-            value={searchFilter}
-            onChange={(e) => setSearchFilter(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
-          />
-        </div>
+      {/* Subtab selection */}
+      <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/60 max-w-md">
+        <button
+          onClick={() => setActiveSubTab('planner')}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+            activeSubTab === 'planner'
+              ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Live Scheduling Planner
+        </button>
+        <button
+          onClick={() => setActiveSubTab('history')}
+          className={`flex-1 py-2 px-4 rounded-lg text-xs font-bold transition-all cursor-pointer text-center ${
+            activeSubTab === 'history'
+              ? 'bg-white text-indigo-600 shadow-sm border border-slate-200/30'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Historical Appointment Logs
+        </button>
+      </div>
 
-        {/* Tab filters and creation */}
-        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <div className="flex bg-slate-50 rounded-xl p-1 border border-slate-200">
-            {['all', 'booked', 'in-progress', 'completed'].map(status => (
+      {activeSubTab === 'planner' ? (
+        <>
+          {/* Header operations */}
+          <div className="bg-white p-4 rounded-2xl border border-sky-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-3 text-xs sticky top-0 z-10">
+            
+            {/* Search Input */}
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+              <input name="searchAppointmentLogByPet461" id="search-appointment-log-by-pet--461"
+                type="text"
+                placeholder="Search appointment log by pet, owner, or medical reasons..."
+                value={searchFilter}
+                onChange={(e) => setSearchFilter(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
+              />
+            </div>
+
+            {/* Tab filters and creation */}
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              <div className="flex bg-slate-50 rounded-xl p-1 border border-slate-200">
+                {['all', 'booked', 'in-progress'].map(status => (
+                  <button
+                    key={status}
+                    onClick={() => setStatusFilter(status)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize cursor-pointer transition-all ${
+                      statusFilter === status 
+                        ? 'bg-sky-500 text-white shadow-sm' 
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {status === 'in-progress' ? 'Active' : status}
+                  </button>
+                ))}
+              </div>
+
               <button
-                key={status}
-                onClick={() => setStatusFilter(status)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize cursor-pointer transition-all ${
-                  statusFilter === status 
-                    ? 'bg-sky-500 text-white shadow-sm' 
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                onClick={() => setShowAddModal(true)}
+                className="ml-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               >
-                {status === 'in-progress' ? 'Active' : status}
+                <Plus className="h-4 w-4" /> Book Consultation
               </button>
+            </div>
+          </div>
+
+          {/* Grid Appointments list */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredAppointments.map(apt => (
+              <div 
+                key={apt.id} 
+                className="bg-white border rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-sky-300 transition-all relative group"
+                style={{ borderColor: apt.status === 'in-progress' ? '#bae6fd' : '#f1f5f9' }}
+              >
+                {/* Top row */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2.5 bg-sky-50 text-sky-700 rounded-xl font-bold font-mono text-center leading-none min-w-[42px]">
+                        <span className="block text-xs uppercase text-sky-500">{apt.petType}</span>
+                        <span className="text-[10px] font-semibold text-slate-500 block truncate max-w-[48px]">{apt.breed}</span>
+                      </div>
+                      <div>
+                        <h5 className="text-sm font-bold text-slate-800 leading-snug flex items-center gap-1">
+                          {apt.petName}
+                        </h5>
+                        <p className="text-xs text-slate-400 font-medium">{apt.ownerName}</p>
+                      </div>
+                    </div>
+                    {getStatusBadge(apt.status)}
+                  </div>
+
+                  {/* Reason card */}
+                  <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl mt-3 text-xs">
+                    <span className="text-[9px] font-mono text-slate-400 block uppercase font-bold tracking-wider">Appointment Complaint</span>
+                    <p className="text-slate-700 font-medium leading-relaxed mt-0.5">{apt.reason}</p>
+                  </div>
+                </div>
+
+                {/* Middle meta row */}
+                <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-dashed border-slate-100 pt-3">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-sky-500" />
+                    <span>Scheduled Date: {apt.date}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5 text-sky-500" />
+                    <span>Scheduled Time: {apt.time}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Stethoscope className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>Provider: {apt.veterinarian}</span>
+                  </div>
+                </div>
+
+                {/* Bottom Actions Row */}
+                <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                  {apt.status === 'booked' && (
+                    <>
+                      <button
+                        onClick={() => handleCheckIn(apt)}
+                        className="flex-1 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-lg cursor-pointer text-[11px] text-center"
+                      >
+                        Check-In Clinic
+                      </button>
+                      <button
+                        onClick={() => onUpdateStatus(apt.id, 'cancelled')}
+                        className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-rose-600 font-bold rounded-lg cursor-pointer text-[11px]"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  {apt.status === 'in-progress' && (
+                    <button
+                      onClick={() => onUpdateStatus(apt.id, 'completed')}
+                      className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer text-[11px] text-center"
+                    >
+                      Conclude Vet Care
+                    </button>
+                  )}
+                  {apt.status === 'completed' && (
+                    <div className="w-full text-center text-[10px] text-emerald-600 font-bold bg-emerald-50/50 p-2 rounded-lg flex items-center justify-center gap-1">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Checked out, Invoice generated.
+                    </div>
+                  )}
+                  {apt.status === 'cancelled' && (
+                    <p className="w-full text-center text-[10px] text-slate-400 font-mono italic">
+                      Cancelled visit log.
+                    </p>
+                  )}
+                </div>
+              </div>
             ))}
+            {filteredAppointments.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center h-48 bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center text-slate-500 text-xs">
+                <Calendar className="h-10 w-10 text-slate-300 opacity-50 mb-3" />
+                <span className="font-bold">No scheduled veterinary visits match the query filters.</span>
+              </div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="bg-white p-6 rounded-3xl border border-sky-100 shadow-sm space-y-6 flex-1 flex flex-col min-h-[400px]">
+          {/* Top Header of History tab */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h4 className="text-sm font-extrabold text-slate-800">Historical Appointment Logs</h4>
+              <p className="text-[10px] text-slate-400 mt-1">Archived records of completed and cancelled check-ups</p>
+            </div>
+
+            {/* Search box */}
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search by name or date (YYYY-MM-DD)..."
+                value={historySearch}
+                onChange={(e) => setHistorySearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-sky-500 font-semibold"
+              />
+            </div>
           </div>
 
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="ml-auto px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-          >
-            <Plus className="h-4 w-4" /> Book Consultation
-          </button>
-        </div>
-      </div>
+          {/* Table/List Area */}
+          <div className="flex-1 overflow-x-auto min-h-0 custom-scrollbar">
+            {isHistoryLoading ? (
+              <div className="flex flex-col items-center justify-center h-64 text-slate-500 gap-2">
+                <RefreshCw className="h-8 w-8 text-sky-500 animate-spin" />
+                <span className="font-bold text-xs">Retrieving archives from vet ledger...</span>
+              </div>
+            ) : historyAppointments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-64 bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center text-slate-500 text-xs">
+                <Calendar className="h-10 w-10 text-slate-300 opacity-50 mb-3" />
+                <span className="font-bold">No historical appointments found.</span>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400 uppercase font-mono text-[9px] tracking-wider font-bold">
+                    <th className="py-3 px-4">Patient / Pet</th>
+                    <th className="py-3 px-4">Owner Contact</th>
+                    <th className="py-3 px-4">Consultation Details</th>
+                    <th className="py-3 px-4">Provider</th>
+                    <th className="py-3 px-4">Schedule</th>
+                    <th className="py-3 px-4 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {historyAppointments.map((apt) => (
+                    <tr key={apt.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="py-3.5 px-4">
+                        <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                          {apt.petName}
+                          <span className="px-1.5 py-0.5 bg-slate-100 text-slate-500 text-[8px] font-bold rounded-md font-mono">
+                            {apt.petType}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">{apt.breed || 'Mixed breed'}</div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="font-semibold text-slate-700">{apt.ownerName}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{apt.ownerPhone}</div>
+                      </td>
+                      <td className="py-3.5 px-4 max-w-xs">
+                        <div className="text-slate-700 font-medium truncate" title={apt.reason}>
+                          {apt.reason}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-600 font-semibold">{apt.veterinarian || 'N/A'}</td>
+                      <td className="py-3.5 px-4 text-slate-600">
+                        <div className="font-bold">{apt.date}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{apt.time}</div>
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        {getStatusBadge(apt.status)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-      {/* Grid Appointments list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredAppointments.map(apt => (
-          <div 
-            key={apt.id} 
-            className="bg-white border rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-sky-300 transition-all relative group"
-            style={{ borderColor: apt.status === 'in-progress' ? '#bae6fd' : '#f1f5f9' }}
-          >
-            {/* Top row */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2">
-                  <div className="p-2.5 bg-sky-50 text-sky-700 rounded-xl font-bold font-mono text-center leading-none min-w-[42px]">
-                    <span className="block text-xs uppercase text-sky-500">{apt.petType}</span>
-                    <span className="text-[10px] font-semibold text-slate-500 block truncate max-w-[48px]">{apt.breed}</span>
-                  </div>
-                  <div>
-                    <h5 className="text-sm font-bold text-slate-800 leading-snug flex items-center gap-1">
-                      {apt.petName}
-                    </h5>
-                    <p className="text-xs text-slate-400 font-medium">{apt.ownerName}</p>
-                  </div>
-                </div>
-                {getStatusBadge(apt.status)}
-              </div>
-
-              {/* Reason card */}
-              <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl mt-3 text-xs">
-                <span className="text-[9px] font-mono text-slate-400 block uppercase font-bold tracking-wider">Appointment Complaint</span>
-                <p className="text-slate-700 font-medium leading-relaxed mt-0.5">{apt.reason}</p>
-              </div>
-            </div>
-
-            {/* Middle meta row */}
-            <div className="space-y-1.5 text-xs text-slate-500 font-medium border-t border-dashed border-slate-100 pt-3">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5 text-sky-500" />
-                <span>Scheduled Date: {apt.date}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5 text-sky-500" />
-                <span>Scheduled Time: {apt.time}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Stethoscope className="h-3.5 w-3.5 text-emerald-500" />
-                <span>Provider: {apt.veterinarian}</span>
-              </div>
-            </div>
-
-            {/* Bottom Actions Row */}
-            <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-              {apt.status === 'booked' && (
-                <>
-                  <button
-                    onClick={() => handleCheckIn(apt)}
-                    className="flex-1 py-1.5 bg-sky-500 hover:bg-sky-600 text-white font-bold rounded-lg cursor-pointer text-[11px] text-center"
-                  >
-                    Check-In Clinic
-                  </button>
-                  <button
-                    onClick={() => onUpdateStatus(apt.id, 'cancelled')}
-                    className="py-1.5 px-3 border border-slate-200 hover:bg-slate-50 text-slate-400 hover:text-rose-600 font-bold rounded-lg cursor-pointer text-[11px]"
-                  >
-                    Cancel
-                  </button>
-                </>
-              )}
-              {apt.status === 'in-progress' && (
+          {/* Footer/Pagination controls */}
+          {historyCount > 0 && (
+            <div className="flex items-center justify-between border-t border-slate-100 pt-4 mt-auto">
+              <span className="text-[10px] font-semibold text-slate-400">
+                Showing {historyPage * historyLimit + 1} - {Math.min((historyPage + 1) * historyLimit, historyCount)} of {historyCount} archived entries
+              </span>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onUpdateStatus(apt.id, 'completed')}
-                  className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg cursor-pointer text-[11px] text-center"
+                  disabled={historyPage === 0 || isHistoryLoading}
+                  onClick={() => setHistoryPage((p) => p - 1)}
+                  className="p-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                 >
-                  Conclude Vet Care
+                  <ChevronLeft className="h-4 w-4" />
                 </button>
-              )}
-              {apt.status === 'completed' && (
-                <div className="w-full text-center text-[10px] text-emerald-600 font-bold bg-emerald-50/50 p-2 rounded-lg flex items-center justify-center gap-1">
-                  <CheckCircle2 className="h-3.5 w-3.5" /> Checked out, Invoice generated.
-                </div>
-              )}
-              {apt.status === 'cancelled' && (
-                <p className="w-full text-center text-[10px] text-slate-400 font-mono italic">
-                  Cancelled visit log.
-                </p>
-              )}
+                <span className="text-xs font-extrabold text-slate-700 px-2 font-mono">
+                  {historyPage + 1}
+                </span>
+                <button
+                  disabled={(historyPage + 1) * historyLimit >= historyCount || isHistoryLoading}
+                  onClick={() => setHistoryPage((p) => p + 1)}
+                  className="p-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-        {filteredAppointments.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center h-48 bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center text-slate-500 text-xs">
-            <Calendar className="h-10 w-10 text-slate-300 opacity-50 mb-3" />
-            <span className="font-bold">No scheduled veterinary visits match the query filters.</span>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Add Appointment Modal Overlay */}
       {showAddModal && createPortal(

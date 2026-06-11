@@ -1004,9 +1004,13 @@ export default function App() {
     if (!aptDetails) return;
     const updatedApt = { ...aptDetails, status };
 
-    setAppointments(prev => 
-      prev.map(apt => apt.id === id ? updatedApt : apt)
-    );
+    if (status === 'completed' || status === 'cancelled') {
+      setAppointments(prev => prev.filter(apt => apt.id !== id));
+    } else {
+      setAppointments(prev => 
+        prev.map(apt => apt.id === id ? updatedApt : apt)
+      );
+    }
 
     // If status checked in, automatically trigger notification for vaccination reviews in EHR
     let checkAlert: SystemAlert | null = null;

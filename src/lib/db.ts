@@ -152,6 +152,7 @@ export async function fetchAppointments(): Promise<Appointment[]> {
     const { data, error } = await supabase
       .from(DB_TABLES.APPOINTMENTS)
       .select('id, pet_name, pet_type, breed, owner_name, owner_phone, owner_email, date, time, veterinarian, reason, status')
+      .in('status', ['booked', 'in-progress'])
       .order('date', { ascending: false });
 
     if (error) throw error;
@@ -181,6 +182,59 @@ export async function fetchAppointments(): Promise<Appointment[]> {
   } catch (err) {
     console.warn('[CeylonPets] fetchAppointments offline — using cache:', err);
     return safeCache('ceylon_appointments_v2', []);
+  }
+}
+
+export async function fetchHistoricalAppointmentsArchive(
+  page = 0,
+  limit = 50,
+  search?: string
+): Promise<{ appointments: Appointment[]; count: number }> {
+  try {
+    let query = supabase
+      .from(DB_TABLES.APPOINTMENTS)
+      .select('id, pet_name, pet_type, breed, owner_name, owner_phone, owner_email, date, time, veterinarian, reason, status', { count: 'exact' })
+      .in('status', ['completed', 'cancelled']);
+
+    if (search && search.trim() !== '') {
+      const term = search.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(term)) {
+        query = query.eq('date', term);
+      } else {
+        query = query.or(`pet_name.ilike.%${term}%,owner_name.ilike.%${term}%`);
+      }
+    }
+
+    const fromRange = page * limit;
+    const toRange = (page + 1) * limit - 1;
+
+    const { data, error, count } = await query
+      .order('date', { ascending: false })
+      .order('time', { ascending: false })
+      .range(fromRange, toRange);
+
+    if (error) throw error;
+
+    const apts: Appointment[] = (data || []).map((row: any) => ({
+      id:          row.id,
+      petName:     row.pet_name,
+      petType:     row.pet_type,
+      breed:       row.breed ?? '',
+      ownerName:   row.owner_name,
+      ownerPhone:  row.owner_phone,
+      ownerEmail:  row.owner_email ?? '',
+      date:        row.date,
+      time:        row.time,
+      veterinarian:row.veterinarian ?? '',
+      reason:      row.reason ?? '',
+      status:      row.status,
+    }));
+
+    return { appointments: apts, count: count || 0 };
+
+  } catch (err) {
+    console.warn('[CeylonPets] fetchHistoricalAppointmentsArchive failed:', err);
+    return { appointments: [], count: 0 };
   }
 }
 
