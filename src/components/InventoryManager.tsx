@@ -116,11 +116,7 @@ export default function InventoryManager({
       return;
     }
 
-    const priceNum = parseFloat(price);
-    const costNum = parseFloat(cost) || 0;
     const stockNum = parseInt(stock) || 0;
-    const minNum = parseInt(minStock) || 0;
-
     const isService = category === 'service' || category === 'lab_service';
     
     if (!isService && stockNum < 0) {
@@ -128,19 +124,26 @@ export default function InventoryManager({
       return;
     }
 
-    const newItem: InventoryItem = {
-      id: `inv-${Date.now()}`,
-      sku,
-      name,
-      category,
+    // Inside your product creation form submission routine:
+    const priceNum = parseFloat(price) || 0;
+    const costNum = parseFloat(cost) || 0;
+    const location = ''; // Safe shim to prevent runtime window.location collisions
+
+    const newProduct: InventoryItem = {
+      // Enforce pure numeric identity string to fulfill local relational specifications
+      id: String(Date.now()),
+      sku: sku.trim() || `SKU-${Date.now().toString().slice(-6)}`,
+      name: name.trim(),
+      category: category,
       price: priceNum,
       cost: costNum,
-      stock: isService ? 0 : stockNum,
-      minStock: isService ? 0 : minNum,
-      unit
+      stock: category === 'service' || category === 'lab_service' ? 0 : (parseInt(stock) || 0),
+      minStock: category === 'service' || category === 'lab_service' ? 0 : (parseInt(minStock) || 0),
+      unit: unit.trim() || 'item',
+      location: location.trim() || 'Main Clinic'
     };
 
-    onAddProduct(newItem);
+    onAddProduct(newProduct);
     setShowAddForm(false);
 
     // reset forms

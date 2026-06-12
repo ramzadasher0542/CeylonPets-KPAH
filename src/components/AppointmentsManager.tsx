@@ -168,7 +168,8 @@ export default function AppointmentsManager({
     const packedReason = `${tokenBlock}\n${reason}`;
 
     const newApt: Appointment = {
-      id: `apt-${Date.now()}`,
+      // Enforce pure numeric identity string
+      id: String(Date.now()),
       petName,
       petType,
       breed: breed || 'Mixed breed',
@@ -197,20 +198,19 @@ export default function AppointmentsManager({
     setPhone2('');
     setAddress('');
     setSex('Male');
-    // Reset date/time to current so the next modal open is fresh
     setDate(formatDisplayDate(new Date()));
     setTime(formatDisplayTime(new Date()));
   };
 
   const handleCheckIn = (apt: Appointment) => {
-    // Check if patient exists in Unified Patient State (records)
     const normalizedPhone = apt.ownerPhone.replace(/\D/g, '');
     const patientExists = records.some(r => r.ownerPhone.replace(/\D/g, '') === normalizedPhone && r.petName.toLowerCase() === apt.petName.toLowerCase());
     
     if (!patientExists) {
       const newPatientId = `${apt.petName}_${normalizedPhone}`;
       const newRecord: MedicalRecord = {
-        id: `rec-${Date.now()}`,
+        // Enforce pure numeric identity string
+        id: String(Date.now()),
         patientId: newPatientId,
         petName: apt.petName,
         petType: apt.petType,
@@ -221,7 +221,6 @@ export default function AppointmentsManager({
         ownerPhone: apt.ownerPhone,
         ownerEmail: apt.ownerEmail || 'not-provided@example.com',
         visitDate: apt.date,
-        // Ensure the clinician credential successfully transfers to the EHR system upon check-in
         attendingVet: apt.veterinarian,
         symptoms: '',
         diagnosis: '',
@@ -234,7 +233,6 @@ export default function AppointmentsManager({
       onAddRecord(newRecord);
     }
 
-    // Change status to in-progress
     onUpdateStatus(apt.id, 'in-progress');
   };
 

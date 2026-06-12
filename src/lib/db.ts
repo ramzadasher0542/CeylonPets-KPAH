@@ -9,10 +9,17 @@ import {
   SystemAlert
 } from '../types';
 
+// Global in-memory cache fallback to prevent synchronous layout blocks during high-frequency writes
+const memoryDbCache: Record<string, string> = {};
+
 function safeCache<T>(key: string, fallback: T[]): T[] {
   try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
+    const raw = memoryDbCache[key] || localStorage.getItem(key);
+    if (raw) {
+      if (!memoryDbCache[key]) memoryDbCache[key] = raw; // Hydrate memory cache
+      return JSON.parse(raw);
+    }
+    return fallback;
   } catch {
     return fallback;
   }
@@ -20,7 +27,9 @@ function safeCache<T>(key: string, fallback: T[]): T[] {
 
 function safeWrite<T>(key: string, data: T[]): void {
   try {
-    localStorage.setItem(key, JSON.stringify(data));
+    const serialized = JSON.stringify(data);
+    memoryDbCache[key] = serialized; // Instantly update memory layer for real-time synchronous UI updates
+    localStorage.setItem(key, serialized);
   } catch (err) {
     console.error(`Failed to write to local storage key: ${key}`, err);
   }
@@ -32,8 +41,9 @@ export async function fetchInventory(): Promise<InventoryItem[]> {
 }
 
 export async function upsertInventoryItem(item: InventoryItem): Promise<void> {
+  if (!item || !item.id) return;
   const items = safeCache<InventoryItem>('ceylon_inventory_v2', []);
-  const idx = items.findIndex(i => i.id === item.id);
+  const idx = items.findIndex(i => i && i.id === item.id);
   
   if (item.category === 'lab_service' || item.category === 'service') { 
     item.stock = 0; 
@@ -41,22 +51,23 @@ export async function upsertInventoryItem(item: InventoryItem): Promise<void> {
   }
   
   if (idx >= 0) {
-    items[idx] = item;
+    items[idx] = { ...item };
   } else {
-    items.push(item);
+    items.push({ ...item });
   }
   safeWrite('ceylon_inventory_v2', items);
 }
 
 export async function deleteInventoryItem(id: string): Promise<void> {
+  if (!id) return;
   let items = safeCache<InventoryItem>('ceylon_inventory_v2', []);
-  items = items.filter(i => i.id !== id);
+  items = items.filter(i => i && i.id !== id);
   safeWrite('ceylon_inventory_v2', items);
 }
 
 export async function updateInventoryStockCAS(itemId: string, newStock: number, expectedStock: number): Promise<void> {
   const items = safeCache<InventoryItem>('ceylon_inventory_v2', []);
-  const item = items.find(i => i.id === itemId);
+  const item = items.find(i => i && i.id === itemId);
   if (!item || item.stock !== expectedStock) {
     throw new Error('CAS_MISMATCH');
   }
@@ -67,9 +78,8 @@ export async function updateInventoryStockCAS(itemId: string, newStock: number, 
 // APPOINTMENTS
 export async function fetchAppointments(): Promise<Appointment[]> {
   const items = safeCache<Appointment>('ceylon_appointments_v2', []);
-  // Return only booked and in-progress, sorted by date desc
   return items
-    .filter(a => a.status === 'booked' || a.status === 'in-progress')
+    .filter(a => a && (a.status === 'booked' || a.status === 'in-progress'))
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
@@ -106,8 +116,9 @@ export async function fetchHistoricalAppointmentsArchive(
 }
 
 export async function upsertAppointment(apt: Appointment): Promise<void> {
+  if (!apt || !apt.id) return;
   const items = safeCache<Appointment>('ceylon_appointments_v2', []);
-  const idx = items.findIndex(a => a.id === apt.id);
+  const idx = items.findIndex(a => a && a.id === apt.id);
   const formattedApt = {
     ...apt,
     date: formatDisplayDate(apt.date),
@@ -132,12 +143,15 @@ export async function fetchVeterinarians(): Promise<User[]> {
 // MEDICAL RECORDS
 export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
   const records = safeCache<MedicalRecord>('ceylon_records_v2', []);
-  return records.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+  return records
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
 }
 
 export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
+  if (!rec || !rec.id) return;
   const records = safeCache<MedicalRecord>('ceylon_records_v2', []);
-  const idx = records.findIndex(r => r.id === rec.id);
+  const idx = records.findIndex(r => r && r.id === rec.id);
   const formattedRec = {
     ...rec,
     visitDate: formatDisplayDate(rec.visitDate)
@@ -152,8 +166,9 @@ export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
 }
 
 export async function deleteMedicalRecord(id: string): Promise<void> {
+  if (!id) return;
   let records = safeCache<MedicalRecord>('ceylon_records_v2', []);
-  records = records.filter(r => r.id !== id);
+  records = records.filter(r => r && r.id !== id);
   safeWrite('ceylon_records_v2', records);
 }
 
@@ -196,13 +211,16 @@ export async function fetchNotifications(): Promise<ClientNotification[]> {
 }
 
 export async function upsertNotification(notif: ClientNotification): Promise<void> {
-  if (!notif || !notif.id) return;
+  if (!notif || typeof notif !== 'object' || !notif.id) {
+    console.warn('[CeylonPets POS] Rejected malformed or empty notification payload.');
+    return;
+  }
   const notifs = safeCache<ClientNotification>('ceylon_notifications_v2', []);
-  const idx = notifs.findIndex(n => n.id === notif.id);
+  const idx = notifs.findIndex(n => n && n.id === notif.id);
   if (idx >= 0) {
-    notifs[idx] = notif;
+    notifs[idx] = { ...notif };
   } else {
-    notifs.push(notif);
+    notifs.push({ ...notif });
   }
   safeWrite('ceylon_notifications_v2', notifs);
 }
@@ -213,13 +231,16 @@ export async function fetchAlerts(): Promise<SystemAlert[]> {
 }
 
 export async function upsertAlert(alert: SystemAlert): Promise<void> {
-  if (!alert || !alert.id) return;
+  if (!alert || typeof alert !== 'object' || !alert.id) {
+    console.warn('[CeylonPets POS] Rejected malformed or empty system alert payload.');
+    return;
+  }
   const alerts = safeCache<SystemAlert>('ceylon_alerts_v2', []);
-  const idx = alerts.findIndex(a => a.id === alert.id);
+  const idx = alerts.findIndex(a => a && a.id === alert.id);
   if (idx >= 0) {
-    alerts[idx] = alert;
+    alerts[idx] = { ...alert };
   } else {
-    alerts.push(alert);
+    alerts.push({ ...alert });
   }
   safeWrite('ceylon_alerts_v2', alerts);
 }
@@ -238,7 +259,7 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
   const invoices = safeCache<Invoice>('ceylon_invoices_v2', []);
   const shiftId = await fetchActiveShiftId();
   
-  if (!shiftId || shiftId === 'local-offline-shift') {
+  if (!shiftId || shiftId === '0') {
      return {
       gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
       category_breakdown: [{ category: 'service', total: 0 }, { category: 'retail', total: 0 }]
@@ -253,15 +274,19 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
   let retailRevenue = 0;
 
   shiftInvoices.forEach(inv => {
-    grossSales += inv.sales_total;
-    totalCogs += inv.cogs || 0;
+    grossSales += Math.round(inv.sales_total || 0);
+    totalCogs += Math.round(inv.cogs || 0);
     
     inv.items?.forEach(item => {
       const isService = item.category === 'service' || item.category === 'lab_service';
+      const itemPrice = item.unitPrice || 0;
+      const itemQty = item.quantity || 0;
+      const computedTotal = Math.round(itemPrice * itemQty);
+
       if (isService) {
-        clinicalRevenue += (item.price * item.quantity);
+        clinicalRevenue += computedTotal;
       } else {
-        retailRevenue += (item.price * item.quantity);
+        retailRevenue += computedTotal;
       }
     });
   });
@@ -270,7 +295,7 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
     gross_sales: grossSales,
     total_cogs: totalCogs,
     cogs: totalCogs,
-    net_profit: grossSales - totalCogs,
+    net_profit: Math.round(grossSales - totalCogs),
     category_breakdown: [
       { category: 'service', total: clinicalRevenue },
       { category: 'retail', total: retailRevenue }
@@ -284,11 +309,13 @@ export async function fetchLowStockCount(): Promise<number> {
 }
 
 export async function fetchActiveShiftId(): Promise<string | null> {
-  return localStorage.getItem('ceylon_active_shift_id') || 'local-offline-shift';
+  // Returns the active integer timestamp shift ID as a string, or defaults cleanly to '0' for local unassigned offline operations
+  return localStorage.getItem('ceylon_active_shift_id') || '0';
 }
 
 export async function openShift(openedBy: string): Promise<string | null> {
-  const shiftId = `shift-${Date.now()}`;
+  // Enforce integer-based identity using pure timestamp milliseconds numbers represented as strings
+  const shiftId = String(Date.now());
   localStorage.setItem('ceylon_active_shift_id', shiftId);
   return shiftId;
 }

@@ -369,7 +369,8 @@ export default function App() {
 
     if (newStock <= currentItem.minStock && currentItem.category !== 'service') {
       const lowStockAlert: SystemAlert = {
-        id: `al-${Date.now()}-${itemId}`,
+        // Enforce pure numeric identity strings to satisfy relational integrity rules
+        id: String(Date.now() + Math.floor(Math.random() * 1000)),
         severity: 'urgent',
         category: 'inventory',
         message: `LOW STOCK ACTION: ${currentItem.name} (${currentItem.sku}) is running out! Current: ${newStock} units left.`,
@@ -397,7 +398,8 @@ export default function App() {
     showToast(`Appointment scheduled for ${appointment.petName}.`);
 
     const emailNotif: ClientNotification = {
-      id: `not-em-${Date.now()}`,
+      // Enforce pure numeric identity strings to satisfy relational integrity rules
+      id: String(Date.now() + Math.floor(Math.random() * 1000)),
       petName: appointment.petName,
       ownerName: appointment.ownerName,
       recipient: appointment.ownerEmail,
@@ -438,7 +440,8 @@ export default function App() {
 
     if (status === 'in-progress') {
       const checkAlert: SystemAlert = {
-        id: `al-check-${Date.now()}`,
+        // Enforce pure numeric identity strings to satisfy relational integrity rules
+        id: String(Date.now() + Math.floor(Math.random() * 1000)),
         severity: 'info',
         category: 'appointment',
         message: `Clinician Alert: ${aptDetails.petName} (${aptDetails.petType}) has checked into consultation room. Reason: ${aptDetails.reason}`,
@@ -482,7 +485,8 @@ export default function App() {
     if (!targetInvoice || targetInvoice.paymentStatus === 'void') return;
 
     const voidAlert: SystemAlert = {
-      id: `al-void-${Date.now()}-${invoiceId}`,
+      // Enforce pure numeric identity strings to satisfy relational integrity rules
+      id: String(Date.now() + Math.floor(Math.random() * 1000)),
       severity: 'warning',
       category: 'system',
       message: `TRANSACTION VOIDED: Invoice ${invoiceId} has been successfully voided. Inventory stock levels reinstated.`,
@@ -702,8 +706,10 @@ export default function App() {
     // 1. Check Master Owner PIN
     if (selectedUsername === 'ashpoint_owner') {
       if (enteredPinHash === ownerPinHash) {
+        // Clean, standardized numeric fallback identifier mapping
+        const secureTestId = String(Date.now() + Math.floor(Math.random() * 500));
         const ownerUser = {
-          id: 'usr-ash-owner',
+          id: secureTestId,
           name: `${systemConfig.appName} System Admin`,
           username: 'ashpoint_owner',
           role: 'admin',
@@ -726,8 +732,10 @@ export default function App() {
     // 2. Check Dummy Printer Admin PIN
     if (selectedUsername === 'printer_assistant') {
       if (enteredPinHash === dummyPinHash) {
+        // Clean, standardized numeric fallback identifier mapping
+        const secureTestId = String(Date.now() + Math.floor(Math.random() * 500));
         const dummyUser = {
-          id: 'usr-dummy-printer',
+          id: secureTestId,
           name: 'Printer Setup Assistant',
           username: 'printer_assistant',
           role: 'dummy_admin',
@@ -1169,7 +1177,8 @@ export default function App() {
                   onAddRecord={handleAddEHRRecord => {
                     handleAddRecord(handleAddEHRRecord);
                     const mockAlert: SystemAlert = {
-                      id: `al-add-rec-${Date.now()}`,
+                      // Enforce pure numeric identity strings to satisfy relational integrity rules
+                      id: String(Date.now() + Math.floor(Math.random() * 1000)),
                       severity: 'info',
                       category: 'system',
                       message: `New EHR Profile Assembled: ${handleAddEHRRecord.petName} has been fully registered inside the cloud EHR under phone ${handleAddEHRRecord.ownerPhone}`,
@@ -1210,7 +1219,8 @@ export default function App() {
                   onBookAppointment={(apt) => {
                     handleAddAppointment(apt);
                     const portalAlert: SystemAlert = {
-                      id: `al-pt-${Date.now()}`,
+                      // Enforce pure numeric identity strings to satisfy relational integrity rules
+                      id: String(Date.now() + Math.floor(Math.random() * 1000)),
                       severity: 'info',
                       category: 'appointment',
                       message: `Portal Action: New Consultation Request logged from ${apt.ownerName} for ${apt.petName}. Reason: ${apt.reason}`,

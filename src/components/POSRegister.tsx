@@ -348,7 +348,7 @@ export default function POSRegister({
     const priceNum = parseFloat(customItemPrice);
     if (isNaN(priceNum) || priceNum < 0) return;
 
-    const customId = `cst-${Date.now()}`;
+    const customId = String(Date.now());
     const customProd: InventoryItem = {
       id: customId,
       sku: `QUICK-${Math.floor(Math.random() * 900 + 100)}`,
@@ -402,12 +402,11 @@ export default function POSRegister({
         return false;
       }
 
-      // Create a new invoice and calculate COGS
-      let totalCogs = 0;
+      // Create a new invoice and calculate COGS using strict integer cent tracking
+      let totalCogsCents = 0;
       const newInvItems: InvoiceItem[] = cart.map(c => {
-        const itemCost = Number(c.item.cost) || 0;
-        const itemCogs = itemCost * c.quantity;
-        totalCogs += itemCogs;
+        const itemCostCents = Math.round((Number(c.item.cost) || 0) * 100);
+        totalCogsCents += itemCostCents * c.quantity;
         return {
           itemId: c.item.id,
           sku: c.item.sku,
@@ -419,10 +418,11 @@ export default function POSRegister({
         };
       });
 
-      const profit = total - totalCogs;
+      const totalCogs = totalCogsCents / 100;
+      const profit = Math.round((total - totalCogs) * 100) / 100;
 
       let finalAppointmentId: string | undefined = undefined;
-      let finalPatientId = 'anonymous_walkin';
+      let finalPatientId = '0'; // Clean integer representation default string
       let finalPetName = 'Walk-in Pet / Guest';
       let finalOwnerName = 'General Guest';
       let finalOwnerPhone = 'N/A';
@@ -434,9 +434,8 @@ export default function POSRegister({
         finalOwnerName = activeSelectedApt.ownerName;
         finalOwnerPhone = activeSelectedApt.ownerPhone;
         
-        // Try to bind historical patientId
         const matchedRec = records.find(r => r.petName === activeSelectedApt.petName && r.ownerPhone === activeSelectedApt.ownerPhone);
-        finalPatientId = matchedRec ? matchedRec.patientId : `new_patient_${Date.now()}`;
+        finalPatientId = matchedRec ? matchedRec.patientId : String(Date.now());
         notes = `Clinical checkout for active appointment: ${activeSelectedApt.id}`;
       } else if (activeSelectedRecord) {
         finalPatientId = activeSelectedRecord.patientId;
@@ -444,7 +443,6 @@ export default function POSRegister({
         finalOwnerName = activeSelectedRecord.ownerName;
         finalOwnerPhone = activeSelectedRecord.ownerPhone;
         
-        // Check if this record has an active appointment to complete
         const activeApt = appointments.find(a => a.status === 'in-progress' && a.petName === activeSelectedRecord.petName && a.ownerPhone === activeSelectedRecord.ownerPhone);
         if (activeApt) {
           finalAppointmentId = activeApt.id;
@@ -453,7 +451,8 @@ export default function POSRegister({
       }
 
       const invoiceObj: Invoice = {
-        id: `INV-${Math.floor(Date.now() / 1000).toString().slice(-6)}`,
+        // Enforce pure integer numeric timestamp id mapping
+        id: String(Math.floor(Date.now() / 1000)),
         appointmentId: finalAppointmentId,
         patientId: finalPatientId,
         petName: finalPetName,
@@ -482,24 +481,11 @@ export default function POSRegister({
         })
         .map(c => onUpdateStock(c.item.id, -c.quantity, c.item.stock));
 
-      const invoicePromise = onAddInvoice(invoiceObj);
+      // CRITICAL: Await database write synchronously before changing layout view state to satisfy Local-First Constitution Rule 4
+      await Promise.all([...stockPromises, onAddInvoice(invoiceObj)]);
+      console.log('[CeylonPets] Local database persistence verified successfully.');
 
-      // Trigger parallel database mutations in the background (fire-and-forget/non-blocking)
-      Promise.all([...stockPromises, invoicePromise])
-        .then(() => {
-          console.log('[CeylonPets] Parallel database mutations completed successfully.');
-        })
-        .catch((err) => {
-          console.error('[CeylonPets] Background mutations failure:', err);
-          if (err.message === 'CAS_MISMATCH') {
-            showToast('Warning: Stock discrepancy detected in background. Syncing inventory.', 'error');
-            if (onTriggerInventorySync) onTriggerInventorySync();
-          } else {
-            showToast('Warning: Background transaction delay. System will sync automatically.', 'error');
-          }
-        });
-
-      // Optimistic UI Transition: Update local states immediately
+      // UI Transition commits only after guaranteed storage commit
       setCheckoutSuccess(invoiceObj);
       setCart([]);
       setDiscountVal(0);
@@ -512,8 +498,8 @@ export default function POSRegister({
       return true;
 
     } catch (err: any) {
-      console.error('Checkout error:', err);
-      showToast('Error during checkout sequence. Please try again.', 'error');
+      console.error('Checkout write error:', err);
+      showToast('Database write error during checkout sequence. Cart preserved.', 'error');
       setIsProcessing(false);
       return false;
     }

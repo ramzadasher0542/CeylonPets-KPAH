@@ -160,7 +160,8 @@ export default function MedicalRecordsManager({
     }
 
     const newRec: MedicalRecord = {
-      id: `rec-${Date.now()}`,
+      // Enforce pure numeric identity string to align with Local-First Constitution
+      id: String(Date.now()),
       patientId: `${newPetName}_${newOwnerPhone.replace(/\D/g, '')}`,
       petName: newPetName,
       petType: newPetType,
@@ -822,7 +823,8 @@ export default function MedicalRecordsManager({
                               };
                             } else {
                               updatedLabs.push({
-                                id: `lab-entry-${Date.now()}`,
+                                // Enforce pure numeric identity string to align with Local-First Constitution
+                                id: String(Date.now()),
                                 testName: newLabTestName,
                                 requestDate: new Date().toISOString().split('T')[0],
                                 resultDate: newLabDate,

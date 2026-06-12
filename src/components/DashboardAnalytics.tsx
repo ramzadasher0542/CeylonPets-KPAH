@@ -106,25 +106,20 @@ export default function DashboardAnalytics({
     }
   };
 
-  const currentShiftInvoices = React.useMemo(() => {
-    if (!activeShiftId) return [];
-    return invoices.filter(inv => inv.shiftId === activeShiftId && inv.paymentStatus === 'paid');
-  }, [invoices, activeShiftId]);
+  // Ensure all invoice financial sums use strict rounded integer cents arithmetic
+  const activePaidInvoices = (invoices || []).filter(inv => inv && inv.paymentStatus === 'paid' && activeShiftId && inv.shiftId === activeShiftId);
+  
+  const grossSalesCents = activePaidInvoices.reduce((sum, inv) => sum + Math.round((inv.sales_total || 0) * 100), 0);
+  const totalCogsCents = activePaidInvoices.reduce((sum, inv) => sum + Math.round((inv.cogs || 0) * 100), 0);
+  
+  const grossSales = grossSalesCents / 100;
+  const totalCogs = totalCogsCents / 100;
+  const netProfit = Math.round((grossSales - totalCogs) * 100) / 100;
 
-  const totalRevenue = React.useMemo(() => {
-    if (!activeShiftId) return 0;
-    return currentShiftInvoices.reduce((sum, inv) => sum + (inv.sales_total || 0), 0);
-  }, [currentShiftInvoices, activeShiftId]);
-
-  const totalCost = React.useMemo(() => {
-    if (!activeShiftId) return 0;
-    return currentShiftInvoices.reduce((sum, inv) => sum + (inv.cogs || 0), 0);
-  }, [currentShiftInvoices, activeShiftId]);
-
-  const netProfit = React.useMemo(() => {
-    if (!activeShiftId) return 0;
-    return currentShiftInvoices.reduce((sum, inv) => sum + (inv.profit || 0), 0);
-  }, [currentShiftInvoices, activeShiftId]);
+  // Aliases to leave other chart components untouched for now
+  const currentShiftInvoices = activePaidInvoices;
+  const totalRevenue = grossSales;
+  const totalCost = totalCogs;
 
   // --- MATH FIX: Guaranteed frontend category breakdown ---
   const frontendCategoryBreakdown = React.useMemo(() => {
@@ -139,14 +134,26 @@ export default function DashboardAnalytics({
       'vaccine': 0
     };
 
-    for (const inv of currentShiftInvoices) {
-      for (const item of inv.items || []) {
-        const cat = item.category || 'service';
-        if (cat in catMap) {
-          catMap[cat] += item.totalPrice || 0;
-        }
-      }
-    }
+    // Safeguard categorical breakdowns against undefined data item types
+    const categorySummary: Record<string, number> = {};
+    
+    activePaidInvoices.forEach(inv => {
+      if (!inv || !inv.items) return;
+      inv.items.forEach(item => {
+        if (!item) return;
+        // Safeguard against missing or malformed category properties gracefully
+        const itemCategory = item.category || 'other';
+        const itemTotalCents = Math.round((item.totalPrice || 0) * 100);
+        
+        categorySummary[itemCategory] = (categorySummary[itemCategory] || 0) + itemTotalCents;
+      });
+    });
+
+    // Merge into the map to preserve default 5 categories and map any unexpected entries
+    Object.entries(categorySummary).forEach(([cat, centsTotal]) => {
+      catMap[cat] = (catMap[cat] || 0) + (centsTotal / 100);
+    });
+
     return Object.entries(catMap).map(([category, total]) => ({ category, total }));
   }, [currentShiftInvoices, activeShiftId]);
 
@@ -365,6 +372,17 @@ export default function DashboardAnalytics({
       const payMethStr = (inv.paymentMethod || 'N/A').padEnd(10, ' ');
       
       rtext += `${idStr} | ${dateStr} | ${petStr} | ${ownerStr} | ${amtStr} | ${statStr} | ${payMethStr}\n`;
+
+      // Inside the handleExportTXT loop mapping over invoice items:
+      (inv.items || []).forEach(item => {
+        if (!item) return;
+        const qty = item.quantity || 0;
+        const uPrice = item.unitPrice || 0;
+        // Protect raw integer calculation tracking safely inside the template string builder
+        const totalPriceFormatted = ((Math.round(uPrice * 100) * qty) / 100).toFixed(2);
+        
+        rtext += `   - [${item.sku || 'N/A'}] ${item.name} | Qty: ${qty} | Total: ${currencySign}${totalPriceFormatted}\n`;
+      });
     });
     rtext += `${thinSeparator}\n\n`;
 

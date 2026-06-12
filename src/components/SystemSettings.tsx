@@ -447,8 +447,9 @@ export default function SystemSettings({
         owner: 'bg-indigo-100 text-indigo-800 border-indigo-300'
       };
 
+      // Enforce pure numeric token formatting to comply with Local-First relational tracking specs
       const newUserObj: User = {
-        id: `usr-${Date.now()}`,
+        id: String(Date.now()),
         name: newStaffName,
         username: newStaffUsername,
         role: newStaffRole as UserRole,
