@@ -61,10 +61,10 @@ export default function AppointmentsManager({
 
   // Fetch function for history
   const loadHistory = async (page: number, search: string) => {
-    if (!isOnline) {
+    if (!navigator.onLine) {
       const offlineHistory = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
-      const filtered = search ? offlineHistory.filter(a => a.petName.toLowerCase().includes(search.toLowerCase()) || a.ownerName.toLowerCase().includes(search.toLowerCase())) : offlineHistory;
-      const start = page * historyLimit;
+      const filtered = historySearch ? offlineHistory.filter(a => a.petName.toLowerCase().includes(historySearch.toLowerCase()) || a.ownerName.toLowerCase().includes(historySearch.toLowerCase())) : offlineHistory;
+      const start = historyPage * historyLimit;
       setHistoryAppointments(filtered.slice(start, start + historyLimit));
       setHistoryCount(filtered.length);
       setIsHistoryLoading(false);
