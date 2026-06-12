@@ -240,6 +240,7 @@ export default function App() {
     try {
       const saved = localStorage.getItem('ceylon_users_v3');
       baseUsers = saved ? JSON.parse(saved) : [];
+      if (!Array.isArray(baseUsers)) baseUsers = [];
     } catch (e) {
       console.error('Error parsing ceylon_users_v3:', e);
       baseUsers = [];
@@ -296,6 +297,11 @@ export default function App() {
 
 
   // ─── Hydrate state from local storage ───────────────────
+  const hydrateUsers = async () => {
+    // Offline architecture: user sync from cloud is disabled.
+    // Local hydration is already handled in useState initialization.
+  };
+
   useEffect(() => {
     // Hydrate offline sync queue from IndexedDB
     db.getItem('sync_queue').then((savedQueue: unknown) => {
@@ -821,7 +827,7 @@ export default function App() {
                       <option value="printer_assistant">Printer Setup Assistant (Hardware Config)</option>
                       {users.map((u) => (
                         <option key={u.id} value={u.username}>
-                          {u.name} ({u.role.toUpperCase()})
+                          {u.name} ({u.role ? u.role.toUpperCase() : 'UNKNOWN'})
                         </option>
                       ))}
                     </select>
