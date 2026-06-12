@@ -61,6 +61,16 @@ export default function AppointmentsManager({
 
   // Fetch function for history
   const loadHistory = async (page: number, search: string) => {
+    if (!isOnline) {
+      const offlineHistory = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
+      const filtered = search ? offlineHistory.filter(a => a.petName.toLowerCase().includes(search.toLowerCase()) || a.ownerName.toLowerCase().includes(search.toLowerCase())) : offlineHistory;
+      const start = page * historyLimit;
+      setHistoryAppointments(filtered.slice(start, start + historyLimit));
+      setHistoryCount(filtered.length);
+      setIsHistoryLoading(false);
+      return;
+    }
+    
     setIsHistoryLoading(true);
     try {
       const result = await fetchHistoricalAppointmentsArchive(page, historyLimit, search);
@@ -197,6 +207,7 @@ export default function AppointmentsManager({
         ownerPhone: apt.ownerPhone,
         ownerEmail: apt.ownerEmail || 'not-provided@example.com',
         visitDate: apt.date,
+        attendingVet: apt.veterinarian,
         symptoms: '',
         diagnosis: '',
         treatmentNotes: '',

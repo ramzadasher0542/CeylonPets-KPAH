@@ -608,7 +608,7 @@ export async function fetchLowStockCount(): Promise<number> {
 }
 
 export async function fetchActiveShiftId(): Promise<string | null> {
-  if (typeof supabase.rpc !== 'function') {
+  if (typeof supabase?.rpc !== 'function') {
     return 'local-offline-shift';
   }
   const { data, error } = await supabase.rpc('get_active_shift_id');
