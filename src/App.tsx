@@ -53,9 +53,7 @@ import PatientPortal from './components/PatientPortal';
 import SystemSettings, { SystemConfig } from './components/SystemSettings';
 import ToastContainer, { showToast } from './components/Toast';
 
-// Supabase data layer
-import { supabase, DB_TABLES } from './lib/supabase';
-import { fetchStaffUsers, upsertStaffUser, fetchSystemConfig, upsertSystemConfig } from './lib/auth';
+// Fully offline architecture - Supabase removed
 import {
   fetchInventory,    upsertInventoryItem, updateInventoryStockCAS,
   fetchAppointments, upsertAppointment,
@@ -259,16 +257,10 @@ export default function App() {
   // Current Screen selection
   const [activeView, setActiveView] = useState<'dashboard' | 'pos' | 'appointments' | 'records' | 'inventory' | 'reminders' | 'portal' | 'settings'>('dashboard');
 
-  // ─── Sync state to localStorage (offline cache) + Supabase (write-through) ──
-  // localStorage writes are synchronous and instant (offline resilience).
-  // Supabase writes are best-effort async (silently ignored when offline).
-
+  // ─── Sync state to localStorage (offline cache) ──
   useEffect(() => {
     localStorage.setItem('ceylon_system_config_v2', JSON.stringify(systemConfig));
-    if (currentUser) {
-      upsertSystemConfig(systemConfig, currentUser).catch(() => {}); // best-effort cloud sync
-    }
-  }, [systemConfig, currentUser]);
+  }, [systemConfig]);
 
   useEffect(() => {
     const fullUsers = users.map(u => {
@@ -276,94 +268,35 @@ export default function App() {
       return { ...u, pin: realPin };
     });
     localStorage.setItem('ceylon_users_v3', JSON.stringify(fullUsers));
-    if (currentUser) {
-      fullUsers.forEach(u => upsertStaffUser(u, currentUser).catch(() => {}));
-    }
-  }, [users, pinCache, currentUser]);
+  }, [users, pinCache]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_inventory_v2', JSON.stringify(inventory));
-    if (isOnline) {
-      inventory.forEach(item => upsertInventoryItem(item).catch(err => console.error('Sync failed', err)));
-    } else {
-      // Data is already in local storage; queuing happens via handler functions
-    }
-  }, [inventory, isOnline]);
+  }, [inventory]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_appointments_v2', JSON.stringify(appointments));
-    if (isOnline) {
-      appointments.forEach(apt => upsertAppointment(apt).catch(err => console.error('Sync failed', err)));
-    } else {
-      // Data is already in local storage; queuing happens via handler functions
-    }
-  }, [appointments, isOnline]);
+  }, [appointments]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_records_v2', JSON.stringify(records));
-    if (isOnline) {
-      records.forEach(rec => upsertMedicalRecord(rec).catch(err => console.error('Sync failed', err)));
-    } else {
-      // Data is already in local storage; queuing happens via handler functions
-    }
-  }, [records, isOnline]);
+  }, [records]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_notifications_v2', JSON.stringify(notifications));
-    if (isOnline) {
-      notifications.forEach(n => upsertNotification(n).catch(err => console.error('Sync failed', err)));
-    } else {
-      // Data is already in local storage; queuing happens via handler functions
-    }
-  }, [notifications, isOnline]);
+  }, [notifications]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_alerts_v2', JSON.stringify(alerts));
-    if (isOnline) {
-      alerts.forEach(a => upsertAlert(a).catch(err => console.error('Sync failed', err)));
-    } else {
-      // Data is already in local storage; queuing happens via handler functions
-    }
-  }, [alerts, isOnline]);
+  }, [alerts]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_invoices_v2', JSON.stringify(invoices));
-    if (isOnline) {
-      invoices.forEach(inv => upsertInvoice(inv).catch(err => console.error('Sync failed', err)));
-    } else {
-      // Data is already in local storage; queuing happens via handler functions
-    }
-  }, [invoices, isOnline]);
+  }, [invoices]);
 
 
-  // User state sync removed for security (forces login on refresh)
-
-  // ─── Supabase: hydrate all state from cloud on app mount ───────────────────
-  // Loads instantly from localStorage cache (above), then silently refreshes
-  // from Supabase in the background. Works offline (falls back to cache).
-  const hydrateUsers = async () => {
-    const cloudUsers = await fetchStaffUsers();
-    const cache: Record<string, string> = {};
-    const safeUsers = cloudUsers.map(({ pin, ...u }) => {
-      if (pin) cache[u.username] = pin;
-      return u;
-    });
-    setPinCache(prev => ({ ...prev, ...cache }));
-    setUsers(safeUsers);
-  };
-
+  // ─── Hydrate state from local storage ───────────────────
   useEffect(() => {
-    hydrateUsers();
-    fetchSystemConfig().then(cloudConfig => {
-      if (cloudConfig && Object.keys(cloudConfig).length > 0) setSystemConfig(cloudConfig);
-    }).catch(() => {});
-    fetchInventory().then(data => { if (data && data.length > 0) setInventory(data); }).catch(() => {});
-    fetchAppointments().then(data => { if (data && data.length > 0) setAppointments(data); }).catch(() => {});
-    fetchMedicalRecords().then(data => { if (data && data.length > 0) setRecords(data); }).catch(() => {});
-    fetchInvoices().then(data => { if (data && data.length > 0) setInvoices(data); }).catch(() => {});
-    fetchNotifications().then(data => { if (data && data.length > 0) setNotifications(data); }).catch(() => {});
-    fetchAlerts().then(data => { if (data && data.length > 0) setAlerts(data); }).catch(() => {});
-    
     // Hydrate offline sync queue from IndexedDB
     db.getItem('sync_queue').then((savedQueue: unknown) => {
       if (savedQueue && Array.isArray(savedQueue)) {
@@ -372,291 +305,19 @@ export default function App() {
     });
   }, []); // runs once on mount
 
-  // ─── Auto-sync: listen for real browser connectivity changes ───────────────
-  // When the device's network connection is restored, the browser fires the
-  // 'online' event. We hook into it to automatically drain the offline queue
-  // to Supabase — zero manual action required from the user.
-  // The 'offline' event sets isOnline to false so subsequent mutations are
-  // captured in the sync queue instead of going straight to Supabase.
+  // ─── Auto-sync logic disabled ───────────────
   useEffect(() => {
-    const handleOnline = () => {
-      console.log('[CeylonPets] Network restored — triggering Supabase offline queue sync.');
-      triggerAutoSynchronize();
-    };
-
-    const handleOffline = () => {
-      console.log('[CeylonPets] Network lost — entering offline field mode. Changes will be queued locally.');
-      setIsOnline(false);
-    };
-
-    // HARD-LOCKED OFFLINE: Ignore real browser connectivity
-    // window.addEventListener('online', handleOnline);
-    // window.addEventListener('offline', handleOffline);
-
-    // Align initial isOnline with the actual browser state on mount
-    // (in case the app was opened while already offline)
-    // if (!navigator.onLine) {
-    //   setIsOnline(false);
-    // }
-
     return () => {
-      // window.removeEventListener('online', handleOnline);
-      // window.removeEventListener('offline', handleOffline);
     };
-  }, [syncQueue, inventory, appointments]); // re-registers when queue or state changes so closures stay fresh
+  }, [syncQueue, inventory, appointments]);
 
-  // ─── Supabase Real-Time Subscriptions ──────────────────────────────────────
-  // Automatically listens for insertions, updates, and deletions on all tables
-  // and syncs changes to the client state immediately without requiring refresh.
+  // ─── Real-Time Subscriptions Removed (Offline Mode) ────────────────────────
   useEffect(() => {
-    // 1. Inventory Subscription
-    const inventoryChannel = supabase
-      .channel('realtime-inventory')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.INVENTORY },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time inventory change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const row = payload.new;
-              const mappedItem: InventoryItem = {
-                id:       row.id,
-                sku:      row.sku,
-                name:     row.name,
-                category: row.category as any,
-                price:    Number(row.price),
-                cost:     Number(row.cost),
-                stock:    Number(row.stock),
-                minStock: Number(row.min_stock),
-                unit:     row.unit,
-                location: row.location ?? undefined,
-              };
-              setInventory(prev => {
-                const exists = prev.some(item => item.id === mappedItem.id);
-                if (exists) {
-                  return prev.map(item => item.id === mappedItem.id ? mappedItem : item);
-                } else {
-                  return [mappedItem, ...prev];
-                }
-              });
-            } else if (payload.eventType === 'DELETE') {
-              const oldId = payload.old.id;
-              setInventory(prev => prev.filter(item => item.id !== oldId));
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime inventory change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // 2. Appointments Subscription
-    const appointmentsChannel = supabase
-      .channel('realtime-appointments')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.APPOINTMENTS },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time appointments change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const row = payload.new;
-              const mappedApt: Appointment = {
-                id:          row.id,
-                petName:     row.pet_name,
-                petType:     row.pet_type as any,
-                breed:       row.breed ?? '',
-                ownerName:   row.owner_name,
-                ownerPhone:  row.owner_phone,
-                ownerEmail:  row.owner_email ?? '',
-                date:        row.date,
-                time:        row.time,
-                veterinarian:row.veterinarian ?? '',
-                reason:      row.reason ?? '',
-                status:      row.status as any,
-              };
-              setAppointments(prev => {
-                const exists = prev.some(a => a.id === mappedApt.id);
-                if (exists) {
-                  return prev.map(a => a.id === mappedApt.id ? mappedApt : a);
-                } else {
-                  return [mappedApt, ...prev];
-                }
-              });
-            } else if (payload.eventType === 'DELETE') {
-              const oldId = payload.old.id;
-              setAppointments(prev => prev.filter(a => a.id !== oldId));
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime appointments change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // 3. Medical Records Subscription
-    const recordsChannel = supabase
-      .channel('realtime-records')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.RECORDS },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time records change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const record = payload.new.data as MedicalRecord; // stored as JSONB in `data`
-              if (record) {
-                setRecords(prev => {
-                  const exists = prev.some(r => r.id === record.id);
-                  if (exists) {
-                    return prev.map(r => r.id === record.id ? record : r);
-                  } else {
-                    return [record, ...prev];
-                  }
-                });
-              }
-            } else if (payload.eventType === 'DELETE') {
-              const oldId = payload.old.id;
-              setRecords(prev => prev.filter(r => r.id !== oldId));
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime records change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // 4. Invoices Subscription
-    const invoicesChannel = supabase
-      .channel('realtime-invoices')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.INVOICES },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time invoices change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const invoice = payload.new.data as Invoice; // stored as JSONB in `data`
-              if (invoice) {
-                setInvoices(prev => {
-                  const exists = prev.some(i => i.id === invoice.id);
-                  if (exists) {
-                    return prev.map(i => i.id === invoice.id ? invoice : i);
-                  } else {
-                    return [invoice, ...prev];
-                  }
-                });
-              }
-            } else if (payload.eventType === 'DELETE') {
-              const oldId = payload.old.id;
-              setInvoices(prev => prev.filter(i => i.id !== oldId));
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime invoices change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // 5. Notifications Subscription
-    const notificationsChannel = supabase
-      .channel('realtime-notifications')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.NOTIFICATIONS },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time notifications change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const notif = payload.new.data as ClientNotification; // stored as JSONB in `data`
-              if (notif) {
-                setNotifications(prev => {
-                  const exists = prev.some(n => n.id === notif.id);
-                  if (exists) {
-                    return prev.map(n => n.id === notif.id ? notif : n);
-                  } else {
-                    return [notif, ...prev];
-                  }
-                });
-              }
-            } else if (payload.eventType === 'DELETE') {
-              const oldId = payload.old.id;
-              setNotifications(prev => prev.filter(n => n.id !== oldId));
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime notifications change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // 6. Alerts Subscription
-    const alertsChannel = supabase
-      .channel('realtime-alerts')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.ALERTS },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time alerts change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const alert = payload.new.data as SystemAlert; // stored as JSONB in `data`
-              if (alert) {
-                setAlerts(prev => {
-                  const exists = prev.some(a => a.id === alert.id);
-                  if (exists) {
-                    return prev.map(a => a.id === alert.id ? alert : a);
-                  } else {
-                    return [alert, ...prev];
-                  }
-                });
-              }
-            } else if (payload.eventType === 'DELETE') {
-              const oldId = payload.old.id;
-              setAlerts(prev => prev.filter(a => a.id !== oldId));
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime alerts change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // 7. System Config Subscription
-    const configChannel = supabase
-      .channel('realtime-config')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: DB_TABLES.SYSTEM_CONFIG },
-        (payload: any) => {
-          try {
-            console.log('[CeylonPets] Real-time system config change:', payload);
-            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-              const config = payload.new.config as SystemConfig;
-              if (config) setSystemConfig(config);
-            }
-          } catch (err) {
-            console.error('[CeylonPets] Error processing realtime system config change:', err);
-          }
-        }
-      )
-      .subscribe();
-
-    // Cleanup channels on unmount
-    return () => {
-      inventoryChannel.unsubscribe();
-      appointmentsChannel.unsubscribe();
-      recordsChannel.unsubscribe();
-      invoicesChannel.unsubscribe();
-      notificationsChannel.unsubscribe();
-      alertsChannel.unsubscribe();
-      configChannel.unsubscribe();
-    };
-  }, []);
+    // Subscriptions have been stripped for the offline architecture.
+    return () => {};
+  }, [currentUser, activeView, systemConfig]);
 
   // Securely govern live activeView redirection based on role permissions
-
   useEffect(() => {
     if (currentUser) {
       if (!isViewPermitted(activeView, currentUser)) {
@@ -665,199 +326,24 @@ export default function App() {
     }
   }, [currentUser, activeView, systemConfig]);
 
-  // ─── Supabase Offline Queue Drainer ────────────────────────────────────────
-  // Processes every item in syncQueue against the correct Supabase table.
-  // Called automatically when the browser fires the 'online' event, and also
-  // manually when the user clicks the connectivity toggle button.
+  // ─── Offline Queue Removed ────────────────────────────────────────
   const pushToOfflineQueue = async (item: OfflineSyncItem) => {
-    try {
-      const currentQueue: OfflineSyncItem[] = (await db.getItem('sync_queue')) || [];
-      const offlineRecord = { ...item, _queued_at: new Date().toISOString() };
-      currentQueue.push(offlineRecord);
-      await db.setItem('sync_queue', currentQueue);
-      setSyncQueue(currentQueue);
-      console.log('Transaction safely stored in IndexedDB offline queue.');
-    } catch (error) {
-      console.error('CRITICAL: Failed to write to local storage!', error);
-    }
+    // Cloud sync disabled. Queue is bypassed.
   };
 
   const triggerAutoSynchronize = async () => {
-    try {
-      const queue: OfflineSyncItem[] = (await db.getItem('sync_queue')) || [];
-      if (queue.length === 0) {
-        setIsOnline(true);
-        return;
-      }
-
-    setIsSyncing(true);
-    setSyncProgress(10);
-    setSyncStepDescription('Connecting to Supabase cloud database...');
-
-      // Take a snapshot of the queue at the moment sync starts
-      const queueSnapshot = [...queue];
-      const total = queueSnapshot.length;
-      let processed = 0;
-      const failed: OfflineSyncItem[] = [];
-
-      setSyncProgress(20);
-      setSyncStepDescription(`Processing ${total} queued offline change${total !== 1 ? 's' : ''}...`);
-
-      for (let i = 0; i < queueSnapshot.length; i++) {
-        const item = queueSnapshot[i];
-        try {
-        switch (item.action) {
-
-          // ── Invoices / POS Sales ─────────────────────────────────────────
-          case 'create_invoice':
-            await upsertInvoice(item.payload as Invoice);
-            break;
-
-          // ── Appointments ─────────────────────────────────────────────────
-          case 'create_appointment':
-            // Payload can be a full Appointment OR just {id, status} for status updates
-            if (item.payload.petName) {
-              await upsertAppointment(item.payload as Appointment);
-            } else if (item.payload.id && item.payload.status) {
-              // Status-only update: fetch current from state and upsert updated version
-              const matched = appointments.find(a => a.id === item.payload.id);
-              if (matched) await upsertAppointment({ ...matched, status: item.payload.status });
-            }
-            break;
-
-          // ── Medical Records ───────────────────────────────────────────────
-          case 'update_medical_record':
-            await upsertMedicalRecord(item.payload as MedicalRecord);
-            break;
-
-          case 'delete_medical_record':
-            await deleteMedicalRecord(item.payload as string);
-            break;
-
-          // ── Inventory: new item added while offline ───────────────────────
-          case 'add_inventory':
-            await upsertInventoryItem(item.payload as InventoryItem);
-            break;
-
-          // ── Inventory: stock level changed (sale or manual adjust) ────────
-          // Payload is {itemId, qtyDelta} — resolve against current in-memory state
-          case 'update_stock': {
-            const { itemId, qtyDelta } = item.payload as { itemId: string; qtyDelta: number };
-            const currentItem = inventory.find(i => i.id === itemId);
-            if (currentItem) {
-              const correctedStock = Math.max(0, currentItem.stock + qtyDelta);
-              await upsertInventoryItem({ ...currentItem, stock: correctedStock });
-            }
-            break;
-          }
-
-          // ── Checkout POS (legacy action type alias) ───────────────────────
-          case 'checkout_pos':
-            await upsertInvoice(item.payload as Invoice);
-            break;
-
-          // ── Alerts & Notifications ────────────────────────────────────────
-          case 'create_alert':
-            await upsertAlert(item.payload as SystemAlert);
-            break;
-
-          case 'create_notification':
-            await upsertNotification(item.payload as ClientNotification);
-            break;
-
-          default:
-            console.warn('[CeylonPets] Unknown sync action, skipping:', item.action);
-        }
-
-        processed++;
-        const pct = 20 + Math.round((processed / total) * 65); // progress 20→85
-        setSyncProgress(pct);
-        setSyncStepDescription(
-          `Synced ${processed} / ${total}: ${item.collection} (${item.action})`
-        );
-
-        } catch (err) {
-          console.error('Sync failed on item:', item, err);
-          failed.push(item);
-          // Preserve the failed item and all items after it for chronological integrity
-          const remainingQueue = queueSnapshot.slice(i);
-          await db.setItem('sync_queue', remainingQueue);
-          setSyncQueue(remainingQueue);
-          throw new Error('Supabase rejection. Halting sync queue.');
-        }
-      }
-
-      // If loop completes successfully without throwing
-      await db.removeItem('sync_queue');
-      setSyncQueue([]);
-      console.log('Sync complete. Queue emptied.');
-
-      // ── Finalize ────────────────────────────────────────────────────────────
-    setSyncProgress(90);
-    setSyncStepDescription('Finalising & updating clinic alert log...');
-
-    const successCount = total - failed.length;
-
-    const completionAlert: SystemAlert = {
-      id: `al-sync-${Date.now()}`,
-      severity: failed.length === 0 ? 'info' : 'warning',
-      category: 'system',
-      message: failed.length === 0
-        ? `Cloud Sync Complete ✓ — ${successCount} offline change${successCount !== 1 ? 's' : ''} pushed to Supabase successfully.`
-        : `Cloud Sync Partial — ${successCount} pushed, ${failed.length} item${failed.length !== 1 ? 's' : ''} failed and re-queued for retry.`,
-      timestamp: new Date().toISOString(),
-      read: false
-    };
-
-      setAlerts(prev => [completionAlert, ...prev]);
-
-      setIsOnline(true);
-      setIsSyncing(false);
-      setSyncProgress(100);
-    } catch (error) {
-      console.error('Sync process interrupted. Will retry later.', error);
-      setIsOnline(true);
-      setIsSyncing(false);
-      setSyncProgress(0);
-    }
+    // Auto synchronize disabled.
   };
 
   // Connectivity Toggler
   const handleToggleConnectivity = () => {
-    if (!isOnline) {
-      triggerAutoSynchronize();
-    } else {
-      setIsOnline(false);
-      // showToast('Entered Vet Field care mode! Calculations and edits will store securely locally.', 'success');
-    }
+    // Connectivity manual toggle is disabled in offline-only mode
   };
 
   // State manipulation triggers
   const handleAddProduct = (product: InventoryItem) => {
     setInventory(prev => [product, ...prev]);
     showToast(`${product.name} added to inventory.`);
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-${Date.now()}`,
-        action: 'add_inventory',
-        collection: 'inventory',
-        payload: product,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      upsertInventoryItem(product).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-${Date.now()}`,
-          action: 'add_inventory',
-          collection: 'inventory',
-          payload: product,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
   const handleUpdateStock = async (itemId: string, qtyDelta: number, expectedStock?: number) => {
@@ -865,27 +351,6 @@ export default function App() {
     if (!currentItem) return;
     const newStock = Math.max(0, currentItem.stock + qtyDelta);
     const updatedItem = { ...currentItem, stock: newStock };
-
-    if (expectedStock !== undefined && isOnline) {
-      try {
-        await updateInventoryStockCAS(itemId, newStock, expectedStock);
-      } catch (err: any) {
-        if (err.message === 'CAS_MISMATCH') {
-          fetchInventory().then(items => setInventory(items));
-          throw err;
-        } else {
-          console.error('[CeylonPets] Background mutations failure:', err);
-          const syncItem: OfflineSyncItem = {
-            id: `sync-${Date.now()}-${itemId}`,
-            action: 'update_stock',
-            collection: 'inventory',
-            payload: { itemId, qtyDelta },
-            timestamp: new Date().toISOString()
-          };
-          pushToOfflineQueue(syncItem);
-        }
-      }
-    }
 
     setInventory(prev => 
       prev.map(item => {
@@ -906,56 +371,8 @@ export default function App() {
         read: false
       };
       setAlerts(prev => [lowStockAlert, ...prev]);
-      
-      if (isOnline) {
-        try {
-          await upsertAlert(lowStockAlert);
-        } catch (error) {
-          const syncItemAlert: OfflineSyncItem = {
-            id: `sync-alert-${Date.now()}`,
-            action: 'create_alert',
-            collection: 'alerts',
-            payload: lowStockAlert,
-            timestamp: new Date().toISOString()
-          };
-          pushToOfflineQueue(syncItemAlert);
-        }
-      } else {
-        const syncItemAlert: OfflineSyncItem = {
-          id: `sync-alert-${Date.now()}`,
-          action: 'create_alert',
-          collection: 'alerts',
-          payload: lowStockAlert,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItemAlert);
-      }
     }
     showToast(`Stock updated: ${currentItem.name} (${newStock} remaining).`);
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-${Date.now()}-${itemId}`,
-        action: 'update_stock',
-        collection: 'inventory',
-        payload: { itemId, qtyDelta },
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else if (expectedStock === undefined) {
-      try {
-        await upsertInventoryItem(updatedItem);
-      } catch (error) {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-${Date.now()}-${itemId}`,
-          action: 'update_stock',
-          collection: 'inventory',
-          payload: { itemId, qtyDelta },
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      }
-    }
   };
 
   const handleUpdatePrice = (id: string, newPrice: number) => {
@@ -967,35 +384,12 @@ export default function App() {
       prev.map(item => item.id === id ? updatedItem : item)
     );
     showToast(`Price updated for item.`);
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-price-${Date.now()}-${id}`,
-        action: 'add_inventory',
-        collection: 'inventory',
-        payload: updatedItem,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      upsertInventoryItem(updatedItem).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-price-${Date.now()}-${id}`,
-          action: 'add_inventory',
-          collection: 'inventory',
-          payload: updatedItem,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
   const handleAddAppointment = (appointment: Appointment) => {
     setAppointments(prev => [appointment, ...prev]);
     showToast(`Appointment scheduled for ${appointment.petName}.`);
 
-    // Setup automated client reminders queue
     const emailNotif: ClientNotification = {
       id: `not-em-${Date.now()}`,
       petName: appointment.petName,
@@ -1009,39 +403,6 @@ export default function App() {
     };
 
     setNotifications(prev => [emailNotif, ...prev]);
-
-    if (!isOnline) {
-      const syncItemApt: OfflineSyncItem = {
-        id: `sync-apt-${Date.now()}`,
-        action: 'create_appointment',
-        collection: 'appointments',
-        payload: appointment,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItemApt);
-    } else {
-      upsertAppointment(appointment).catch(() => {
-        const syncItemApt: OfflineSyncItem = {
-          id: `sync-apt-${Date.now()}`,
-          action: 'create_appointment',
-          collection: 'appointments',
-          payload: appointment,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItemApt);
-      });
-      upsertNotification(emailNotif).catch(err => {
-        console.error('[CeylonPets] Background mutations failure:', err);
-        const syncItemNotif: OfflineSyncItem = {
-          id: `sync-notif-${Date.now()}`,
-          action: 'create_notification',
-          collection: 'notifications',
-          payload: emailNotif,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItemNotif);
-      });
-    }
   };
 
   const handleUpdateAppointmentStatus = (id: string, status: AppointmentStatus) => {
@@ -1057,10 +418,8 @@ export default function App() {
       );
     }
 
-    // If status checked in, automatically trigger notification for vaccination reviews in EHR
-    let checkAlert: SystemAlert | null = null;
     if (status === 'in-progress') {
-      checkAlert = {
+      const checkAlert: SystemAlert = {
         id: `al-check-${Date.now()}`,
         severity: 'info',
         category: 'appointment',
@@ -1071,77 +430,11 @@ export default function App() {
       setAlerts(prev => [checkAlert, ...prev]);
     }
     showToast(`Appointment status updated to ${status}.`);
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-status-${Date.now()}`,
-        action: 'create_appointment', // simple mock
-        collection: 'appointments',
-        payload: { id, status },
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-      if (checkAlert) {
-        const syncAlert: OfflineSyncItem = {
-          id: `sync-al-${Date.now()}`,
-          action: 'create_alert',
-          collection: 'alerts',
-          payload: checkAlert,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncAlert);
-      }
-    } else {
-      upsertAppointment(updatedApt).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-status-${Date.now()}`,
-          action: 'create_appointment',
-          collection: 'appointments',
-          payload: { id, status },
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-      if (checkAlert) {
-        upsertAlert(checkAlert).catch(() => {
-          const syncAlert: OfflineSyncItem = {
-            id: `sync-al-${Date.now()}`,
-            action: 'create_alert',
-            collection: 'alerts',
-            payload: checkAlert,
-            timestamp: new Date().toISOString()
-          };
-          pushToOfflineQueue(syncAlert);
-        });
-      }
-    }
   };
 
   const handleAddRecord = (newRec: MedicalRecord) => {
     setRecords(prev => [newRec, ...prev]);
     showToast(`Medical record added for ${newRec.petName}.`);
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-rec-${Date.now()}`,
-        action: 'update_medical_record',
-        collection: 'records',
-        payload: newRec,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      upsertMedicalRecord(newRec).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-rec-${Date.now()}`,
-          action: 'update_medical_record',
-          collection: 'records',
-          payload: newRec,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
   const handleUpdateRecord = (updated: MedicalRecord) => {
@@ -1149,95 +442,20 @@ export default function App() {
       prev.map(r => r.id === updated.id ? updated : r)
     );
     showToast(`Medical record updated for ${updated.petName}.`);
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-rec-upd-${Date.now()}`,
-        action: 'update_medical_record',
-        collection: 'records',
-        payload: updated,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      upsertMedicalRecord(updated).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-rec-upd-${Date.now()}`,
-          action: 'update_medical_record',
-          collection: 'records',
-          payload: updated,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
   const handleDeleteRecord = (id: string) => {
     setRecords(prev => prev.filter(r => r.id !== id));
     showToast('Medical record permanently deleted.', 'success');
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-rec-del-${Date.now()}`,
-        action: 'delete_medical_record',
-        collection: 'records',
-        payload: id,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      deleteMedicalRecord(id).catch((err) => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-rec-del-${Date.now()}`,
-          action: 'delete_medical_record',
-          collection: 'records',
-          payload: id,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
 
   const handleAddInvoice = async (invoice: Invoice) => {
-    // Attempt to tag invoice with active shift ID
-    const currentShiftId = await fetchActiveShiftId();
-    if (currentShiftId) {
-      invoice.shiftId = currentShiftId;
-    }
-
     setInvoices(prev => [invoice, ...prev]);
     showToast(`Invoice added: $${invoice.sales_total.toFixed(2)}.`);
 
-    // Also look for corresponding appointment and mark it 'completed'
     if (invoice.appointmentId) {
       handleUpdateAppointmentStatus(invoice.appointmentId, 'completed');
-    }
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-inv-${Date.now()}`,
-        action: 'create_invoice',
-        collection: 'invoices',
-        payload: invoice,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      try {
-        await upsertInvoice(invoice);
-      } catch (error) {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-inv-${Date.now()}`,
-          action: 'create_invoice',
-          collection: 'invoices',
-          payload: invoice,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      }
     }
   };
 
@@ -1264,46 +482,6 @@ export default function App() {
 
     const updatedInvoice = { ...targetInvoice, paymentStatus: 'void' as const };
     setInvoices(prev => prev.map(inv => inv.id === invoiceId ? updatedInvoice : inv));
-
-    if (!isOnline) {
-      const syncInv: OfflineSyncItem = {
-        id: `sync-inv-void-${Date.now()}`,
-        action: 'create_invoice',
-        collection: 'invoices',
-        payload: updatedInvoice,
-        timestamp: new Date().toISOString()
-      };
-      const syncAlert: OfflineSyncItem = {
-        id: `sync-al-void-${Date.now()}`,
-        action: 'create_alert',
-        collection: 'alerts',
-        payload: voidAlert,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncInv);
-      pushToOfflineQueue(syncAlert);
-    } else {
-      upsertInvoice(updatedInvoice).catch(() => {
-        const syncInv: OfflineSyncItem = {
-          id: `sync-inv-void-${Date.now()}`,
-          action: 'create_invoice',
-          collection: 'invoices',
-          payload: updatedInvoice,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncInv);
-      });
-      upsertAlert(voidAlert).catch(() => {
-        const syncAlert: OfflineSyncItem = {
-          id: `sync-al-void-${Date.now()}`,
-          action: 'create_alert',
-          collection: 'alerts',
-          payload: voidAlert,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncAlert);
-      });
-    }
   };
 
   const handleDismissAlert = (id: string) => {
@@ -1311,28 +489,6 @@ export default function App() {
     if (!alert) return;
     const updatedAlert = { ...alert, read: true };
     setAlerts(prev => prev.map(a => a.id === id ? updatedAlert : a));
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-alert-dismiss-${Date.now()}`,
-        action: 'create_alert',
-        collection: 'alerts',
-        payload: updatedAlert,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      upsertAlert(updatedAlert).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-alert-dismiss-${Date.now()}`,
-          action: 'create_alert',
-          collection: 'alerts',
-          payload: updatedAlert,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
   const handleSendNotification = (id: string) => {
@@ -1340,28 +496,6 @@ export default function App() {
     if (!notif) return;
     const updatedNotif = { ...notif, status: 'sent' as const };
     setNotifications(prev => prev.map(n => n.id === id ? updatedNotif : n));
-
-    if (!isOnline) {
-      const syncItem: OfflineSyncItem = {
-        id: `sync-notif-${Date.now()}`,
-        action: 'create_notification', // mock action
-        collection: 'notifications',
-        payload: updatedNotif,
-        timestamp: new Date().toISOString()
-      };
-      pushToOfflineQueue(syncItem);
-    } else {
-      upsertNotification(updatedNotif).catch(() => {
-        const syncItem: OfflineSyncItem = {
-          id: `sync-notif-${Date.now()}`,
-          action: 'create_notification',
-          collection: 'notifications',
-          payload: updatedNotif,
-          timestamp: new Date().toISOString()
-        };
-        pushToOfflineQueue(syncItem);
-      });
-    }
   };
 
   const handleRestoreSnapshot = (snapshot: any) => {
@@ -1377,41 +511,8 @@ export default function App() {
 
   const handleForceCloudSync = async () => {
     setIsSyncing(true);
-    setSyncProgress(10);
-    setSyncStepDescription("Discarding local offline changes...");
-    
-    // Wipe local sync queue completely
-    setSyncQueue([]);
-    await db.removeItem('sync_queue');
-
-    setSyncProgress(30);
-    setSyncStepDescription("Downloading cloud inventory...");
-    const cloudInventory = await fetchInventory();
-    setInventory(cloudInventory);
-
-    setSyncProgress(50);
-    setSyncStepDescription("Downloading cloud appointments...");
-    const cloudAppointments = await fetchAppointments();
-    setAppointments(cloudAppointments);
-
-    setSyncProgress(65);
-    setSyncStepDescription("Downloading cloud invoices...");
-    const cloudInvoices = await fetchInvoices();
-    setInvoices(cloudInvoices);
-
-    setSyncProgress(80);
-    setSyncStepDescription("Downloading remaining cloud data...");
-    const cloudRecords = await fetchMedicalRecords();
-    setRecords(cloudRecords);
-    
-    const cloudAlerts = await fetchAlerts();
-    setAlerts(cloudAlerts);
-    
-    const cloudNotifications = await fetchNotifications();
-    setNotifications(cloudNotifications);
-
     setSyncProgress(100);
-    setSyncStepDescription("Cloud synchronization complete.");
+    setSyncStepDescription("Cloud synchronization complete (No-op).");
     
     setTimeout(() => {
       setIsSyncing(false);
@@ -1423,63 +524,32 @@ export default function App() {
   const handlePurgeDatabases = async () => {
     setIsSyncing(true);
     setSyncProgress(20);
-    setSyncStepDescription("Connecting to database cloud target...");
-    try {
-      const deleteEndpoints = [
-        DB_TABLES.INVENTORY,
-        DB_TABLES.APPOINTMENTS,
-        DB_TABLES.RECORDS,
-        DB_TABLES.INVOICES,
-        DB_TABLES.NOTIFICATIONS,
-        DB_TABLES.ALERTS
-      ];
-
-      setSyncProgress(50);
-      setSyncStepDescription("Purging Supabase cloud tables...");
+    setSyncStepDescription("Purging local offline tables...");
       
-      for (const table of deleteEndpoints) {
-        const { error } = await supabase.from(table).delete().neq('id', '_non_existent_');
-        if (error) console.error(`Error deleting table ${table}:`, error);
-      }
-
-      setSyncProgress(85);
-      setSyncStepDescription("Purging client local caches...");
-      
-      // Explicitly remove local storage keys to prevent orphaned data lingering after reload
-      const localKeysToClear = [
-        'ceylon_inventory_v2',
-        'ceylon_appointments_v2',
-        'ceylon_records_v2',
-        'ceylon_invoices_v2',
-        'ceylon_notifications_v2',
-        'ceylon_alerts_v2',
-        'ceylon_sync_queue_v2'
-      ];
-      localKeysToClear.forEach(key => localStorage.removeItem(key));
-      
-      // Global cache busting for ghost data eradication
-      localStorage.clear();
-      sessionStorage.clear();
-
-      setInventory([]);
-      setAppointments([]);
-      setRecords([]);
-      setInvoices([]);
-      setNotifications([]);
-      setAlerts([]);
-      setSyncQueue([]);
-      await db.removeItem('sync_queue');
-
-      setSyncProgress(100);
-      setSyncStepDescription("Database purge completed!");
-      showToast("Database purge completed successfully! All live history records are cleared. System configurations and staff users are preserved.", 'success');
-      window.location.reload();
-    } catch (e: any) {
-      console.error("Purge failed:", e);
-      showToast("Error: Cloud connection failed. Local databases have been purged, but cloud tables might still retain some records.", 'error');
-    } finally {
-      setIsSyncing(false);
+    const tables = ['ceylon_inventory_v2', 'ceylon_appointments_v2', 'ceylon_records_v2', 'ceylon_invoices_v2', 'ceylon_notifications_v2', 'ceylon_alerts_v2'];
+    for (let i = 0; i < tables.length; i++) {
+      const table = tables[i];
+      setSyncStepDescription(`Clearing ${table}...`);
+      localStorage.removeItem(table);
+      setSyncProgress(30 + Math.floor((i / tables.length) * 20));
     }
+    
+    localStorage.clear();
+    sessionStorage.clear();
+
+    setInventory([]);
+    setAppointments([]);
+    setRecords([]);
+    setInvoices([]);
+    setNotifications([]);
+    setAlerts([]);
+    setSyncQueue([]);
+    await db.removeItem('sync_queue');
+
+    setSyncProgress(100);
+    setSyncStepDescription("Database purge completed!");
+    showToast("Database purge completed successfully! All live history records are cleared. System configurations and staff users are preserved.", 'success');
+    window.location.reload();
   };
 
   const handleVerifyMasterPin = (pin: string): boolean => {

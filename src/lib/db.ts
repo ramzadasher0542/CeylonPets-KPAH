@@ -1,16 +1,3 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- *
- * db.ts — Supabase data access layer for all clinic collections
- * ---------------------------------------------------------------
- * Provides fetch + upsert functions for every data collection.
- * Each fetch tries Supabase first; falls back to localStorage cache.
- * Each upsert writes to Supabase (best-effort) and always keeps
- * the localStorage cache in sync for offline resilience.
- */
-
-import { supabase, DB_TABLES } from './supabase';
 import { formatDisplayDate, formatDisplayTime } from '../utils/time';
 import {
   InventoryItem,
@@ -22,25 +9,6 @@ import {
   SystemAlert
 } from '../types';
 
-// ---------------------------------------------------------------
-// Generic upsert/delete helpers
-// ---------------------------------------------------------------
-
-async function supabaseUpsert(table: string, row: object, conflictCol = 'id'): Promise<void> {
-  const { error } = await supabase
-    .from(table)
-    .upsert(row, { onConflict: conflictCol });
-  if (error) throw error;
-}
-
-async function supabaseDelete(table: string, id: string): Promise<void> {
-  const { error } = await supabase
-    .from(table)
-    .delete()
-    .eq('id', id);
-  if (error) throw error;
-}
-
 function safeCache<T>(key: string, fallback: T[]): T[] {
   try {
     const raw = localStorage.getItem(key);
@@ -50,146 +18,59 @@ function safeCache<T>(key: string, fallback: T[]): T[] {
   }
 }
 
-// ---------------------------------------------------------------
-// INVENTORY
-// ---------------------------------------------------------------
-
-export async function fetchInventory(): Promise<InventoryItem[]> {
-  if (!navigator.onLine) {
-     return safeCache('ceylon_inventory_v2', []);
-  }
+function safeWrite<T>(key: string, data: T[]): void {
   try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.INVENTORY)
-      .select('id, sku, name, category, price, cost, stock, min_stock, unit, location')
-      .order('name');
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_inventory_v2', JSON.stringify([]));
-      return [];
-    }
-
-    const items: InventoryItem[] = data.map((row: any) => ({
-      id:       row.id,
-      sku:      row.sku,
-      name:     row.name,
-      category: row.category,
-      price:    Number(row.price),
-      cost:     Number(row.cost),
-      stock:    Number(row.stock),
-      minStock: Number(row.min_stock),
-      unit:     row.unit,
-      location: row.location ?? undefined,
-    }));
-
-    localStorage.setItem('ceylon_inventory_v2', JSON.stringify(items));
-    return items;
-
+    localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    console.warn('[CeylonPets] fetchInventory offline — using cache:', err);
-    return safeCache('ceylon_inventory_v2', []);
+    console.error(`Failed to write to local storage key: ${key}`, err);
   }
+}
+
+// INVENTORY
+export async function fetchInventory(): Promise<InventoryItem[]> {
+  return safeCache('ceylon_inventory_v2', []);
 }
 
 export async function upsertInventoryItem(item: InventoryItem): Promise<void> {
-  try {
-    const payload = {
-      id:        item.id,
-      sku:       item.sku,
-      name:      item.name,
-      category:  item.category,
-      price:     item.price,
-      cost:      item.cost,
-      stock:     item.stock,
-      min_stock: item.minStock,
-      unit:      item.unit,
-      location:  item.location ?? null,
-    };
-
-    if (payload.category === 'lab_service' || payload.category === 'service') { 
-      payload.stock = 0; 
-      payload.min_stock = 0; 
-    }
-
-    await supabaseUpsert(DB_TABLES.INVENTORY, payload);
-  } catch (err) {
-    console.warn('[CeylonPets] upsertInventoryItem offline:', err);
-    throw err;
+  const items = safeCache<InventoryItem>('ceylon_inventory_v2', []);
+  const idx = items.findIndex(i => i.id === item.id);
+  
+  if (item.category === 'lab_service' || item.category === 'service') { 
+    item.stock = 0; 
+    item.minStock = 0; 
   }
+  
+  if (idx >= 0) {
+    items[idx] = item;
+  } else {
+    items.push(item);
+  }
+  safeWrite('ceylon_inventory_v2', items);
 }
 
 export async function deleteInventoryItem(id: string): Promise<void> {
-  try {
-    await supabaseDelete(DB_TABLES.INVENTORY, id);
-  } catch (err) {
-    console.warn('[CeylonPets] deleteInventoryItem offline:', err);
-    throw err;
-  }
+  let items = safeCache<InventoryItem>('ceylon_inventory_v2', []);
+  items = items.filter(i => i.id !== id);
+  safeWrite('ceylon_inventory_v2', items);
 }
 
 export async function updateInventoryStockCAS(itemId: string, newStock: number, expectedStock: number): Promise<void> {
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.INVENTORY)
-      .update({ stock: newStock })
-      .eq('id', itemId)
-      .eq('stock', expectedStock)
-      .select('id');
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      throw new Error('CAS_MISMATCH');
-    }
-  } catch (err) {
-    console.warn('[CeylonPets] updateInventoryStockCAS failed:', err);
-    throw err;
+  const items = safeCache<InventoryItem>('ceylon_inventory_v2', []);
+  const item = items.find(i => i.id === itemId);
+  if (!item || item.stock !== expectedStock) {
+    throw new Error('CAS_MISMATCH');
   }
+  item.stock = newStock;
+  safeWrite('ceylon_inventory_v2', items);
 }
 
-// ---------------------------------------------------------------
 // APPOINTMENTS
-// ---------------------------------------------------------------
-
 export async function fetchAppointments(): Promise<Appointment[]> {
-  if (!navigator.onLine) {
-     return safeCache('ceylon_appointments_v2', []);
-  }
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.APPOINTMENTS)
-      .select('id, pet_name, pet_type, breed, owner_name, owner_phone, owner_email, date, time, veterinarian, reason, status')
-      .in('status', ['booked', 'in-progress'])
-      .order('date', { ascending: false });
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_appointments_v2', JSON.stringify([]));
-      return [];
-    }
-
-    const apts: Appointment[] = data.map((row: any) => ({
-      id:          row.id,
-      petName:     row.pet_name,
-      petType:     row.pet_type,
-      breed:       row.breed ?? '',
-      ownerName:   row.owner_name,
-      ownerPhone:  row.owner_phone,
-      ownerEmail:  row.owner_email ?? '',
-      date:        row.date,
-      time:        row.time,
-      veterinarian:row.veterinarian ?? '',
-      reason:      row.reason ?? '',
-      status:      row.status,
-    }));
-
-    localStorage.setItem('ceylon_appointments_v2', JSON.stringify(apts));
-    return apts;
-
-  } catch (err) {
-    console.warn('[CeylonPets] fetchAppointments offline — using cache:', err);
-    return safeCache('ceylon_appointments_v2', []);
-  }
+  const items = safeCache<Appointment>('ceylon_appointments_v2', []);
+  // Return only booked and in-progress, sorted by date desc
+  return items
+    .filter(a => a.status === 'booked' || a.status === 'in-progress')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function fetchHistoricalAppointmentsArchive(
@@ -197,368 +78,153 @@ export async function fetchHistoricalAppointmentsArchive(
   limit = 50,
   search?: string
 ): Promise<{ appointments: Appointment[]; count: number }> {
-  if (!navigator.onLine) {
-     return { appointments: [], count: 0 };
-  }
-  try {
-    let query = supabase
-      .from(DB_TABLES.APPOINTMENTS)
-      .select('id, pet_name, pet_type, breed, owner_name, owner_phone, owner_email, date, time, veterinarian, reason, status', { count: 'exact' })
-      .in('status', ['completed', 'cancelled']);
+  const items = safeCache<Appointment>('ceylon_appointments_v2', []);
+  let filtered = items.filter(a => a.status === 'completed' || a.status === 'cancelled');
 
-    if (search && search.trim() !== '') {
-      const term = search.trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(term)) {
-        query = query.eq('date', term);
-      } else {
-        query = query.or(`pet_name.ilike.%${term}%,owner_name.ilike.%${term}%`);
-      }
+  if (search && search.trim() !== '') {
+    const term = search.trim().toLowerCase();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(term)) {
+      filtered = filtered.filter(a => a.date === term);
+    } else {
+      filtered = filtered.filter(a => 
+        a.petName.toLowerCase().includes(term) || 
+        a.ownerName.toLowerCase().includes(term)
+      );
     }
-
-    const fromRange = page * limit;
-    const toRange = (page + 1) * limit - 1;
-
-    const { data, error, count } = await query
-      .order('date', { ascending: false })
-      .order('time', { ascending: false })
-      .range(fromRange, toRange);
-
-    if (error) throw error;
-
-    const apts: Appointment[] = (data || []).map((row: any) => ({
-      id:          row.id,
-      petName:     row.pet_name,
-      petType:     row.pet_type,
-      breed:       row.breed ?? '',
-      ownerName:   row.owner_name,
-      ownerPhone:  row.owner_phone,
-      ownerEmail:  row.owner_email ?? '',
-      date:        row.date,
-      time:        row.time,
-      veterinarian:row.veterinarian ?? '',
-      reason:      row.reason ?? '',
-      status:      row.status,
-    }));
-
-    return { appointments: apts, count: count || 0 };
-
-  } catch (err) {
-    console.warn('[CeylonPets] fetchHistoricalAppointmentsArchive failed:', err);
-    return { appointments: [], count: 0 };
   }
+
+  filtered.sort((a, b) => {
+    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+    if (dateDiff !== 0) return dateDiff;
+    return b.time.localeCompare(a.time);
+  });
+
+  const count = filtered.length;
+  const start = page * limit;
+  const end = start + limit;
+  return { appointments: filtered.slice(start, end), count };
 }
 
 export async function upsertAppointment(apt: Appointment): Promise<void> {
-  try {
-    await supabaseUpsert(DB_TABLES.APPOINTMENTS, {
-      id:           apt.id,
-      pet_name:     apt.petName,
-      pet_type:     apt.petType,
-      breed:        apt.breed,
-      owner_name:   apt.ownerName,
-      owner_phone:  apt.ownerPhone,
-      owner_email:  apt.ownerEmail,
-      date:         formatDisplayDate(apt.date),
-      time:         formatDisplayTime(apt.time),
-      veterinarian: apt.veterinarian,
-      reason:       apt.reason,
-      status:       apt.status,
-    });
-  } catch (err) {
-    console.warn('[CeylonPets] upsertAppointment offline:', err);
-    throw err;
+  const items = safeCache<Appointment>('ceylon_appointments_v2', []);
+  const idx = items.findIndex(a => a.id === apt.id);
+  const formattedApt = {
+    ...apt,
+    date: formatDisplayDate(apt.date),
+    time: formatDisplayTime(apt.time)
+  };
+
+  if (idx >= 0) {
+    items[idx] = formattedApt;
+  } else {
+    items.push(formattedApt);
   }
+  safeWrite('ceylon_appointments_v2', items);
 }
 
 export async function fetchVeterinarians(): Promise<User[]> {
-  if (!navigator.onLine) {
-     return [];
-  }
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.USERS)
-      .select('id, name, username, role, avatar_color, pin')
-      .in('role', ['veterinarian', 'admin'])
-      .order('name');
-
-    if (error) throw error;
-    if (!data) return [];
-
-    return data.map((row: any) => ({
-      id:          row.id,
-      name:        row.name,
-      username:    row.username,
-      role:        row.role,
-      avatarColor: row.avatar_color,
-      pin:         row.pin ?? undefined,
-    }));
-  } catch (err) {
-    console.error('[CeylonPets] Failed to fetch veterinarians:', err);
-    return [];
-  }
+  const users = safeCache<User>('ceylon_staff_users', []);
+  return users
+    .filter(u => u.role === 'veterinarian' || u.role === 'admin')
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// ---------------------------------------------------------------
 // MEDICAL RECORDS
-// ---------------------------------------------------------------
-
 export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
-  if (!navigator.onLine) {
-     return safeCache('ceylon_records_v2', []);
-  }
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.RECORDS)
-      .select('id, patient_id, pet_name, owner_phone, visit_date, attending_vet, data')
-      .order('visit_date', { ascending: false });
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_records_v2', JSON.stringify([]));
-      return [];
-    }
-
-    // Full record is stored in the `data` JSONB column
-    const records: MedicalRecord[] = data
-      .map((row: any) => {
-        if (!row.data) return null;
-        const rec = { ...row.data };
-        rec.id = row.id;
-        if (row.attending_vet && !rec.attendingVet) {
-          rec.attendingVet = row.attending_vet;
-        }
-        return rec as MedicalRecord;
-      })
-      .filter((rec): rec is MedicalRecord => rec !== null && !!rec.id);
-
-    localStorage.setItem('ceylon_records_v2', JSON.stringify(records));
-    return records;
-
-  } catch (err) {
-    console.warn('[CeylonPets] fetchMedicalRecords offline — using cache:', err);
-    return safeCache('ceylon_records_v2', []);
-  }
+  const records = safeCache<MedicalRecord>('ceylon_records_v2', []);
+  return records.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
 }
 
 export async function upsertMedicalRecord(rec: MedicalRecord): Promise<void> {
-  try {
-    await supabaseUpsert(DB_TABLES.RECORDS, {
-      id:            rec.id,
-      patient_id:    rec.patientId,
-      pet_name:      rec.petName,
-      owner_phone:   rec.ownerPhone,
-      visit_date:    formatDisplayDate(rec.visitDate),
-      attending_vet: rec.attendingVet ?? null,
-      data:          rec,   // full object stored as JSONB
-    });
-  } catch (err) {
-    console.warn('[CeylonPets] upsertMedicalRecord offline:', err);
-    throw err;
+  const records = safeCache<MedicalRecord>('ceylon_records_v2', []);
+  const idx = records.findIndex(r => r.id === rec.id);
+  const formattedRec = {
+    ...rec,
+    visitDate: formatDisplayDate(rec.visitDate)
+  };
+
+  if (idx >= 0) {
+    records[idx] = formattedRec;
+  } else {
+    records.push(formattedRec);
   }
+  safeWrite('ceylon_records_v2', records);
 }
 
 export async function deleteMedicalRecord(id: string): Promise<void> {
-  try {
-    await supabaseDelete(DB_TABLES.RECORDS, id);
-  } catch (err) {
-    console.warn('[CeylonPets] deleteMedicalRecord offline:', err);
-    throw err;
-  }
+  let records = safeCache<MedicalRecord>('ceylon_records_v2', []);
+  records = records.filter(r => r.id !== id);
+  safeWrite('ceylon_records_v2', records);
 }
 
-// ---------------------------------------------------------------
 // INVOICES
-// ---------------------------------------------------------------
-
 export async function fetchInvoices(): Promise<Invoice[]> {
-  if (!navigator.onLine) {
-     return safeCache('ceylon_invoices_v2', []);
-  }
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.INVOICES)
-      .select('id, pet_name, owner_name, date, sales_total, payment_status, status, data')
-      .neq('payment_status', 'void')
-      .order('date', { ascending: false });
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_invoices_v2', JSON.stringify([]));
-      return [];
-    }
-
-    const invoices: Invoice[] = data
-      .map((row: any) => {
-        if (!row.data) return null;
-        const inv = { ...row.data };
-        inv.id = row.id;
-        if (inv.sales_total === undefined) {
-          inv.sales_total = inv.total ?? row.sales_total ?? 0;
-          delete inv.total;
-        }
-        if (row.status && row.status !== inv.paymentStatus) {
-          inv.paymentStatus = row.status as any;
-        }
-        return inv as Invoice;
-      })
-      .filter((inv): inv is Invoice => inv !== null && !!inv.id);
-
-    localStorage.setItem('ceylon_invoices_v2', JSON.stringify(invoices));
-    return invoices;
-
-  } catch (err) {
-    console.warn('[CeylonPets] fetchInvoices offline — using cache:', err);
-    return safeCache('ceylon_invoices_v2', []);
-  }
+  const invoices = safeCache<Invoice>('ceylon_invoices_v2', []);
+  return invoices
+    .filter(inv => inv.paymentStatus !== 'void')
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 }
 
 export async function upsertInvoice(inv: Invoice): Promise<void> {
-  try {
-    await supabaseUpsert(DB_TABLES.INVOICES, {
-      id:             inv.id,
-      pet_name:       inv.petName,
-      owner_name:     inv.ownerName,
-      date:           formatDisplayDate(inv.date),
-      sales_total:    inv.sales_total,
-      profit:         inv.profit || 0,
-      cogs:           inv.cogs || 0,
-      status:         inv.paymentStatus,
-      payment_status: inv.paymentStatus,
-      payment_method: inv.paymentMethod,
-      shift_id:       inv.shiftId,
-      data:           inv,   // full object stored as JSONB
-    });
+  const invoices = safeCache<Invoice>('ceylon_invoices_v2', []);
+  const idx = invoices.findIndex(i => i.id === inv.id);
+  const formattedInv = {
+    ...inv,
+    date: formatDisplayDate(inv.date)
+  };
 
-    if (inv.appointmentId) {
-      supabase
-        .from(DB_TABLES.APPOINTMENTS)
-        .update({ status: 'completed' })
-        .eq('id', inv.appointmentId)
-        .then(
-          ({ error }) => {
-            if (error) {
-              console.error('[CeylonPets] Failed to cascade appointment resolution:', error);
-            }
-          },
-          (err) => {
-            console.error('[CeylonPets] Error in background appointment status update cascade:', err);
-          }
-        );
+  if (idx >= 0) {
+    invoices[idx] = formattedInv;
+  } else {
+    invoices.push(formattedInv);
+  }
+  safeWrite('ceylon_invoices_v2', invoices);
+
+  if (inv.appointmentId) {
+    const apts = safeCache<Appointment>('ceylon_appointments_v2', []);
+    const aptIdx = apts.findIndex(a => a.id === inv.appointmentId);
+    if (aptIdx >= 0) {
+      apts[aptIdx].status = 'completed';
+      safeWrite('ceylon_appointments_v2', apts);
     }
-  } catch (err) {
-    console.warn('[CeylonPets] upsertInvoice offline:', err);
-    throw err;
   }
 }
 
-// ---------------------------------------------------------------
 // NOTIFICATIONS
-// ---------------------------------------------------------------
-
 export async function fetchNotifications(): Promise<ClientNotification[]> {
-  if (!navigator.onLine) {
-     return safeCache('ceylon_notifications_v2', []);
-  }
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.NOTIFICATIONS)
-      .select('id, data')
-      .order('id');
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_notifications_v2', JSON.stringify([]));
-      return [];
-    }
-
-    const notifs: ClientNotification[] = data
-      .map((row: any) => {
-        if (!row.data) return null;
-        return {
-          ...row.data,
-          id: row.id
-        } as ClientNotification;
-      })
-      .filter((n): n is ClientNotification => n !== null && !!n.id && !!n.type);
-
-    localStorage.setItem('ceylon_notifications_v2', JSON.stringify(notifs));
-    return notifs;
-
-  } catch (err) {
-    console.warn('[CeylonPets] fetchNotifications offline — using cache:', err);
-    return safeCache('ceylon_notifications_v2', []);
-  }
+  return safeCache<ClientNotification>('ceylon_notifications_v2', []);
 }
 
 export async function upsertNotification(notif: ClientNotification): Promise<void> {
-  if (!notif || !notif.id) {
-    console.warn('[CeylonPets] Rejected upsert for invalid/missing notification ID:', notif);
-    return;
+  if (!notif || !notif.id) return;
+  const notifs = safeCache<ClientNotification>('ceylon_notifications_v2', []);
+  const idx = notifs.findIndex(n => n.id === notif.id);
+  if (idx >= 0) {
+    notifs[idx] = notif;
+  } else {
+    notifs.push(notif);
   }
-  try {
-    await supabaseUpsert(DB_TABLES.NOTIFICATIONS, { id: notif.id, data: notif });
-  } catch (err) {
-    console.warn('[CeylonPets] upsertNotification offline:', err);
-    throw err;
-  }
+  safeWrite('ceylon_notifications_v2', notifs);
 }
 
-// ---------------------------------------------------------------
-// SYSTEM ALERTS
-// ---------------------------------------------------------------
-
+// ALERTS
 export async function fetchAlerts(): Promise<SystemAlert[]> {
-  if (!navigator.onLine) {
-     return safeCache('ceylon_alerts_v2', []);
-  }
-  try {
-    const { data, error } = await supabase
-      .from(DB_TABLES.ALERTS)
-      .select('id, data')
-      .order('id');
-
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      localStorage.setItem('ceylon_alerts_v2', JSON.stringify([]));
-      return [];
-    }
-
-    const alerts: SystemAlert[] = data
-      .map((row: any) => {
-        if (!row.data) return null;
-        return {
-          ...row.data,
-          id: row.id
-        } as SystemAlert;
-      })
-      .filter((a): a is SystemAlert => a !== null && !!a.id && !!a.severity);
-
-    localStorage.setItem('ceylon_alerts_v2', JSON.stringify(alerts));
-    return alerts;
-
-  } catch (err) {
-    console.warn('[CeylonPets] fetchAlerts offline — using cache:', err);
-    return safeCache('ceylon_alerts_v2', []);
-  }
+  return safeCache<SystemAlert>('ceylon_alerts_v2', []);
 }
 
 export async function upsertAlert(alert: SystemAlert): Promise<void> {
-  if (!alert || !alert.id) {
-    console.warn('[CeylonPets] Rejected upsert for invalid/missing alert ID:', alert);
-    return;
+  if (!alert || !alert.id) return;
+  const alerts = safeCache<SystemAlert>('ceylon_alerts_v2', []);
+  const idx = alerts.findIndex(a => a.id === alert.id);
+  if (idx >= 0) {
+    alerts[idx] = alert;
+  } else {
+    alerts.push(alert);
   }
-  try {
-    await supabaseUpsert(DB_TABLES.ALERTS, { id: alert.id, data: alert });
-  } catch (err) {
-    console.warn('[CeylonPets] upsertAlert offline:', err);
-    throw err;
-  }
+  safeWrite('ceylon_alerts_v2', alerts);
 }
 
-// ---------------------------------------------------------------
-// POS SHIFTS & RPC METRICS
-// ---------------------------------------------------------------
-
+// POS SHIFTS & METRICS
 export interface ShiftMetrics {
   gross_sales: number;
   total_cogs?: number;
@@ -568,187 +234,94 @@ export interface ShiftMetrics {
   payment_breakdown?: { method: string; total: number }[];
 }
 
-
 export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
-  if (!navigator.onLine) {
-    return {
-      gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
-      category_breakdown: [{ category: 'service', total: 0 }, { category: 'retail', total: 0 }]
-    } as ShiftMetrics;
-  }
-  if (typeof supabase.rpc !== 'function') {
-    return {
-      gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
-      category_breakdown: [{ category: 'service', total: 0 }, { category: 'retail', total: 0 }]
-    } as ShiftMetrics;
-  }
-  const { data, error } = await supabase.rpc('get_current_shift_metrics');
-  if (error) {
-    console.error('[CeylonPets] Error fetching shift metrics:', error);
-    return null;
-  }
+  const invoices = safeCache<Invoice>('ceylon_invoices_v2', []);
+  const shiftId = await fetchActiveShiftId();
   
-  if (!data) return null;
+  if (!shiftId || shiftId === 'local-offline-shift') {
+     return {
+      gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
+      category_breakdown: [{ category: 'service', total: 0 }, { category: 'retail', total: 0 }]
+    };
+  }
 
-  // If the user hasn't run the `fix_dashboard_rpc_json.sql` migration, 
-  // the RPC will still return an Array (TABLE format). We must handle this 
-  // gracefully so the Gross Sales card doesn't crash to 0.00.
-  if (Array.isArray(data)) {
-    if (data.length === 0) return null;
+  const shiftInvoices = invoices.filter(inv => inv.shiftId === shiftId && inv.paymentStatus === 'paid');
+  
+  let grossSales = 0;
+  let totalCogs = 0;
+  let clinicalRevenue = 0;
+  let retailRevenue = 0;
+
+  shiftInvoices.forEach(inv => {
+    grossSales += inv.sales_total;
+    totalCogs += inv.cogs || 0;
     
-    // Construct a fallback ShiftMetrics object using the old array data
-    // The pie chart will be empty, but top metrics will survive.
-    const legacyData = data[0];
-    return {
-      gross_sales: legacyData.gross_sales || 0,
-      total_cogs: legacyData.total_cogs || 0,
-      cogs: legacyData.total_cogs || 0,
-      net_profit: legacyData.net_profit || 0,
-      // Create a simulated breakdown from the legacy columns so the cards don't stay 0
-      category_breakdown: [
-        { category: 'service', total: legacyData.clinical_care_revenue || 0 },
-        { category: 'retail', total: legacyData.pet_shop_revenue || 0 }
-      ]
-    } as ShiftMetrics;
-  }
+    inv.items?.forEach(item => {
+      const isService = item.category === 'service' || item.category === 'lab_service';
+      if (isService) {
+        clinicalRevenue += (item.price * item.quantity);
+      } else {
+        retailRevenue += (item.price * item.quantity);
+      }
+    });
+  });
 
-  // If the user HAS run the migration, data will be a JSON object
-  if (typeof data === 'string') {
-    try {
-      return JSON.parse(data) as ShiftMetrics;
-    } catch (e) {
-      console.error('Failed to parse shift metrics JSON string:', e);
-      return null;
-    }
-  }
-
-  return data as ShiftMetrics;
+  return {
+    gross_sales: grossSales,
+    total_cogs: totalCogs,
+    cogs: totalCogs,
+    net_profit: grossSales - totalCogs,
+    category_breakdown: [
+      { category: 'service', total: clinicalRevenue },
+      { category: 'retail', total: retailRevenue }
+    ]
+  };
 }
 
 export async function fetchLowStockCount(): Promise<number> {
-  if (!navigator.onLine) {
-    return 0;
-  }
-  if (typeof supabase.rpc !== 'function') {
-    return 0;
-  }
-  const { data, error } = await supabase.rpc('get_low_stock_count');
-  if (error) {
-    console.error('[CeylonPets] Error fetching low stock count:', error);
-    return 0;
-  }
-  return Number(data) || 0;
+  const inventory = safeCache<InventoryItem>('ceylon_inventory_v2', []);
+  return inventory.filter(item => item.category !== 'service' && item.category !== 'lab_service' && item.stock <= item.minStock).length;
 }
 
 export async function fetchActiveShiftId(): Promise<string | null> {
-  if (!navigator.onLine) {
-    return 'local-offline-shift';
-  }
-  if (typeof supabase?.rpc !== 'function') {
-    return 'local-offline-shift';
-  }
-  const { data, error } = await supabase.rpc('get_active_shift_id');
-  if (error || !data) {
-    return null;
-  }
-  return data as string;
+  return localStorage.getItem('ceylon_active_shift_id') || 'local-offline-shift';
 }
 
 export async function openShift(openedBy: string): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('pos_shifts')
-    .insert({ status: 'open', opened_by: openedBy })
-    .select('id')
-    .single();
-    
-  if (error) {
-    console.error('[CeylonPets] Error opening shift:', error);
-    throw error;
-  }
-  return data?.id || null;
+  const shiftId = `shift-${Date.now()}`;
+  localStorage.setItem('ceylon_active_shift_id', shiftId);
+  return shiftId;
 }
 
 export async function closeShift(shiftId: string, actualCash: number, expectedCash: number, notes: string): Promise<void> {
-  const { error } = await supabase
-    .from('pos_shifts')
-    .update({ 
-      status: 'closed', 
-      closed_at: new Date().toISOString(),
-      actual_drawer_cash: actualCash,
-      expected_drawer_cash: expectedCash,
-      notes: notes
-    })
-    .eq('id', shiftId);
-
-  if (error) {
-    console.error('[CeylonPets] Error closing shift:', error);
-    throw error;
-  }
+  localStorage.removeItem('ceylon_active_shift_id');
 }
 
-// ---------------------------------------------------------------
-// DISASTER RECOVERY & ECOSYSTEM SERIALIZATION
-// ---------------------------------------------------------------
-
 export async function fetchFullSystemState(): Promise<any> {
-  const [
-    { data: inventory },
-    { data: appointments },
-    { data: records },
-    { data: invoices },
-    { data: posShifts },
-    { data: alerts },
-    { data: notifications }
-  ] = await Promise.all([
-    supabase.from(DB_TABLES.INVENTORY).select('*'),
-    supabase.from(DB_TABLES.APPOINTMENTS).select('*'),
-    supabase.from(DB_TABLES.RECORDS).select('*'),
-    supabase.from(DB_TABLES.INVOICES).select('*'),
-    supabase.from('pos_shifts').select('*'),
-    supabase.from(DB_TABLES.ALERTS).select('*'),
-    supabase.from(DB_TABLES.NOTIFICATIONS).select('*')
-  ]);
-
   return {
     app: 'CeylonPets',
     version: '2.0.0',
     timestamp: new Date().toISOString(),
     collections: {
-      inventory: inventory || [],
-      appointments: appointments || [],
-      records: records || [],
-      invoices: invoices || [],
-      pos_shifts: posShifts || [],
-      system_alerts: alerts || [],
-      notifications: notifications || []
+      inventory: safeCache('ceylon_inventory_v2', []),
+      appointments: safeCache('ceylon_appointments_v2', []),
+      records: safeCache('ceylon_records_v2', []),
+      invoices: safeCache('ceylon_invoices_v2', []),
+      pos_shifts: [],
+      system_alerts: safeCache('ceylon_alerts_v2', []),
+      notifications: safeCache('ceylon_notifications_v2', [])
     }
   };
 }
 
 export async function masterSystemPurge(): Promise<void> {
-  // Use .not('id','is',null) — deletes every row regardless of UUID value
-  const tables = [
-    DB_TABLES.INVOICES,
-    DB_TABLES.NOTIFICATIONS,
-    DB_TABLES.ALERTS,
-    DB_TABLES.RECORDS,
-    DB_TABLES.APPOINTMENTS,
-    'pos_shifts',
-    DB_TABLES.INVENTORY
-  ];
-
-  for (const table of tables) {
-    const { error } = await supabase.from(table).delete().not('id', 'is', null);
-    if (error) {
-      console.warn(`[MasterPurge] Warning: Could not fully clear '${table}': ${error.message}`);
-    }
-  }
-
-  // Clear local storage caches
   localStorage.removeItem('ceylon_inventory_v2');
   localStorage.removeItem('ceylon_appointments_v2');
   localStorage.removeItem('ceylon_records_v2');
   localStorage.removeItem('ceylon_invoices_v2');
+  localStorage.removeItem('ceylon_alerts_v2');
+  localStorage.removeItem('ceylon_notifications_v2');
+  localStorage.removeItem('ceylon_active_shift_id');
 }
 
 export async function reconstituteSystemState(payload: any): Promise<void> {
@@ -756,31 +329,12 @@ export async function reconstituteSystemState(payload: any): Promise<void> {
     throw new Error("Invalid backup payload. Ensure this file is a valid CeylonPets JSON export.");
   }
 
-  // Phase 1: Purge all existing rows first
   await masterSystemPurge();
 
-  // Phase 2: Dependency-Aware Reconstitution using UPSERT (conflict-safe)
-  // onConflict: 'id' means existing rows get overwritten instead of crashing
-  const tablesOrder = [
-    { name: DB_TABLES.INVENTORY,     data: payload.collections.inventory },
-    { name: 'pos_shifts',            data: payload.collections.pos_shifts },
-    { name: DB_TABLES.APPOINTMENTS,  data: payload.collections.appointments },
-    { name: DB_TABLES.RECORDS,       data: payload.collections.records },
-    { name: DB_TABLES.INVOICES,      data: payload.collections.invoices },
-    { name: DB_TABLES.ALERTS,        data: payload.collections.system_alerts },
-    { name: DB_TABLES.NOTIFICATIONS, data: payload.collections.notifications ?? payload.collections.client_notifications }
-  ];
-
-  for (const table of tablesOrder) {
-    if (table.data && Array.isArray(table.data) && table.data.length > 0) {
-      const { error } = await supabase
-        .from(table.name)
-        .upsert(table.data, { onConflict: 'id', ignoreDuplicates: false });
-      if (error) {
-        console.error(`[Reconstitution] Failed on table '${table.name}':`, error);
-        throw new Error(`Failed to restore table '${table.name}': ${error.message}`);
-      }
-    }
-  }
+  if (payload.collections.inventory) safeWrite('ceylon_inventory_v2', payload.collections.inventory);
+  if (payload.collections.appointments) safeWrite('ceylon_appointments_v2', payload.collections.appointments);
+  if (payload.collections.records) safeWrite('ceylon_records_v2', payload.collections.records);
+  if (payload.collections.invoices) safeWrite('ceylon_invoices_v2', payload.collections.invoices);
+  if (payload.collections.system_alerts) safeWrite('ceylon_alerts_v2', payload.collections.system_alerts);
+  if (payload.collections.notifications) safeWrite('ceylon_notifications_v2', payload.collections.notifications);
 }
-
