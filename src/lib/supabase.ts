@@ -24,14 +24,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
     '[CeylonPets] Missing Supabase environment variables.\n' +
     'Running in isolated local development mode. Cloud sync disabled.'
   );
-  // Provide a mock offline client
+  // Provide a robust mock offline client that absorbs chained calls
+  const mockPromise = Promise.resolve({ data: null, error: { message: 'Offline mode' } });
+  const createMockChain = () => {
+    const chain: any = new Proxy(function() {}, {
+      get: function(target, prop) {
+        if (prop === 'then') return mockPromise.then.bind(mockPromise);
+        if (prop === 'catch') return mockPromise.catch.bind(mockPromise);
+        if (prop === 'finally') return mockPromise.finally.bind(mockPromise);
+        return chain;
+      },
+      apply: function() {
+        return chain;
+      }
+    });
+    return chain;
+  };
+
   client = {
-    from: () => ({
-      select: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
-      insert: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
-      update: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
-      delete: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
-    }),
+    from: () => createMockChain(),
     channel: () => ({
       on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) })
     }),
