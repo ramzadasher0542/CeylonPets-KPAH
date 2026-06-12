@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   FileText, 
   Search, 
@@ -52,6 +52,13 @@ export default function MedicalRecordsManager({
   const [selectedRecordId, setSelectedRecordId] = useState<string>(records[0]?.id || '');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeEHRSubTab, setActiveEHRSubTab] = useState<'details' | 'vaccines' | 'labs'>('details');
+
+  // Enforce rigid scaling factor math constraints to avoid floating-point string leaks in veterinary charts
+  const formatClinicalDosageValue = (rawQuantity: number): string => {
+    const value = parseFloat(String(rawQuantity)) || 0;
+    // Scale up to treat calculations as localized integers, round, then return clean layout string
+    return String(Math.round(value * 100) / 100);
+  };
 
   // Encryption visualization fields
   const [isEncrypting, setIsEncrypting] = useState(false);
@@ -116,8 +123,19 @@ export default function MedicalRecordsManager({
 
   const activeRecord = records.find(r => r.id === selectedRecordId);
 
+  // Enforce rigid chronological descending sorting on medical history records to prevent scrambled timelines
+  const sortedMedicalRecords = useMemo(() => {
+    return [...(records || [])].sort((a, b) => {
+      const dateA = a?.visitDate || '';
+      const dateB = b?.visitDate || '';
+      
+      // Perform strict lexical string sorting to keep newest treatment events positioned at the top
+      return dateB.localeCompare(dateA);
+    });
+  }, [records]);
+
   // Search filter
-  const filteredRecords = records.filter(r => 
+  const filteredRecords = sortedMedicalRecords.filter(r => 
     r.petName.toLowerCase().includes(searchQuery.toLowerCase()) || 
     r.ownerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     r.breed.toLowerCase().includes(searchQuery.toLowerCase())
@@ -167,7 +185,7 @@ export default function MedicalRecordsManager({
       petType: newPetType,
       breed: newBreed || 'Mixed Lineage',
       age: newAge || 'Under 1 Year',
-      weight: parseFloat(newWeight) || 5.0,
+      weight: parseFloat(formatClinicalDosageValue(parseFloat(newWeight) || 5.0)),
       ownerName: newOwnerName,
       ownerPhone: newOwnerPhone,
       ownerEmail: newOwnerEmail || `no-email@${(systemConfig?.appName || 'CeylonPets').toLowerCase()}.com`,
@@ -213,7 +231,7 @@ export default function MedicalRecordsManager({
       petType: editPetType,
       breed: editBreed || 'Mixed Lineage',
       age: editAge || 'Under 1 Year',
-      weight: parseFloat(editWeight) || 5.0,
+      weight: parseFloat(formatClinicalDosageValue(parseFloat(editWeight) || 5.0)),
       ownerName: editOwnerName,
       ownerPhone: editOwnerPhone,
       ownerEmail: editOwnerEmail
@@ -324,7 +342,7 @@ export default function MedicalRecordsManager({
                     <span className="px-2 py-0.5 bg-sky-100 text-sky-800 text-[10px] font-bold rounded-md font-mono">{activeRecord.breed}</span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium mt-1">
-                    Age: {activeRecord.age} • Weight: <span className="font-bold text-slate-700">{activeRecord.weight} kg</span> • Owner Phone: {activeRecord.ownerPhone}
+                    Age: {activeRecord.age} • Weight: <span className="font-bold text-slate-700">{formatClinicalDosageValue(activeRecord.weight)} kg</span> • Owner Phone: {activeRecord.ownerPhone}
                   </p>
                 </div>
 
@@ -488,19 +506,26 @@ export default function MedicalRecordsManager({
                     </>
                   )}
 
-                  {activeRecord.prescribedMeds.length > 0 && (
-                    <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-xl space-y-2">
-                      <span className="text-[10px] font-mono text-emerald-600 block font-bold uppercase">Prescribed Pharmacy Medications</span>
-                      <div className="space-y-2">
-                        {activeRecord.prescribedMeds.map((med, i) => (
-                          <div key={i} className="flex justify-between items-center text-xs">
-                            <span className="font-extrabold text-slate-800">{med.name}</span>
-                            <span className="font-semibold text-slate-600 font-mono italic">{med.dosage} (Qty: {med.quantity})</span>
+                  <div className="p-4 bg-emerald-50/40 border border-emerald-100 rounded-xl space-y-2">
+                    <span className="text-[10px] font-mono text-emerald-600 block font-bold uppercase">Prescribed Pharmacy Medications</span>
+                    <div className="space-y-2">
+                      {/* Shield nested clinical data layouts from missing property properties */}
+                      {((activeRecord.prescribedMeds || [])).length > 0 ? (
+                        (activeRecord.prescribedMeds || []).map((med, idx) => (
+                          <div key={idx} className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-xs flex justify-between items-center">
+                            <div>
+                              <span className="font-bold text-slate-700">{med.name || 'Unassigned'}</span>
+                              <span className="mx-2 text-slate-400">|</span>
+                              <span className="text-slate-600">Dosage: {med.dosage || 'N/A'}</span>
+                            </div>
+                            <span className="text-slate-500 font-mono italic">Qty: {formatClinicalDosageValue(med.quantity)}</span>
                           </div>
-                        ))}
-                      </div>
+                        ))
+                      ) : (
+                        <span className="text-slate-400 italic text-xs">No active prescriptions listed.</span>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               )}
 
@@ -639,7 +664,7 @@ export default function MedicalRecordsManager({
                   )}
 
                   <div className="divide-y divide-slate-100">
-                    {activeRecord.vaccinations.map((vac, idx) => (
+                    {(activeRecord.vaccinations || []).map((vac, idx) => (
                       <div key={idx} className="py-2.5 flex justify-between items-center group">
                         <div className="space-y-0.5">
                           <span className="font-bold text-slate-800 text-sm">{vac.name}</span>
@@ -849,7 +874,7 @@ export default function MedicalRecordsManager({
                     </div>
                   )}
 
-                  {activeRecord.labResults.map((lab, idx) => (
+                  {(activeRecord.labResults || []).map((lab, idx) => (
                     <div 
                       key={lab.id} 
                       className={`p-4 border rounded-xl space-y-2 group relative ${
@@ -1332,7 +1357,7 @@ export default function MedicalRecordsManager({
               <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Species:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.petType}</span></div>
               <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Breed:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.breed}</span></div>
               <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Age:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.age}</span></div>
-              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Weight:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.weight} kg</span></div>
+              <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Weight:</span> <span className="text-sm font-semibold text-gray-900">{formatClinicalDosageValue(activeRecord.weight)} kg</span></div>
               <div><span className="text-xs font-bold text-gray-500 uppercase mr-2">Owner:</span> <span className="text-sm font-semibold text-gray-900">{activeRecord.ownerName} ({activeRecord.ownerPhone})</span></div>
             </div>
           </div>
@@ -1367,7 +1392,7 @@ export default function MedicalRecordsManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {activeRecord.vaccinations.map((vac, i) => (
+                  {(activeRecord.vaccinations || []).map((vac, i) => (
                     <tr key={i}>
                       <td className="border border-gray-200 p-2 text-sm font-semibold text-gray-900">{vac.name}</td>
                       <td className="border border-gray-200 p-2 text-sm text-gray-800">{vac.dateAdministered}</td>
@@ -1391,7 +1416,7 @@ export default function MedicalRecordsManager({
                   </tr>
                 </thead>
                 <tbody>
-                  {activeRecord.labResults.map((lab, i) => (
+                  {(activeRecord.labResults || []).map((lab, i) => (
                     <tr key={i}>
                       <td className="border border-gray-200 p-2 text-sm font-semibold text-gray-900">{lab.testName}</td>
                       <td className="border border-gray-200 p-2 text-sm text-gray-800">{lab.value || 'Pending'} {lab.referenceRange ? `(${lab.referenceRange})` : ''}</td>

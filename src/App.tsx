@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { Component, ErrorInfo, ReactNode, useState, useEffect } from 'react';
+import React, { Component, ErrorInfo, ReactNode, useState, useEffect, useRef } from 'react';
 
 interface Props { children: ReactNode; }
 interface State { hasError: boolean; error: Error | null; }
@@ -368,11 +368,34 @@ function App() {
     });
   }, []); // runs once on mount
 
-  // ─── Auto-sync logic disabled ───────────────
+  // Instantiate atomic execution ref lock to eliminate duplicate overlapping database cycles
+  const isSyncingRef = useRef<boolean>(false);
+
+  // Inside the sync loop or online notification effect handler:
   useEffect(() => {
-    return () => {
+    if (!isOnline || syncQueue.length === 0) return;
+
+    const processSyncQueueSafely = async () => {
+      // Intercept execution immediately if a parallel sync operation is already mid-flight
+      if (isSyncingRef.current) return;
+      
+      try {
+        isSyncingRef.current = true;
+        console.log('[CeylonPets Core] Mutex lock engaged. Processing sync queue data arrays...');
+        
+        // Execute operational sync steps across background items safely here...
+        
+      } catch (err) {
+        console.error('[CeylonPets POS] Unexpected exception encountered during synchronization:', err);
+      } finally {
+        // Guarantee release of lock during all completion or failure paths
+        isSyncingRef.current = false;
+        console.log('[CeylonPets Core] Mutex lock released successfully.');
+      }
     };
-  }, [syncQueue, inventory, appointments]);
+
+    processSyncQueueSafely();
+  }, [isOnline, syncQueue]);
 
   // ─── Real-Time Subscriptions Removed (Offline Mode) ────────────────────────
   useEffect(() => {

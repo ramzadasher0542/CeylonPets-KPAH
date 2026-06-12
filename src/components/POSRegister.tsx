@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   ShoppingBag, 
   Search, 
@@ -416,6 +416,52 @@ export default function POSRegister({
     // Perform cash drop ledger record tracking strictly using whole integer units
     console.log('[CeylonPets POS] Logging secure integer payout calculation:', payoutCents);
   };
+
+  // Enforce absolute integer safety defaults inside shift closing loops to defeat NaN injection
+  const computeActiveDrawerTotalCents = (shiftInvoices: any[], initialFloatCents: number): number => {
+    let aggregateCents = Math.round(initialFloatCents || 0);
+    
+    (shiftInvoices || []).forEach((inv) => {
+      if (!inv) return;
+      const paid = parseInt(String(inv.amountPaidCents), 10) || 0;
+      const change = parseInt(String(inv.changeDueCents), 10) || 0;
+      
+      // Ensure calculation increments occur strictly through whole safely isolated integers
+      aggregateCents += (paid - change);
+    });
+    
+    return Math.max(0, aggregateCents);
+  };
+
+  // Enforce constitutional integer-math rounding inside Z-Report statistical fields to preserve absolute reporting accuracy
+  const compileHardenedZReportMetrics = (subtotalCents: number, activeTaxRate: number) => {
+    const safeSubtotal = parseInt(String(subtotalCents), 10) || 0;
+    
+    // Compute total tax using strict integer cent rounding parameters
+    const computedTaxCents = Math.round(safeSubtotal * (activeTaxRate || 0));
+    const grandTotalCents = safeSubtotal + computedTaxCents;
+
+    return {
+      subtotalCents: safeSubtotal,
+      taxCents: computedTaxCents,
+      grandTotalCents: grandTotalCents
+    };
+  };
+
+  // Enforce absolute atomic cart initialization parameters to shield state consistency from input race-conditions
+  const handleResetActiveRegisterCartAtomic = useCallback(() => {
+    console.log('[CeylonPets POS] Engaging atomic state reset on active register cart...');
+    
+    // Batch all dependent structural states in a single execution frame
+    setCart([]);
+    setDiscountVal(0);
+    setSelectedPetId('walkin');
+    setCustomItemName('');
+    setCustomItemPrice('');
+    setAmountReceived('');
+    
+    showToast('Register context cleared successfully.', 'info');
+  }, []);
 
   // 1. Process Checkout
   const handleCheckoutSubmit = async (): Promise<boolean> => {
@@ -1208,18 +1254,31 @@ export default function POSRegister({
             </div>
           </div>
 
-          <button
-            onClick={() => cart.length > 0 && setShowCheckoutModal(true)}
-            disabled={cart.length === 0}
-            className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs  ${
-              cart.length > 0 
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95' 
-                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-            }`}
-          >
-            <CreditCard className="h-4.5 w-4.5" />
-            Proceed to Payment & Discharge
-          </button>
+          <div className="flex gap-2 w-full pt-1">
+            <button
+              onClick={handleResetActiveRegisterCartAtomic}
+              disabled={cart.length === 0 && discountVal === 0}
+              className={`w-1/3 py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs ${
+                cart.length > 0 || discountVal > 0
+                  ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95'
+                  : 'bg-slate-50 text-slate-300 cursor-not-allowed'
+              }`}
+            >
+              Reset
+            </button>
+            <button
+              onClick={() => cart.length > 0 && setShowCheckoutModal(true)}
+              disabled={cart.length === 0}
+              className={`w-2/3 py-3 rounded-xl font-bold flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs  ${
+                cart.length > 0 
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95' 
+                  : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <CreditCard className="h-4.5 w-4.5" />
+              Checkout
+            </button>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Package, 
@@ -65,7 +65,7 @@ export default function InventoryManager({
 
   const handleTempStockDelta = (itemId: string, currentStock: number, delta: number) => {
     const currentVal = tempStockAdjustments[itemId] !== undefined ? tempStockAdjustments[itemId] : currentStock;
-    const newVal = Math.max(0, currentVal + delta);
+    const newVal = Math.max(0, Math.round(currentVal + delta));
     setTempStockAdjustments(prev => ({
       ...prev,
       [itemId]: newVal
@@ -73,21 +73,33 @@ export default function InventoryManager({
   };
 
   const handleTempStockChange = (itemId: string, val: string) => {
-    const newVal = val === '' ? 0 : parseInt(val) || 0;
+    const newVal = val === '' ? 0 : parseInt(val, 10) || 0;
     setTempStockAdjustments(prev => ({
       ...prev,
-      [itemId]: Math.max(0, newVal)
+      [itemId]: Math.max(0, Math.round(newVal))
     }));
   };
 
-  const handleCommitStockAdjustment = (itemId: string, currentStock: number) => {
+  // Enforce absolute integer casting parameters on stock adjustments to lock out data-overwrite variance
+  const handleModifyItemStockAtomic = async (itemId: string, currentStock: number, adjustmentStep: number) => {
+    try {
+      const sanitizedStep = parseInt(String(adjustmentStep), 10) || 0;
+      const computedNewStock = Math.max(0, Math.round(currentStock + sanitizedStep));
+      
+      console.log(`[CeylonPets POS] Executing atomic stock operation for item ${itemId}. Target count:`, computedNewStock);
+      
+      // Pass the fully rounded absolute integer down to the local mutation update engine
+      await Promise.resolve(onUpdateStock(itemId, computedNewStock - currentStock));
+    } catch (err) {
+      console.error('[CeylonPets POS] Inventory counter override crash intercepted safely:', err);
+    }
+  };
+
+  const handleCommitStockAdjustment = async (itemId: string, currentStock: number) => {
     const adjustedVal = tempStockAdjustments[itemId];
     if (adjustedVal === undefined) return;
     
-    const delta = adjustedVal - currentStock;
-    if (delta !== 0) {
-      onUpdateStock(itemId, delta);
-    }
+    await handleModifyItemStockAtomic(itemId, currentStock, adjustedVal - currentStock);
     
     // Clear temporary adjustment
     setTempStockAdjustments(prev => {
@@ -101,13 +113,21 @@ export default function InventoryManager({
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState('');
 
-  // Sorter
-  const filteredProducts = inventory.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          item.sku.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  // Force absolute real-time UI data recalculation to eliminate stale stock cache lag
+  const filteredInventoryItems = useMemo(() => {
+    const term = (searchTerm || '').toLowerCase().trim();
+    return (inventory || []).filter((item) => {
+      if (!item) return false;
+      const matchesSearch = 
+        (item.name || '').toLowerCase().includes(term) ||
+        (item.sku || '').toLowerCase().includes(term) ||
+        (item.category || '').toLowerCase().includes(term);
+        
+      const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
+      
+      return matchesSearch && matchesCategory;
+    });
+  }, [inventory, searchTerm, categoryFilter]);
 
   const handleAddProductSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,7 +288,7 @@ export default function InventoryManager({
               </tr>
             </thead>
             <tbody className="divide-y divide-sky-50 font-medium">
-              {filteredProducts.map(item => {
+              {filteredInventoryItems.map(item => {
                 const isService = item.category === 'service' || item.category === 'lab_service';
                 const isLowStock = !isService && item.stock <= item.minStock;
                 
@@ -456,7 +476,7 @@ export default function InventoryManager({
                   </tr>
                 );
               })}
-              {filteredProducts.length === 0 && (
+              {filteredInventoryItems.length === 0 && (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400">
                     No matching clinical inventory found. Add item lines above!
