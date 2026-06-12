@@ -207,6 +207,7 @@ export default function AppointmentsManager({
         ownerPhone: apt.ownerPhone,
         ownerEmail: apt.ownerEmail || 'not-provided@example.com',
         visitDate: apt.date,
+        // Ensure the clinician credential successfully transfers to the EHR system upon check-in
         attendingVet: apt.veterinarian,
         symptoms: '',
         diagnosis: '',
