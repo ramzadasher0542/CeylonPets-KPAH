@@ -562,22 +562,9 @@ export default function App() {
     setSyncProgress(10);
     setSyncStepDescription("Initializing Hard Reboot slate reset...");
     try {
-      // 1. Purge Supabase Dynamic tables
-      const dynamicTables = [
-        DB_TABLES.INVENTORY,
-        DB_TABLES.APPOINTMENTS,
-        DB_TABLES.RECORDS,
-        DB_TABLES.INVOICES,
-        DB_TABLES.NOTIFICATIONS,
-        DB_TABLES.ALERTS
-      ];
-
+      // 1. Cloud tables ignored (Offline architecture)
       setSyncProgress(30);
-      setSyncStepDescription("Purging cloud transactional databases...");
-      for (const table of dynamicTables) {
-        const { error } = await supabase.from(table).delete().neq('id', '_non_existent_');
-        if (error) console.error(`Error deleting table ${table}:`, error);
-      }
+      setSyncStepDescription("Purging cloud transactional databases skipped (Local Mode)...");
 
       // 2. Remove ALL local storage keys (dynamic data + settings/users)
       const localKeysToClear = [
