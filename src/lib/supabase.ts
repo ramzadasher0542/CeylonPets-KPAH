@@ -20,11 +20,6 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 let client;
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn(
-    '[CeylonPets] Missing Supabase environment variables.\n' +
-    'Running in isolated local development mode. Cloud sync disabled.'
-  );
-
   // Suppress expected console warnings from db.ts and auth.ts falling back to cache
   const originalWarn = console.warn;
   console.warn = (...args) => {
