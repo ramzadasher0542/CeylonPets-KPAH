@@ -417,6 +417,18 @@ export default function App() {
     const updatedApt = { ...aptDetails, status };
 
     if (status === 'completed' || status === 'cancelled') {
+      try {
+        const storedHistory = localStorage.getItem('ceylon_history_v2');
+        const historyArr = storedHistory ? JSON.parse(storedHistory) : [];
+        if (Array.isArray(historyArr)) {
+          // Remove if it somehow already exists to prevent duplicates, then unshift
+          const filteredArr = historyArr.filter((a: any) => a.id !== id);
+          filteredArr.unshift(updatedApt);
+          localStorage.setItem('ceylon_history_v2', JSON.stringify(filteredArr));
+        }
+      } catch (e) {
+        console.error('Failed to update appointment history', e);
+      }
       setAppointments(prev => prev.filter(apt => apt.id !== id));
     } else {
       setAppointments(prev => 

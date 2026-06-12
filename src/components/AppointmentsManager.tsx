@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { Appointment, AppointmentStatus, MedicalRecord, User as StaffUser } from '../types';
 import { showToast } from './Toast';
-import { fetchVeterinarians, fetchHistoricalAppointmentsArchive } from '../lib/db';
+import { fetchVeterinarians } from '../lib/db';
 import { formatDisplayDate, formatDisplayTime } from '../utils/time';
 
 interface AppointmentsProps {
@@ -61,21 +61,35 @@ export default function AppointmentsManager({
 
   // Fetch function for history
   const loadHistory = async (page: number, search: string) => {
-    if (!navigator.onLine) {
-      const offlineHistory = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
-      const filtered = historySearch ? offlineHistory.filter(a => a.petName.toLowerCase().includes(historySearch.toLowerCase()) || a.ownerName.toLowerCase().includes(historySearch.toLowerCase())) : offlineHistory;
-      const start = historyPage * historyLimit;
-      setHistoryAppointments(filtered.slice(start, start + historyLimit));
-      setHistoryCount(filtered.length);
-      setIsHistoryLoading(false);
-      return;
-    }
-    
     setIsHistoryLoading(true);
     try {
-      const result = await fetchHistoricalAppointmentsArchive(page, historyLimit, search);
-      setHistoryAppointments(result.appointments);
-      setHistoryCount(result.count);
+      const storedHistory = localStorage.getItem('ceylon_history_v2');
+      let allHistory: Appointment[] = storedHistory ? JSON.parse(storedHistory) : [];
+      if (!Array.isArray(allHistory)) allHistory = [];
+
+      // Add offline fallback in case there are completed/cancelled still in main appointments array
+      const offlineHistory = appointments.filter(a => a.status === 'completed' || a.status === 'cancelled');
+      
+      // Combine them and deduplicate by id
+      const combined = [...allHistory, ...offlineHistory];
+      const uniqueHistory = Array.from(new Map(combined.map(item => [item.id, item])).values());
+      
+      // Sort by date/time descending
+      uniqueHistory.sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      const filtered = search ? uniqueHistory.filter(a => 
+        a.petName.toLowerCase().includes(search.toLowerCase()) || 
+        a.ownerName.toLowerCase().includes(search.toLowerCase()) ||
+        a.date.includes(search)
+      ) : uniqueHistory;
+
+      const start = page * historyLimit;
+      setHistoryAppointments(filtered.slice(start, start + historyLimit));
+      setHistoryCount(filtered.length);
     } catch (err) {
       console.error('Failed to load historical appointments:', err);
     } finally {
