@@ -135,7 +135,7 @@ export default function App() {
   });
 
   // Offline / Connectivity States
-  const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [isOnline, setIsOnline] = useState(false);
   const [syncQueue, setSyncQueue] = useState<OfflineSyncItem[]>([]);
 
   // Sync Progress Indicators

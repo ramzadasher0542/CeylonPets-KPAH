@@ -55,6 +55,9 @@ function safeCache<T>(key: string, fallback: T[]): T[] {
 // ---------------------------------------------------------------
 
 export async function fetchInventory(): Promise<InventoryItem[]> {
+  if (!navigator.onLine) {
+     return safeCache('ceylon_inventory_v2', []);
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.INVENTORY)
@@ -149,6 +152,9 @@ export async function updateInventoryStockCAS(itemId: string, newStock: number, 
 // ---------------------------------------------------------------
 
 export async function fetchAppointments(): Promise<Appointment[]> {
+  if (!navigator.onLine) {
+     return safeCache('ceylon_appointments_v2', []);
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.APPOINTMENTS)
@@ -191,6 +197,9 @@ export async function fetchHistoricalAppointmentsArchive(
   limit = 50,
   search?: string
 ): Promise<{ appointments: Appointment[]; count: number }> {
+  if (!navigator.onLine) {
+     return { appointments: [], count: 0 };
+  }
   try {
     let query = supabase
       .from(DB_TABLES.APPOINTMENTS)
@@ -262,6 +271,9 @@ export async function upsertAppointment(apt: Appointment): Promise<void> {
 }
 
 export async function fetchVeterinarians(): Promise<User[]> {
+  if (!navigator.onLine) {
+     return [];
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.USERS)
@@ -291,6 +303,9 @@ export async function fetchVeterinarians(): Promise<User[]> {
 // ---------------------------------------------------------------
 
 export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
+  if (!navigator.onLine) {
+     return safeCache('ceylon_records_v2', []);
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.RECORDS)
@@ -356,6 +371,9 @@ export async function deleteMedicalRecord(id: string): Promise<void> {
 // ---------------------------------------------------------------
 
 export async function fetchInvoices(): Promise<Invoice[]> {
+  if (!navigator.onLine) {
+     return safeCache('ceylon_invoices_v2', []);
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.INVOICES)
@@ -438,6 +456,9 @@ export async function upsertInvoice(inv: Invoice): Promise<void> {
 // ---------------------------------------------------------------
 
 export async function fetchNotifications(): Promise<ClientNotification[]> {
+  if (!navigator.onLine) {
+     return safeCache('ceylon_notifications_v2', []);
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.NOTIFICATIONS)
@@ -487,6 +508,9 @@ export async function upsertNotification(notif: ClientNotification): Promise<voi
 // ---------------------------------------------------------------
 
 export async function fetchAlerts(): Promise<SystemAlert[]> {
+  if (!navigator.onLine) {
+     return safeCache('ceylon_alerts_v2', []);
+  }
   try {
     const { data, error } = await supabase
       .from(DB_TABLES.ALERTS)
@@ -546,6 +570,12 @@ export interface ShiftMetrics {
 
 
 export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
+  if (!navigator.onLine) {
+    return {
+      gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
+      category_breakdown: [{ category: 'service', total: 0 }, { category: 'retail', total: 0 }]
+    } as ShiftMetrics;
+  }
   if (typeof supabase.rpc !== 'function') {
     return {
       gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
@@ -596,6 +626,9 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
 }
 
 export async function fetchLowStockCount(): Promise<number> {
+  if (!navigator.onLine) {
+    return 0;
+  }
   if (typeof supabase.rpc !== 'function') {
     return 0;
   }
@@ -608,6 +641,9 @@ export async function fetchLowStockCount(): Promise<number> {
 }
 
 export async function fetchActiveShiftId(): Promise<string | null> {
+  if (!navigator.onLine) {
+    return 'local-offline-shift';
+  }
   if (typeof supabase?.rpc !== 'function') {
     return 'local-offline-shift';
   }
