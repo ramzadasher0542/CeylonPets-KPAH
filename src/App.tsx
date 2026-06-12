@@ -1233,14 +1233,46 @@ export default function App() {
                     onForceCloudSync={handleForceCloudSync}
                     onRefreshUsers={hydrateUsers}
                     onAddUser={(user) => {
-                      const { pin, ...safeUser } = user;
-                      if (pin) {
-                        setPinCache(prev => ({ ...prev, [user.username]: pin }));
+                      try {
+                        const saved = localStorage.getItem('ceylon_users_v3');
+                        const baseUsers = saved ? JSON.parse(saved) : [];
+                        const arr = Array.isArray(baseUsers) ? baseUsers : [];
+                        
+                        const idx = arr.findIndex((u: any) => u.username === user.username);
+                        if (idx >= 0) arr[idx] = user;
+                        else arr.push(user);
+                        
+                        localStorage.setItem('ceylon_users_v3', JSON.stringify(arr));
+                        
+                        const { pin, ...safeUser } = user;
+                        if (pin) {
+                          setPinCache(prev => ({ ...prev, [user.username]: pin }));
+                        }
+                        setUsers(prev => {
+                          const existingIdx = prev.findIndex(u => u.username === user.username);
+                          if (existingIdx >= 0) {
+                            const newArr = [...prev];
+                            newArr[existingIdx] = safeUser;
+                            return newArr;
+                          }
+                          return [...prev, safeUser];
+                        });
+                        showToast(`User ${safeUser.name} added successfully.`);
+                      } catch (e) {
+                        console.error('Failed to save user', e);
                       }
-                      setUsers(prev => [...prev, safeUser]);
-                      showToast(`User ${safeUser.name} added successfully.`);
                     }}
                     onRemoveUser={(id) => {
+                      try {
+                        const saved = localStorage.getItem('ceylon_users_v3');
+                        if (saved) {
+                          let arr = JSON.parse(saved);
+                          if (Array.isArray(arr)) {
+                            arr = arr.filter((u: any) => u.id !== id);
+                            localStorage.setItem('ceylon_users_v3', JSON.stringify(arr));
+                          }
+                        }
+                      } catch(e) {}
                       setUsers(prev => prev.filter(u => u.id !== id));
                       showToast('User removed.');
                     }}

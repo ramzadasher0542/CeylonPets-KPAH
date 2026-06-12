@@ -456,10 +456,8 @@ export default function SystemSettings({
         avatarColor: roleColors[newStaffRole as keyof typeof roleColors] || roleColors['cashier']
       };
 
-      await upsertStaffUser(newUserObj, currentUser);
-      if (onRefreshUsers) await onRefreshUsers();
+      onAddUser(newUserObj);
       
-      showToast(`Staff member ${newStaffName} added successfully.`, 'success');
       setBackupLogs(prev => [...prev, `[USER LEVEL AUTH]: Added system user ${newStaffUsername} with authorization: ${newStaffRole}`]);
       setNewStaffName('');
       setNewStaffUsername('');
