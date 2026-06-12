@@ -283,33 +283,57 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('ceylon_inventory_v2', JSON.stringify(inventory));
-    inventory.forEach(item => upsertInventoryItem(item).catch(() => {}));
-  }, [inventory]);
+    if (isOnline) {
+      inventory.forEach(item => upsertInventoryItem(item).catch(err => console.error('Sync failed', err)));
+    } else {
+      // Data is already in local storage; queuing happens via handler functions
+    }
+  }, [inventory, isOnline]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_appointments_v2', JSON.stringify(appointments));
-    appointments.forEach(apt => upsertAppointment(apt).catch(() => {}));
-  }, [appointments]);
+    if (isOnline) {
+      appointments.forEach(apt => upsertAppointment(apt).catch(err => console.error('Sync failed', err)));
+    } else {
+      // Data is already in local storage; queuing happens via handler functions
+    }
+  }, [appointments, isOnline]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_records_v2', JSON.stringify(records));
-    records.forEach(rec => upsertMedicalRecord(rec).catch(() => {}));
-  }, [records]);
+    if (isOnline) {
+      records.forEach(rec => upsertMedicalRecord(rec).catch(err => console.error('Sync failed', err)));
+    } else {
+      // Data is already in local storage; queuing happens via handler functions
+    }
+  }, [records, isOnline]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_notifications_v2', JSON.stringify(notifications));
-    notifications.forEach(n => upsertNotification(n).catch(() => {}));
-  }, [notifications]);
+    if (isOnline) {
+      notifications.forEach(n => upsertNotification(n).catch(err => console.error('Sync failed', err)));
+    } else {
+      // Data is already in local storage; queuing happens via handler functions
+    }
+  }, [notifications, isOnline]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_alerts_v2', JSON.stringify(alerts));
-    alerts.forEach(a => upsertAlert(a).catch(() => {}));
-  }, [alerts]);
+    if (isOnline) {
+      alerts.forEach(a => upsertAlert(a).catch(err => console.error('Sync failed', err)));
+    } else {
+      // Data is already in local storage; queuing happens via handler functions
+    }
+  }, [alerts, isOnline]);
 
   useEffect(() => {
     localStorage.setItem('ceylon_invoices_v2', JSON.stringify(invoices));
-    invoices.forEach(inv => upsertInvoice(inv).catch(() => {}));
-  }, [invoices]);
+    if (isOnline) {
+      invoices.forEach(inv => upsertInvoice(inv).catch(err => console.error('Sync failed', err)));
+    } else {
+      // Data is already in local storage; queuing happens via handler functions
+    }
+  }, [invoices, isOnline]);
 
 
   // User state sync removed for security (forces login on refresh)
@@ -848,8 +872,18 @@ export default function App() {
       } catch (err: any) {
         if (err.message === 'CAS_MISMATCH') {
           fetchInventory().then(items => setInventory(items));
+          throw err;
+        } else {
+          console.error('[CeylonPets] Background mutations failure:', err);
+          const syncItem: OfflineSyncItem = {
+            id: `sync-${Date.now()}-${itemId}`,
+            action: 'update_stock',
+            collection: 'inventory',
+            payload: { itemId, qtyDelta },
+            timestamp: new Date().toISOString()
+          };
+          pushToOfflineQueue(syncItem);
         }
-        throw err;
       }
     }
 
@@ -996,7 +1030,17 @@ export default function App() {
         };
         pushToOfflineQueue(syncItemApt);
       });
-      upsertNotification(emailNotif).catch(console.warn);
+      upsertNotification(emailNotif).catch(err => {
+        console.error('[CeylonPets] Background mutations failure:', err);
+        const syncItemNotif: OfflineSyncItem = {
+          id: `sync-notif-${Date.now()}`,
+          action: 'create_notification',
+          collection: 'notifications',
+          payload: emailNotif,
+          timestamp: new Date().toISOString()
+        };
+        pushToOfflineQueue(syncItemNotif);
+      });
     }
   };
 
