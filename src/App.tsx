@@ -1644,7 +1644,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative antialiased leading-none text-xs text-slate-800">
+    <div className="h-screen max-h-screen overflow-hidden bg-slate-50 flex flex-col font-sans relative antialiased leading-none text-xs text-slate-800">
       
       {/* 1. Secure Role-Based PIN Login / Welcome Wall */}
       {!currentUser ? (
@@ -1873,7 +1873,7 @@ export default function App() {
           </header>
 
           {/* Core App Body Container */}
-          <main className="flex-1 w-full max-w-[1920px] mx-auto px-4 md:px-8 py-4 sm:py-6 space-y-6">
+          <main className="flex-1 overflow-y-auto custom-scrollbar w-full max-w-[1920px] mx-auto px-4 md:px-8 py-4 sm:py-6 space-y-6">
             
             {/* Primary Navigation Hub (Staff Navigation Tabs) *) */}
             {currentUser?.role === 'dummy_admin' ? (

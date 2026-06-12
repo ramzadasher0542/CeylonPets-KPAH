@@ -304,13 +304,17 @@ export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
     }
 
     // Full record is stored in the `data` JSONB column
-    const records: MedicalRecord[] = data.map((row: any) => {
-      const rec = row.data as MedicalRecord;
-      if (row.attending_vet && !rec.attendingVet) {
-        rec.attendingVet = row.attending_vet;
-      }
-      return rec;
-    });
+    const records: MedicalRecord[] = data
+      .map((row: any) => {
+        if (!row.data) return null;
+        const rec = { ...row.data };
+        rec.id = row.id;
+        if (row.attending_vet && !rec.attendingVet) {
+          rec.attendingVet = row.attending_vet;
+        }
+        return rec as MedicalRecord;
+      })
+      .filter((rec): rec is MedicalRecord => rec !== null && !!rec.id);
 
     localStorage.setItem('ceylon_records_v2', JSON.stringify(records));
     return records;
@@ -365,17 +369,21 @@ export async function fetchInvoices(): Promise<Invoice[]> {
       return [];
     }
 
-    const invoices: Invoice[] = data.map((row: any) => {
-      const inv = row.data as any;
-      if (inv.sales_total === undefined) {
-        inv.sales_total = inv.total ?? row.sales_total ?? 0;
-        delete inv.total;
-      }
-      if (row.status && row.status !== inv.paymentStatus) {
-        inv.paymentStatus = row.status as any;
-      }
-      return inv as Invoice;
-    });
+    const invoices: Invoice[] = data
+      .map((row: any) => {
+        if (!row.data) return null;
+        const inv = { ...row.data };
+        inv.id = row.id;
+        if (inv.sales_total === undefined) {
+          inv.sales_total = inv.total ?? row.sales_total ?? 0;
+          delete inv.total;
+        }
+        if (row.status && row.status !== inv.paymentStatus) {
+          inv.paymentStatus = row.status as any;
+        }
+        return inv as Invoice;
+      })
+      .filter((inv): inv is Invoice => inv !== null && !!inv.id);
 
     localStorage.setItem('ceylon_invoices_v2', JSON.stringify(invoices));
     return invoices;
@@ -442,7 +450,16 @@ export async function fetchNotifications(): Promise<ClientNotification[]> {
       return [];
     }
 
-    const notifs: ClientNotification[] = data.map((row: any) => row.data as ClientNotification);
+    const notifs: ClientNotification[] = data
+      .map((row: any) => {
+        if (!row.data) return null;
+        return {
+          ...row.data,
+          id: row.id
+        } as ClientNotification;
+      })
+      .filter((n): n is ClientNotification => n !== null && !!n.id && !!n.type);
+
     localStorage.setItem('ceylon_notifications_v2', JSON.stringify(notifs));
     return notifs;
 
@@ -453,6 +470,10 @@ export async function fetchNotifications(): Promise<ClientNotification[]> {
 }
 
 export async function upsertNotification(notif: ClientNotification): Promise<void> {
+  if (!notif || !notif.id) {
+    console.warn('[CeylonPets] Rejected upsert for invalid/missing notification ID:', notif);
+    return;
+  }
   try {
     await supabaseUpsert(DB_TABLES.NOTIFICATIONS, { id: notif.id, data: notif });
   } catch (err) {
@@ -478,7 +499,16 @@ export async function fetchAlerts(): Promise<SystemAlert[]> {
       return [];
     }
 
-    const alerts: SystemAlert[] = data.map((row: any) => row.data as SystemAlert);
+    const alerts: SystemAlert[] = data
+      .map((row: any) => {
+        if (!row.data) return null;
+        return {
+          ...row.data,
+          id: row.id
+        } as SystemAlert;
+      })
+      .filter((a): a is SystemAlert => a !== null && !!a.id && !!a.severity);
+
     localStorage.setItem('ceylon_alerts_v2', JSON.stringify(alerts));
     return alerts;
 
@@ -489,6 +519,10 @@ export async function fetchAlerts(): Promise<SystemAlert[]> {
 }
 
 export async function upsertAlert(alert: SystemAlert): Promise<void> {
+  if (!alert || !alert.id) {
+    console.warn('[CeylonPets] Rejected upsert for invalid/missing alert ID:', alert);
+    return;
+  }
   try {
     await supabaseUpsert(DB_TABLES.ALERTS, { id: alert.id, data: alert });
   } catch (err) {

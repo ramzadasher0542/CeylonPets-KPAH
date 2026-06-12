@@ -18,22 +18,43 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
+let client;
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
+  console.warn(
     '[CeylonPets] Missing Supabase environment variables.\n' +
-    'Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env.local file.'
+    'Running in isolated local development mode. Cloud sync disabled.'
   );
+  // Provide a mock offline client
+  client = {
+    from: () => ({
+      select: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
+      insert: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
+      update: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
+      delete: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
+    }),
+    channel: () => ({
+      on: () => ({ subscribe: () => ({ unsubscribe: () => {} }) })
+    }),
+    storage: {
+      from: () => ({
+        upload: () => Promise.resolve({ data: null, error: { message: 'Offline mode' } }),
+        getPublicUrl: () => ({ data: { publicUrl: '' } })
+      })
+    }
+  } as any;
+} else {
+  client = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      }
+    }
+  });
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  global: {
-    headers: {
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    }
-  }
-});
+export const supabase = client;
 
 // ---------------------------------------------------------------
 // Database Table Name Constants
