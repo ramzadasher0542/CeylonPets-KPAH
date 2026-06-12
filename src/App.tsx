@@ -135,7 +135,7 @@ export default function App() {
   });
 
   // Offline / Connectivity States
-  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const [isOnline, setIsOnline] = useState<boolean>(false);
   const [syncQueue, setSyncQueue] = useState<OfflineSyncItem[]>([]);
 
   // Sync Progress Indicators
@@ -365,18 +365,19 @@ export default function App() {
       setIsOnline(false);
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    // HARD-LOCKED OFFLINE: Ignore real browser connectivity
+    // window.addEventListener('online', handleOnline);
+    // window.addEventListener('offline', handleOffline);
 
     // Align initial isOnline with the actual browser state on mount
     // (in case the app was opened while already offline)
-    if (!navigator.onLine) {
-      setIsOnline(false);
-    }
+    // if (!navigator.onLine) {
+    //   setIsOnline(false);
+    // }
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      // window.removeEventListener('online', handleOnline);
+      // window.removeEventListener('offline', handleOffline);
     };
   }, [syncQueue, inventory, appointments]); // re-registers when queue or state changes so closures stay fresh
 
