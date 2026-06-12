@@ -3,7 +3,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { Component, ErrorInfo, ReactNode, useState, useEffect } from 'react';
+
+interface Props { children: ReactNode; }
+interface State { hasError: boolean; error: Error | null; }
+
+export class ClinicErrorBoundary extends Component<Props, State> {
+  public state: State = { hasError: false, error: null };
+
+  public static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('[CeylonPets Core] Critical layout exception trapped by safety boundary:', error, errorInfo);
+  }
+
+  public render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-screen p-8 flex items-center justify-center bg-slate-50 text-xs">
+          <div className="max-w-md w-full bg-white border border-rose-200 p-6 rounded-2xl shadow-sm text-center space-y-4">
+            <div className="text-rose-600 text-lg font-black">🐾 Recovery Mode Intercepted</div>
+            <p className="text-slate-600 font-semibold leading-relaxed">
+              A view formatting discrepancy occurred inside a panel. The data state wrapper has been kept isolated and preserved safely to prevent data loss.
+            </p>
+            <button
+              onClick={() => { window.location.reload(); }}
+              className="w-full py-2 bg-indigo-600 text-white font-bold rounded-xl shadow-xs cursor-pointer"
+            >
+              Hot Re-sync Application View
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { db } from './lib/localDb';
 import { 
   HeartHandshake, 
@@ -61,7 +98,7 @@ import {
   fetchInvoices,     upsertInvoice,
   fetchNotifications, upsertNotification,
   fetchAlerts,       upsertAlert, deleteMedicalRecord,
-  fetchActiveShiftId
+  fetchActiveShiftId, reconstituteSystemState
 } from './lib/db';
 
 // Helper to hash a PIN synchronously using a custom salted polynomial hash
@@ -92,7 +129,7 @@ function safeGetLocalStorage<T>(key: string, defaultValue: T): T {
   }
 }
 
-export default function App() {
+function App() {
   // First Deployment Boot Reboot Utility
   useState(() => {
     try {
@@ -134,7 +171,27 @@ export default function App() {
 
   // Offline / Connectivity States
   const [isOnline, setIsOnline] = useState(false);
-  const [syncQueue, setSyncQueue] = useState<OfflineSyncItem[]>([]);
+  const [syncQueue, setSyncQueue] = useState<OfflineSyncItem[]>(() => {
+    try {
+      const rawQueue = localStorage.getItem('ceylon_sync_queue_v3');
+      if (rawQueue) {
+        const parsed = JSON.parse(rawQueue);
+        if (Array.isArray(parsed)) return parsed.filter(Boolean);
+      }
+    } catch (err) {
+      console.error('[CeylonPets POS] Exception parsing un-synced offline cache queue matrix:', err);
+    }
+    return [];
+  });
+
+  // Synchronously persist offline mutations matrix to local storage disk to prevent volatile data clearance
+  useEffect(() => {
+    try {
+      localStorage.setItem('ceylon_sync_queue_v3', JSON.stringify(syncQueue));
+    } catch (err) {
+      console.error('[CeylonPets POS] Critical exception writing non-volatile sync queue matrix:', err);
+    }
+  }, [syncQueue]);
 
   // Sync Progress Indicators
   const [isSyncing, setIsSyncing] = useState(false);
@@ -520,15 +577,45 @@ export default function App() {
     setNotifications(prev => prev.map(n => n.id === id ? updatedNotif : n));
   };
 
-  const handleRestoreSnapshot = (snapshot: any) => {
-    if (snapshot.config) setSystemConfig(snapshot.config);
-    if (snapshot.inventory) setInventory(snapshot.inventory);
-    if (snapshot.users) setUsers(snapshot.users);
-    if (snapshot.invoices) setInvoices(snapshot.invoices);
-    if (snapshot.appointments) setAppointments(snapshot.appointments);
-    if (snapshot.records) setRecords(snapshot.records);
-    if (snapshot.alerts) setAlerts(snapshot.alerts);
-    if (snapshot.notifications) setNotifications(snapshot.notifications);
+  const handleRestoreSnapshot = async (snapshotData: any): Promise<boolean> => {
+    try {
+      if (!snapshotData || typeof snapshotData !== 'object') {
+        showToast('Invalid backup snapshot structure encountered.', 'error');
+        return false;
+      }
+
+      console.log('[CeylonPets POS] Sanitizing snapshot entries for database initialization...');
+
+      // Dynamic sanitation to strip legacy alphabetic prefixes from backup entries safely
+      if (Array.isArray(snapshotData.inventory)) {
+        snapshotData.inventory = snapshotData.inventory.map((item: any) => {
+          if (item && item.id && String(item.id).includes('-')) {
+            item.id = String(item.id).split('-').pop();
+          }
+          return item;
+        });
+      }
+
+      if (Array.isArray(snapshotData.appointments)) {
+        snapshotData.appointments = snapshotData.appointments.map((apt: any) => {
+          if (apt && apt.id && String(apt.id).includes('-')) {
+            apt.id = String(apt.id).split('-').pop();
+          }
+          return apt;
+        });
+      }
+
+      // Proceed with core schema reconstitution safely
+      await reconstituteSystemState(snapshotData);
+      
+      // Force hot-reload of local hook parameters smoothly
+      window.location.reload();
+      return true;
+    } catch (err) {
+      console.error('[CeylonPets Core] Snapshot ingestion crash intercepted safely:', err);
+      showToast('Restoration failed: Contaminated structural blocks.', 'error');
+      return false;
+    }
   };
 
   const handleForceCloudSync = async () => {
@@ -1303,5 +1390,13 @@ export default function App() {
       )}
       <ToastContainer />
     </div>
+  );
+}
+
+export default function AppWrapper() {
+  return (
+    <ClinicErrorBoundary>
+      <App />
+    </ClinicErrorBoundary>
   );
 }

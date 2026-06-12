@@ -57,7 +57,19 @@ export default function DashboardAnalytics({
   const [zReportNotes, setZReportNotes] = useState('');
   const [isClosingShift, setIsClosingShift] = useState(false);
 
-  const { data: shiftMetrics, mutate: mutateMetrics } = useSWR('shiftMetrics', fetchShiftMetrics, { refreshInterval: 30000 });
+  // Hardened SWR initialization with immutable fallback safety bounds to survive loading frames
+  const { data: rawShiftMetrics, mutate: mutateShift } = useSWR('shift_metrics', () => fetchShiftMetrics());
+  
+  const shiftMetrics = rawShiftMetrics || {
+    activeShiftId: null,
+    isOpen: false,
+    startTime: '',
+    initialCashCents: 0,
+    totalSalesCents: 0,
+    totalCogsCents: 0,
+    netProfitCents: 0,
+    invoiceCount: 0
+  };
   const { data: lowStockCount } = useSWR('lowStockCount', fetchLowStockCount, { refreshInterval: 60000 });
   const { data: activeShiftId, mutate: mutateShiftId } = useSWR('activeShiftId', fetchActiveShiftId, { refreshInterval: 30000 });
 
@@ -69,7 +81,7 @@ export default function DashboardAnalytics({
     try {
       await openShift(currentUser?.name || 'Admin');
       mutateShiftId();
-      mutateMetrics();
+      mutateShift();
       showToast('Shift opened successfully!', 'success');
     } catch (err) {
       showToast('Error opening shift', 'error');
@@ -94,7 +106,7 @@ export default function DashboardAnalytics({
     try {
       await closeShift(activeShiftId, actual, expectedDrawerCash, zReportNotes);
       mutateShiftId();
-      mutateMetrics();
+      mutateShift();
       setIsZReportModalOpen(false);
       setActualDrawerCash('');
       setZReportNotes('');
