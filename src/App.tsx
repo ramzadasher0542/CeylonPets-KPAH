@@ -315,6 +315,18 @@ function App() {
   // Current Screen selection
   const [activeView, setActiveView] = useState<'dashboard' | 'pos' | 'appointments' | 'records' | 'inventory' | 'reminders' | 'portal' | 'settings'>('dashboard');
 
+  const [showGlobalDrawerStatus, setShowGlobalDrawerStatus] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalEsc = (e: KeyboardEvent) => {
+      if (showGlobalDrawerStatus && e.key === 'Escape') {
+        setShowGlobalDrawerStatus(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalEsc);
+    return () => window.removeEventListener('keydown', handleGlobalEsc);
+  }, [showGlobalDrawerStatus]);
+
   // ─── Sync state to localStorage (offline cache) ──
   useEffect(() => {
     localStorage.setItem('ceylon_system_config_v2', JSON.stringify(systemConfig));
@@ -1150,6 +1162,15 @@ function App() {
                   </button>
                 )}
 
+                {/* GLOBAL SIDEBAR NAV CONTROLLER ELEMENT ITEM */}
+                <button
+                  onClick={() => setShowGlobalDrawerStatus(true)}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl font-bold transition-all duration-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs border border-slate-200/60 shadow-2xs cursor-pointer mt-2"
+                >
+                  <span className="text-base">💵</span>
+                  <span className="truncate">Cash Drawer Status</span>
+                </button>
+
                 {isViewPermitted('appointments', currentUser) && (
                   <button
                     onClick={() => setActiveView('appointments')}
@@ -1412,6 +1433,39 @@ function App() {
         </>
       )}
       <ToastContainer />
+
+      {/* HARDENED APP-SHELL LEVEL INTERCEPT OVERLAY */}
+      {showGlobalDrawerStatus && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-xs text-xs animate-fade-in">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 relative space-y-4">
+            <button 
+              onClick={() => setShowGlobalDrawerStatus(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold p-1 transition-colors"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
+              <span className="text-xl">📊</span>
+              <div>
+                <h3 className="font-black text-slate-800 text-sm">Systemic Cash Drawer Metrics</h3>
+                <p className="text-slate-400 font-medium">Cross-Tab Synchronized Financial Logs</p>
+              </div>
+            </div>
+
+            <div className="p-4 bg-amber-50/60 border border-amber-200/70 rounded-xl text-amber-800 font-semibold leading-relaxed">
+              ⚠️ Terminal Alert: Direct drawer registries must be modified exclusively through the POS terminal module actions to retain integer validation checksum checks.
+            </div>
+
+            <div className="text-center pt-2">
+              <kbd className="px-2 py-1 bg-slate-100 border border-slate-300 text-slate-500 rounded-md font-mono text-[10px] shadow-2xs">
+                ESC
+              </kbd>
+              <span className="text-slate-400 font-medium ml-2">to escape lookup layer</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

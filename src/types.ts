@@ -112,6 +112,22 @@ export interface PosShift {
   notes?: string;
 }
 
+export interface Shift {
+  id: string;
+  openedBy: string;
+  startTime: string;
+  endTime?: string;
+  openingFloatCents: number;
+  cashCollectedCents: number;
+  cardCollectedCents: number;
+  bankTransferCollectedCents: number;
+  expectedCashCents?: number;
+  actualCashCents?: number;
+  discrepancyCents?: number;
+  notes?: string;
+  isOpen: boolean;
+}
+
 export interface Invoice {
   id: string;
   appointmentId?: string; // Opt association

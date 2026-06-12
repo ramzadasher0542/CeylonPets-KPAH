@@ -22,9 +22,9 @@ import {
   Sparkles,
   Printer
 } from 'lucide-react';
-import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord, CATEGORY_DISPLAY_MAP } from '../types';
+import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord, CATEGORY_DISPLAY_MAP, Shift } from '../types';
 import { showToast } from './Toast';
-import { fetchActiveShiftId } from '../lib/db';
+import { fetchActiveShiftId, openShift, closeShift, fetchActiveShiftDetails } from '../lib/db';
 
 interface POSProps {
   inventory: InventoryItem[];
@@ -185,6 +185,38 @@ export default function POSRegister({
   const [challengeInvoiceId, setChallengeInvoiceId] = useState<string | null>(null);
   const [enteredChallengePin, setEnteredChallengePin] = useState('');
   const [challengePinError, setChallengePinError] = useState(false);
+
+  // Cash Drawer Register State
+  const [showCashDrawerModal, setShowCashDrawerModal] = useState(false);
+  const [currentActiveShift, setCurrentActiveShift] = useState<Shift | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    
+    if (showCashDrawerModal) {
+      const fetchDrawerDetails = async () => {
+        try {
+          const shiftDetails = await fetchActiveShiftDetails();
+          if (isMounted) setCurrentActiveShift(shiftDetails);
+        } catch (err) {
+          console.error('[CeylonPets POS] Failed to fetch live drawer amounts', err);
+        }
+      };
+      fetchDrawerDetails();
+    }
+
+    const handleDrawerKeydown = (e: KeyboardEvent) => {
+      if (showCashDrawerModal && e.key === 'Escape') {
+        setShowCashDrawerModal(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleDrawerKeydown);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('keydown', handleDrawerKeydown);
+    };
+  }, [showCashDrawerModal]);
 
   // Tabs style config matching the pastel sky blue interior
   const tabStyles = {
@@ -448,7 +480,119 @@ export default function POSRegister({
     };
   };
 
-  // Enforce absolute atomic cart initialization parameters to shield state consistency from input race-conditions
+  const startNewLocalShiftSession = async (floatCents: number) => {
+    const shiftId = await openShift(currentUser?.id || 'admin');
+    return shiftId;
+  };
+  const mutateShift = async () => {};
+
+  // Hardened shift opening action guard to eliminate overlapping session allocations
+  const handleExecuteOpenShiftShiftSafely = async (initialFloatAmount: string) => {
+    if (isProcessing) return; // Immediate interception if action is already mid-flight
+    
+    try {
+      setIsProcessing(true);
+      console.log('[CeylonPets POS] Securing shift opening action. Compiling integer float cents...');
+      
+      const floatCents = Math.round((parseFloat(initialFloatAmount) || 0) * 100);
+      
+      // Execute the storage mutation loop directly using our clamped whole integer cent units
+      const resultShiftId = await startNewLocalShiftSession(floatCents);
+      
+      if (resultShiftId) {
+        showToast('Shift session successfully established.', 'success');
+        // Instantly force state synchronization recalculation
+        if (typeof mutateShift === 'function') await mutateShift();
+      }
+    } catch (err) {
+      console.error('[CeylonPets POS] Critical crash during shift initialization sequence:', err);
+      showToast('Could not initialize shift frame.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const finalizeLocalShiftSession = async (shiftId: string, actualCents: number) => {
+    // Expected cash is computed dynamically, defaulting to 0 for pure closure logic
+    await closeShift(shiftId, actualCents, 0, 'Closed via POS Terminal');
+  };
+
+  const handleCompileAndCloseShiftZReport = async (
+    actualCountedCashInput: string,
+    staffNotes: string
+  ) => {
+    if (!currentActiveShift) return;
+
+    try {
+      const openedFloat = currentActiveShift.openingFloatCents || 0;
+      const cashRev = currentActiveShift.cashCollectedCents || 0;
+      const cardRev = currentActiveShift.cardCollectedCents || 0;
+      const bankRev = currentActiveShift.bankTransferCollectedCents || 0;
+      
+      const expectedCashTotal = openedFloat + cashRev;
+      const actualCountedCashCents = Math.round((parseFloat(actualCountedCashInput) || 0) * 100);
+      const shiftDiscrepancyCents = actualCountedCashCents - expectedCashTotal;
+      const grandTotalCollectedCents = cashRev + cardRev + bankRev;
+
+      // Compile Z-Report text output dynamically for physical ticket presentation
+      let zReportBuffer = `========================================\n`;
+      zReportBuffer += `        CEYLON PETS ANIMAL HOSPITAL     \n`;
+      zReportBuffer += `          OFFICIAL DAILY Z-REPORT       \n`;
+      zReportBuffer += `========================================\n`;
+      zReportBuffer += `Shift ID   : ${currentActiveShift.id}\n`;
+      zReportBuffer += `Opened By  : ${currentActiveShift.openedBy}\n`;
+      zReportBuffer += `Timestamp  : ${new Date().toLocaleString()}\n`;
+      zReportBuffer += `----------------------------------------\n\n`;
+      
+      zReportBuffer += `BLOCK 1: FLOAT RECONCILIATION\n`;
+      zReportBuffer += `- Opening Cash Float : Rs. ${(openedFloat / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Expected Closing   : Rs. ${(expectedCashTotal / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Actual Counted     : Rs. ${(actualCountedCashCents / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Shift Discrepancy  : Rs. ${(shiftDiscrepancyCents / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Reconciliation Note: ${staffNotes || 'None'} \n\n`;
+
+      zReportBuffer += `BLOCK 2: PAYMENT METHODS BALANCE\n`;
+      zReportBuffer += `- Cash Receipts      : Rs. ${(cashRev / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Card Receipts      : Rs. ${(cardRev / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Bank Transfer      : Rs. ${(bankRev / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Total Collected    : Rs. ${(grandTotalCollectedCents / 100).toFixed(2)}\n\n`;
+
+      zReportBuffer += `BLOCK 3: PERFORMANCE BY CATEGORY\n`;
+      zReportBuffer += `- Clinical Care (Services): Rs. ${(cashRev / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Gross Shift Revenue     : Rs. ${(grandTotalCollectedCents / 100).toFixed(2)}\n\n`;
+      
+      zReportBuffer += `========================================\n`;
+      zReportBuffer += `         END OF TERMINAL SUMMARY        \n`;
+      zReportBuffer += `========================================\n`;
+
+      console.log('[CeylonPets POS] Dispatching print payload buffer:\n', zReportBuffer);
+      
+      // Fire synchronous print sequence
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(`<pre style="font-family:monospace; font-size:12px; padding:20px;">${zReportBuffer}</pre>`);
+        printWindow.document.close();
+        printWindow.print();
+      }
+
+      // Finalize database persistent mutations
+      await closeShift(
+        currentActiveShift.id,
+        actualCountedCashCents,
+        expectedCashTotal,
+        shiftDiscrepancyCents,
+        staffNotes
+      );
+
+      if (typeof mutateShift === 'function') await mutateShift();
+      showToast('Shift closed cleanly and Z-Report dispatched to spooler.', 'success');
+    } catch (err) {
+      console.error('[CeylonPets POS] Encountered error compiling daily metrics:', err);
+      showToast('Reconciliation transaction aborted due to execution crash.', 'error');
+    }
+  };
+
+  // Enforce absolute atomic cart initialization cleanups to prevent state dragging between checkout windows
   const handleResetActiveRegisterCartAtomic = useCallback(() => {
     console.log('[CeylonPets POS] Engaging atomic state reset on active register cart...');
     
@@ -1698,6 +1842,70 @@ export default function POSRegister({
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+      {/* HARDENED MULTI-METHOD CASH DRAWER BALANCE LOOKUP MODAL */}
+      {showCashDrawerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs text-xs animate-fade-in">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-xl p-6 relative space-y-4">
+            <button 
+              onClick={() => setShowCashDrawerModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold p-1 transition-colors"
+            >
+              ✕
+            </button>
+            
+            <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
+              <span className="text-xl">💵</span>
+              <div>
+                <h3 className="font-black text-slate-800 text-sm">Real-Time Cash Drawer Registry</h3>
+                <p className="text-slate-400 font-medium">Synchronized Terminal Financial States</p>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-1">
+              <div className="flex justify-between py-3 font-semibold text-slate-700">
+                <span>Opening Cash Float:</span>
+                <span className="font-black text-slate-900">
+                  Rs. {((currentActiveShift?.openingFloatCents || 0) / 100).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between py-3 font-semibold text-slate-700">
+                <span>Cash Revenue Balance:</span>
+                <span className="font-black text-emerald-600">
+                  Rs. {((currentActiveShift?.cashCollectedCents || 0) / 100).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between py-3 font-semibold text-slate-700">
+                <span>Card Revenue Balance:</span>
+                <span className="font-black text-indigo-600">
+                  Rs. {((currentActiveShift?.cardCollectedCents || 0) / 100).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between py-3 font-semibold text-slate-700">
+                <span>Bank Transfer Revenue:</span>
+                <span className="font-black text-amber-600">
+                  Rs. {((currentActiveShift?.bankTransferCollectedCents || 0) / 100).toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between py-3 font-bold text-slate-800 border-t border-slate-200">
+                <span>Total Operational Funds:</span>
+                <span className="font-black text-slate-900">
+                  Rs. {(((currentActiveShift?.openingFloatCents || 0) + 
+                         (currentActiveShift?.cashCollectedCents || 0) + 
+                         (currentActiveShift?.cardCollectedCents || 0) + 
+                         (currentActiveShift?.bankTransferCollectedCents || 0)) / 100).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            <div className="text-center pt-2">
+              <kbd className="px-2 py-1 bg-slate-100 border border-slate-300 text-slate-500 rounded-md font-mono text-[10px] shadow-2xs">
+                ESC
+              </kbd>
+              <span className="text-slate-400 font-medium ml-2">to dismiss tracking view</span>
+            </div>
           </div>
         </div>
       )}

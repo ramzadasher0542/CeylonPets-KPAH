@@ -20,7 +20,7 @@ import {
   Landmark
 } from 'lucide-react';
 import { InventoryItem, Appointment, MedicalRecord, Invoice, CATEGORY_DISPLAY_MAP } from '../types';
-import { fetchShiftMetrics, fetchLowStockCount, fetchActiveShiftId, openShift, closeShift } from '../lib/db';
+import { fetchShiftMetrics, fetchLowStockCount, fetchActiveShiftId, openShift, closeShift, safeCache } from '../lib/db';
 import { showToast } from './Toast';
 
 interface DashboardProps {
@@ -840,6 +840,51 @@ export default function DashboardAnalytics({
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* HARDENED MULTI-METHOD CASH DRAWER HISTORY AUDIT BLOCK */}
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs p-6 mt-6 text-xs">
+        <div className="border-b border-slate-100 pb-3 mb-4">
+          <h3 className="font-black text-slate-800 text-sm">📅 Cash Drawer Session Audit Trails</h3>
+          <p className="text-slate-400 font-medium">Historical Multi-Method Shift Reconciliation Logs</p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                <th className="p-3">Shift ID</th>
+                <th className="p-3">Operator</th>
+                <th className="p-3">Opening Float</th>
+                <th className="p-3">Cash Balance</th>
+                <th className="p-3">Card Balance</th>
+                <th className="p-3">Bank Balance</th>
+                <th className="p-3">Discrepancy</th>
+                <th className="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
+              {(safeCache<any>('ceylon_shifts_v2', [])).slice().reverse().map((s: any) => (
+                <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                  <td className="p-3 font-mono text-slate-900 font-bold">{s.id}</td>
+                  <td className="p-3">{s.openedBy}</td>
+                  <td className="p-3">Rs. {((s.openingFloatCents || 0) / 100).toFixed(2)}</td>
+                  <td className="p-3">Rs. {((s.cashCollectedCents || 0) / 100).toFixed(2)}</td>
+                  <td className="p-3">Rs. {((s.cardCollectedCents || 0) / 100).toFixed(2)}</td>
+                  <td className="p-3">Rs. {((s.bankTransferCollectedCents || 0) / 100).toFixed(2)}</td>
+                  <td className={`p-3 font-bold ${s.discrepancyCents < 0 ? 'text-rose-600' : s.discrepancyCents > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                    Rs. {((s.discrepancyCents || 0) / 100).toFixed(2)}
+                  </td>
+                  <td className="p-3">
+                    <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${s.isOpen ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                      {s.isOpen ? 'ACTIVE' : 'CONCLUDED'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

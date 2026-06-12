@@ -6,13 +6,14 @@ import {
   Invoice,
   ClientNotification,
   User,
-  SystemAlert
+  SystemAlert,
+  Shift
 } from '../types';
 
 // Global in-memory cache fallback to prevent synchronous layout blocks during high-frequency writes
 const memoryDbCache: Record<string, string> = {};
 
-function safeCache<T>(key: string, fallback: T[]): T[] {
+export function safeCache<T>(key: string, fallback: T[]): T[] {
   try {
     const raw = memoryDbCache[key] || localStorage.getItem(key);
     if (raw) {
@@ -309,18 +310,59 @@ export async function fetchLowStockCount(): Promise<number> {
 }
 
 export async function fetchActiveShiftId(): Promise<string | null> {
-  // Returns the active integer timestamp shift ID as a string, or defaults cleanly to '0' for local unassigned offline operations
-  return localStorage.getItem('ceylon_active_shift_id') || '0';
+  return localStorage.getItem('ceylon_active_shift_id') || null;
 }
 
-export async function openShift(openedBy: string): Promise<string | null> {
-  // Enforce integer-based identity using pure timestamp milliseconds numbers represented as strings
-  const shiftId = String(Date.now());
-  localStorage.setItem('ceylon_active_shift_id', shiftId);
-  return shiftId;
+export async function fetchActiveShiftDetails(): Promise<Shift | null> {
+  const activeId = localStorage.getItem('ceylon_active_shift_id');
+  if (!activeId) return null;
+  const shifts = safeCache<Shift>('ceylon_shifts_v2', []);
+  return shifts.find(s => s && s.id === activeId && s.isOpen) || null;
 }
 
-export async function closeShift(shiftId: string, actualCash: number, expectedCash: number, notes: string): Promise<void> {
+export async function openShift(openedBy: string, openingFloatCents: number): Promise<string | null> {
+  const shifts = safeCache<Shift>('ceylon_shifts_v2', []);
+  const newShiftId = String(Date.now());
+  
+  const newShift: Shift = {
+    id: newShiftId,
+    openedBy: openedBy || 'Unknown',
+    startTime: new Date().toISOString(),
+    openingFloatCents: Math.round(openingFloatCents || 0),
+    cashCollectedCents: 0,
+    cardCollectedCents: 0,
+    bankTransferCollectedCents: 0,
+    isOpen: true
+  };
+
+  shifts.push(newShift);
+  safeWrite('ceylon_shifts_v2', shifts);
+  localStorage.setItem('ceylon_active_shift_id', newShiftId);
+  return newShiftId;
+}
+
+export async function closeShift(
+  shiftId: string, 
+  actualCashCents: number, 
+  expectedCashCents: number, 
+  discrepancyCents: number, 
+  notes: string
+): Promise<void> {
+  const shifts = safeCache<Shift>('ceylon_shifts_v2', []);
+  const idx = shifts.findIndex(s => s && s.id === shiftId);
+  
+  if (idx >= 0) {
+    shifts[idx] = {
+      ...shifts[idx],
+      endTime: new Date().toISOString(),
+      expectedCashCents: Math.round(expectedCashCents),
+      actualCashCents: Math.round(actualCashCents),
+      discrepancyCents: Math.round(discrepancyCents),
+      notes: notes || 'Shift closed',
+      isOpen: false
+    };
+    safeWrite('ceylon_shifts_v2', shifts);
+  }
   localStorage.removeItem('ceylon_active_shift_id');
 }
 
