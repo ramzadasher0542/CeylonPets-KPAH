@@ -24,6 +24,21 @@ if (!supabaseUrl || !supabaseAnonKey) {
     '[CeylonPets] Missing Supabase environment variables.\n' +
     'Running in isolated local development mode. Cloud sync disabled.'
   );
+
+  // Suppress expected console warnings from db.ts and auth.ts falling back to cache
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    if (
+      args.length >= 2 &&
+      typeof args[0] === 'string' &&
+      args[0].includes('[CeylonPets]') &&
+      args[1]?.message === 'Offline mode'
+    ) {
+      return;
+    }
+    originalWarn(...args);
+  };
+
   // Provide a robust mock offline client that absorbs chained calls
   const mockPromise = Promise.resolve({ data: null, error: { message: 'Offline mode' } });
   const createMockChain = () => {
