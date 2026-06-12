@@ -95,3 +95,16 @@ This document defines the definitive operational boundaries, engineering specifi
 - **Attestation State Isolation**: Legal signatures, consent confirmations, and authorization forms (such as the Hospital Admission Consent) must never be stored as simple, mutable boolean flags. Once a signature or checkbox authorization event is cleared and committed, the associated record block must lock into an immutable state.
 - **Cryptographic Audit Metadata**: Every electronic sign-off action must capture and bind a compound metadata payload directly to the transaction insert. This payload must explicitly lock down: the active system text version consented to, the exact system timestamp, and the unique user session ID of the logged-in administrator or clinician executing the clearance.
 - **Tamper Evidence**: In client-side layouts, signed or authorized consent records must render as static, read-only historical badges. The user interface must structurally block any option to edit, delete, or overwrite an existing legal signature entry to guarantee absolute compliance with veterinary medical-legal frameworks.
+
+## 15. Immutable Fail-Safe & Anti-Regression Protocols
+
+### 15.1 The Micro-Incremental Compilation Law
+- **STRICT PROHIBITION:** The engineering core is completely BANNED from refactoring or writing multiple UI presentation files within a single execution cycle. 
+- **MANDATORY ISOLATION:** You must execute features using a single-file development loop. When a task requires modifying an interface, you must update that single component, programmatically run a local compilation check (`npm run build` or lint verification), and confirm zero warnings exist before requesting permission to open a separate file.
+
+### 15.2 Async Context Safeguards & Rendering Gates
+- All custom context hooks and state providers (e.g., ClinicConfigProvider) must explicitly utilize hardcoded fallback primitives (e.g., currentClinicId: 1, clinicName: "CeylonPets Platform", currencySymbol: "Rs.") during asynchronous initialization phases. 
+- No downstream sub-component may evaluate properties dynamically without explicit conditional loading gates to completely eliminate 'Cannot read properties of undefined' runtime crashes on application boot.
+
+### 15.3 Database Data-Type Constraints
+- You must acknowledge that the core platform infrastructure utilizes auto-incrementing `INTEGER` keys for primary tenant mapping profiles (`system_config.id`). All cross-module relational keys (`clinic_id`) across invoices, appointments, and charts must be written, validated, and computed strictly as numeric integers, never as string-based UUIDs.
