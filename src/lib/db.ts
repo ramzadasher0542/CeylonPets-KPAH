@@ -546,6 +546,12 @@ export interface ShiftMetrics {
 
 
 export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
+  if (typeof supabase.rpc !== 'function') {
+    return {
+      gross_sales: 0, total_cogs: 0, cogs: 0, net_profit: 0,
+      category_breakdown: [{ category: 'service', total: 0 }, { category: 'retail', total: 0 }]
+    } as ShiftMetrics;
+  }
   const { data, error } = await supabase.rpc('get_current_shift_metrics');
   if (error) {
     console.error('[CeylonPets] Error fetching shift metrics:', error);
@@ -590,6 +596,9 @@ export async function fetchShiftMetrics(): Promise<ShiftMetrics | null> {
 }
 
 export async function fetchLowStockCount(): Promise<number> {
+  if (typeof supabase.rpc !== 'function') {
+    return 0;
+  }
   const { data, error } = await supabase.rpc('get_low_stock_count');
   if (error) {
     console.error('[CeylonPets] Error fetching low stock count:', error);
@@ -599,6 +608,9 @@ export async function fetchLowStockCount(): Promise<number> {
 }
 
 export async function fetchActiveShiftId(): Promise<string | null> {
+  if (typeof supabase.rpc !== 'function') {
+    return 'local-offline-shift';
+  }
   const { data, error } = await supabase.rpc('get_active_shift_id');
   if (error || !data) {
     return null;

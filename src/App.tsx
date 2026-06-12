@@ -331,14 +331,14 @@ export default function App() {
   useEffect(() => {
     hydrateUsers();
     fetchSystemConfig().then(cloudConfig => {
-      if (cloudConfig) setSystemConfig(cloudConfig);
-    });
-    fetchInventory().then(data => { setInventory(data); });
-    fetchAppointments().then(data => { setAppointments(data); });
-    fetchMedicalRecords().then(data => { setRecords(data); });
-    fetchInvoices().then(data => { setInvoices(data); });
-    fetchNotifications().then(data => { setNotifications(data); });
-    fetchAlerts().then(data => { setAlerts(data); });
+      if (cloudConfig && Object.keys(cloudConfig).length > 0) setSystemConfig(cloudConfig);
+    }).catch(() => {});
+    fetchInventory().then(data => { if (data && data.length > 0) setInventory(data); }).catch(() => {});
+    fetchAppointments().then(data => { if (data && data.length > 0) setAppointments(data); }).catch(() => {});
+    fetchMedicalRecords().then(data => { if (data && data.length > 0) setRecords(data); }).catch(() => {});
+    fetchInvoices().then(data => { if (data && data.length > 0) setInvoices(data); }).catch(() => {});
+    fetchNotifications().then(data => { if (data && data.length > 0) setNotifications(data); }).catch(() => {});
+    fetchAlerts().then(data => { if (data && data.length > 0) setAlerts(data); }).catch(() => {});
     
     // Hydrate offline sync queue from IndexedDB
     db.getItem('sync_queue').then((savedQueue: unknown) => {
