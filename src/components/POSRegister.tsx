@@ -1038,6 +1038,9 @@ export default function POSRegister({
                 <div className="flex items-center gap-2 flex-1">
                   <Search className="w-4 h-4 text-slate-400" />
                   <input 
+                    id="pos-pet-search"
+                    name="posPetSearch"
+                    aria-label="Search for pet or patient"
                     type="text" 
                     value={isPetDropdownOpen ? petSearchQuery : (selectedPetId === 'walkin' ? 'Walk-in Pet Shop Customer (No Clinical EHR link)' : (activeSelectedApt?.petName || activeSelectedRecord?.petName || ''))}
                     onChange={(e) => {

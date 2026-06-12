@@ -428,6 +428,9 @@ export default function AppointmentsManager({
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
               <input
+                id="history-search"
+                name="historySearch"
+                aria-label="Search historical appointments"
                 type="text"
                 placeholder="Search by name or date (YYYY-MM-DD)..."
                 value={historySearch}

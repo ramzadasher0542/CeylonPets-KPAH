@@ -837,12 +837,14 @@ export default function DashboardAnalytics({
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Actual Drawer Cash Count *</label>
+                <label htmlFor="actual-drawer-cash" className="block text-sm font-bold text-slate-700 mb-2">Actual Drawer Cash Count *</label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <span className="text-slate-500 font-bold">{currencySign}</span>
                   </div>
                   <input
+                    id="actual-drawer-cash"
+                    name="actualDrawerCash"
                     type="number"
                     value={actualDrawerCash}
                     onChange={(e) => setActualDrawerCash(e.target.value)}
@@ -854,10 +856,12 @@ export default function DashboardAnalytics({
               </div>
               
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">
+                <label htmlFor="z-report-notes" className="block text-sm font-bold text-slate-700 mb-2">
                   Reconciliation Notes {parseFloat(actualDrawerCash) !== expectedDrawerCash && <span className="text-rose-500">(Required due to discrepancy)</span>}
                 </label>
                 <textarea
+                  id="z-report-notes"
+                  name="zReportNotes"
                   value={zReportNotes}
                   onChange={(e) => setZReportNotes(e.target.value)}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all min-h-[100px]"

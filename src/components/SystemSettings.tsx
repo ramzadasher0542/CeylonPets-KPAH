@@ -1636,8 +1636,10 @@ export default function SystemSettings({
 
                     {showMasterPurgePrompt ? (
                       <div className="space-y-3 bg-white p-3 rounded-xl border border-rose-200 shadow-inner">
-                        <p className="text-[10px] font-bold text-slate-700">Enter Master Passcode to execute purge:</p>
+                        <label htmlFor="master-passcode-purge" className="text-[10px] font-bold text-slate-700 block">Enter Master Passcode to execute purge:</label>
                         <input
+                          id="master-passcode-purge"
+                          name="masterPasscodePurge"
                           type="password"
                           value={masterPasscode}
                           onChange={(e) => setMasterPasscode(e.target.value)}
