@@ -98,19 +98,15 @@ export default function AppointmentsManager({
   const [ownerEmail, setOwnerEmail] = useState('');
   const [date, setDate] = useState(formatDisplayDate(new Date()));
   const [time, setTime] = useState(formatDisplayTime(new Date()));
-  const [veterinarian, setVeterinarian] = useState('');
+  const [veterinarian, setVeterinarian] = useState('Dr. Bandara');
   const [reason, setReason] = useState('');
   const [formError, setFormError] = useState('');
-  const [vetList, setVetList] = useState<StaffUser[]>([]);
-
-  useEffect(() => {
-    fetchVeterinarians().then(data => {
-      setVetList(data);
-      if (data.length > 0 && !veterinarian) {
-        setVeterinarian(data[0].name);
-      }
-    });
-  }, []);
+  
+  // Phase 2: Front-Desk Intake Overhaul States
+  const [admissionType, setAdmissionType] = useState('OPD');
+  const [phone2, setPhone2] = useState('');
+  const [address, setAddress] = useState('');
+  const [sex, setSex] = useState('Male');
 
   // Apply scheduling filters
   const filteredAppointments = appointments.filter(apt => {
@@ -143,6 +139,10 @@ export default function AppointmentsManager({
       return;
     }
 
+    const metadata = JSON.stringify({ type: admissionType, phone2, address, sex });
+    const tokenBlock = `:::METADATA${metadata}:::`;
+    const packedReason = `${tokenBlock}\n${reason}`;
+
     const newApt: Appointment = {
       id: `apt-${Date.now()}`,
       petName,
@@ -154,7 +154,7 @@ export default function AppointmentsManager({
       date: formatDisplayDate(date),
       time: formatDisplayTime(time),
       veterinarian,
-      reason,
+      reason: packedReason,
       status: 'booked'
     };
 
@@ -169,6 +169,10 @@ export default function AppointmentsManager({
     setOwnerEmail('');
     setReason('');
     setFormError('');
+    setAdmissionType('OPD');
+    setPhone2('');
+    setAddress('');
+    setSex('Male');
     // Reset date/time to current so the next modal open is fresh
     setDate(formatDisplayDate(new Date()));
     setTime(formatDisplayTime(new Date()));
@@ -281,7 +285,18 @@ export default function AppointmentsManager({
 
           {/* Grid Appointments list */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredAppointments.map(apt => (
+            {filteredAppointments.map(apt => {
+              let displayReason = apt.reason;
+              let meta: any = null;
+              const metaMatch = apt.reason.match(/:::METADATA(.*?):::/);
+              if (metaMatch) {
+                try {
+                  meta = JSON.parse(metaMatch[1]);
+                  displayReason = apt.reason.replace(metaMatch[0], '').trim();
+                } catch (e) {}
+              }
+
+              return (
               <div 
                 key={apt.id} 
                 className="bg-white border rounded-2xl p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-sky-300 transition-all relative group"
@@ -298,17 +313,29 @@ export default function AppointmentsManager({
                       <div>
                         <h5 className="text-sm font-bold text-slate-800 leading-snug flex items-center gap-1">
                           {apt.petName}
+                          {meta?.sex && <span className="ml-1 text-[9px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">{meta.sex}</span>}
                         </h5>
-                        <p className="text-xs text-slate-400 font-medium">{apt.ownerName}</p>
+                        <p className="text-xs text-slate-400 font-medium">{apt.ownerName} {meta?.phone2 && <span className="text-[10px] ml-1">/ {meta.phone2}</span>}</p>
+                        {meta?.address && <p className="text-[10px] text-slate-400 truncate max-w-[150px]" title={meta.address}>{meta.address}</p>}
                       </div>
                     </div>
-                    {getStatusBadge(apt.status)}
+                    <div className="flex flex-col items-end gap-1">
+                      {getStatusBadge(apt.status)}
+                      {meta?.type && (
+                        <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded-md ${
+                          meta.type === 'OPD' ? 'bg-indigo-50 text-indigo-600' : 
+                          meta.type === 'Hospital Admission' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
+                        }`}>
+                          {meta.type}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Reason card */}
                   <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl mt-3 text-xs">
                     <span className="text-[9px] font-mono text-slate-400 block uppercase font-bold tracking-wider">Appointment Complaint</span>
-                    <p className="text-slate-700 font-medium leading-relaxed mt-0.5">{apt.reason}</p>
+                    <p className="text-slate-700 font-medium leading-relaxed mt-0.5 whitespace-pre-wrap">{displayReason}</p>
                   </div>
                 </div>
 
@@ -366,7 +393,8 @@ export default function AppointmentsManager({
                   )}
                 </div>
               </div>
-            ))}
+            );
+          })}
             {filteredAppointments.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center h-48 bg-slate-50 border border-slate-100 rounded-3xl p-12 text-center text-slate-500 text-xs">
                 <Calendar className="h-10 w-10 text-slate-300 opacity-50 mb-3" />
@@ -422,7 +450,17 @@ export default function AppointmentsManager({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {historyAppointments.map((apt) => (
+                  {historyAppointments.map((apt) => {
+                    let displayReason = apt.reason;
+                    let meta: any = null;
+                    const metaMatch = apt.reason.match(/:::METADATA(.*?):::/);
+                    if (metaMatch) {
+                      try {
+                        meta = JSON.parse(metaMatch[1]);
+                        displayReason = apt.reason.replace(metaMatch[0], '').trim();
+                      } catch (e) {}
+                    }
+                    return (
                     <tr key={apt.id} className="hover:bg-slate-50/50 transition-colors group">
                       <td className="py-3.5 px-4">
                         <div className="font-bold text-slate-800 flex items-center gap-1.5">
@@ -431,15 +469,18 @@ export default function AppointmentsManager({
                             {apt.petType}
                           </span>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-medium">{apt.breed || 'Mixed breed'}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{apt.breed || 'Mixed breed'} {meta?.sex && `(${meta.sex})`}</div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-700">{apt.ownerName}</div>
-                        <div className="text-[10px] text-slate-400 font-medium">{apt.ownerPhone}</div>
+                        <div className="font-semibold text-slate-700 flex items-center gap-1">
+                          {apt.ownerName}
+                          {meta?.type && <span className="px-1 py-0.5 bg-slate-200 text-slate-600 rounded text-[8px] uppercase">{meta.type}</span>}
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">{apt.ownerPhone} {meta?.phone2 && `/ ${meta.phone2}`}</div>
                       </td>
                       <td className="py-3.5 px-4 max-w-xs">
-                        <div className="text-slate-700 font-medium truncate" title={apt.reason}>
-                          {apt.reason}
+                        <div className="text-slate-700 font-medium truncate" title={displayReason}>
+                          {displayReason}
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 font-semibold">{apt.veterinarian || 'N/A'}</td>
@@ -451,7 +492,8 @@ export default function AppointmentsManager({
                         {getStatusBadge(apt.status)}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}
@@ -490,7 +532,7 @@ export default function AppointmentsManager({
       {/* Add Appointment Modal Overlay */}
       {showAddModal && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-2xl w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-xl w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
             <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
@@ -525,6 +567,20 @@ export default function AppointmentsManager({
                 )}
                 <div className="grid grid-cols-3 gap-2.5 text-[11px]">
                   
+                  {/* Admission Type */}
+                  <div className="space-y-0.5 col-span-3 pb-2 border-b border-slate-100 mb-2">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="admission-type">Admission Type</label>
+                    <select name="admissionType" id="admission-type"
+                      value={admissionType}
+                      onChange={(e) => setAdmissionType(e.target.value)}
+                      className="w-full md:w-1/3 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    >
+                      <option value="OPD">OPD</option>
+                      <option value="Hospital Admission">Hospital Admission</option>
+                      <option value="Vaccination">Vaccination</option>
+                    </select>
+                  </div>
+
                   {/* Pet info */}
                   <div className="space-y-0.5 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-name">Patient Name *</label>
@@ -566,7 +622,21 @@ export default function AppointmentsManager({
                     />
                   </div>
 
+                  <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-sex">Patient Sex</label>
+                    <select name="patientSex" id="patient-sex"
+                      value={sex}
+                      onChange={(e) => setSex(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    >
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+
                   {/* Owner info */}
+                  <div className="space-y-0.5 col-span-3 border-t border-slate-100 pt-3 mt-1" />
+                  
                   <div className="space-y-0.5 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-name">Owner Name *</label>
                     <input name="ownerName" id="owner-name"
@@ -582,18 +652,48 @@ export default function AppointmentsManager({
 
                   <div className="space-y-0.5 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone">Owner Phone *</label>
-                    <input name="ownerPhone" id="owner-phone"
-                      type="text"
-                      required
-                      maxLength={25}
-                      placeholder="+1 (555) 781-4200"
-                      value={ownerPhone}
-                      onChange={(e) => setOwnerPhone(e.target.value)}
-                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono"
-                    />
+                    <div className="flex relative items-center">
+                      <span className="absolute left-2 font-mono font-bold text-slate-400 text-[11px]">+94</span>
+                      <input name="ownerPhone" id="owner-phone"
+                        type="text"
+                        required
+                        maxLength={15}
+                        placeholder="77 123 4567"
+                        value={ownerPhone}
+                        onChange={(e) => setOwnerPhone(e.target.value)}
+                        className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono"
+                      />
+                    </div>
                   </div>
 
                   <div className="space-y-0.5 col-span-1">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone2">Backup Phone</label>
+                    <div className="flex relative items-center">
+                      <span className="absolute left-2 font-mono font-bold text-slate-400 text-[11px]">+94</span>
+                      <input name="ownerPhone2" id="owner-phone2"
+                        type="text"
+                        maxLength={15}
+                        placeholder="71 987 6543"
+                        value={phone2}
+                        onChange={(e) => setPhone2(e.target.value)}
+                        className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-0.5 col-span-3">
+                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-address">Address</label>
+                    <input name="ownerAddress" id="owner-address"
+                      type="text"
+                      maxLength={200}
+                      placeholder="123 Peradeniya Rd"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
+                    />
+                  </div>
+
+                  <div className="space-y-0.5 col-span-3 hidden">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-email-address">Owner Email Address</label>
                     <input name="ownerEmailAddress" id="owner-email-address"
                       type="email"
@@ -606,6 +706,8 @@ export default function AppointmentsManager({
                   </div>
 
                   {/* Scheduling meta */}
+                  <div className="space-y-0.5 col-span-3 border-t border-slate-100 pt-3 mt-1" />
+                  
                   <div className="space-y-0.5 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="visit-date">Visit Date</label>
                     <input name="visitDate" id="visit-date"
@@ -633,13 +735,11 @@ export default function AppointmentsManager({
                       onChange={(e) => setVeterinarian(e.target.value)}
                       className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold"
                     >
-                      {vetList.length > 0 ? (
-                        vetList.map(vet => (
-                          <option key={vet.id} value={vet.name}>{vet.name}</option>
-                        ))
-                      ) : (
-                        <option value="">No vets available</option>
-                      )}
+                      <option value="Dr. Bandara">Dr. Bandara</option>
+                      <option value="Dr. Ismail">Dr. Ismail</option>
+                      <option value="Residential Doctor">Residential Doctor</option>
+                      <option value="OPD Doctor">OPD Doctor</option>
+                      <option value="Emergency Doctor">Emergency Doctor</option>
                     </select>
                   </div>
 
