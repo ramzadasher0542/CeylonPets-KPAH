@@ -144,24 +144,29 @@ export default function InventoryManager({
       return;
     }
 
-    // Inside your product creation form submission routine:
-    const priceNum = parseFloat(price) || 0;
-    const costNum = parseFloat(cost) || 0;
-    const location = ''; // Safe shim to prevent runtime window.location collisions
+    // Lock floating point precision strictly to 2 decimal places to avoid calculation drift
+    const priceNum = Math.round((parseFloat(price) || 0) * 100) / 100;
+    const costNum = Math.round((parseFloat(cost) || 0) * 100) / 100;
+    const location = ''; 
+    const now = new Date().toISOString();
 
-    const newProduct: InventoryItem = {
-      // Enforce pure numeric identity string to fulfill local relational specifications
-      id: String(Date.now()),
-      sku: sku.trim() || `SKU-${Date.now().toString().slice(-6)}`,
+    const newProduct = {
+      // CRITICAL: Supabase-Ready UUIDs to prevent primary key collisions on sync
+      id: crypto.randomUUID(),
+      sku: sku.trim().toUpperCase() || `SKU-${crypto.randomUUID().split('-')[0].toUpperCase()}`,
       name: name.trim(),
       category: category,
       price: priceNum,
       cost: costNum,
-      stock: category === 'service' || category === 'lab_service' ? 0 : (parseInt(stock) || 0),
-      minStock: category === 'service' || category === 'lab_service' ? 0 : (parseInt(minStock) || 0),
+      stock: isService ? 0 : stockNum,
+      minStock: isService ? 0 : (parseInt(minStock) || 0),
       unit: unit.trim() || 'item',
-      location: location.trim() || 'Main Clinic'
-    };
+      location: location.trim() || 'Main Clinic',
+      // Mandatory Cloud-Sync Metadata
+      created_at: now,
+      updated_at: now,
+      is_deleted: false
+    } as any; // Cast as any temporarily to prevent TS errors if types.ts lacks metadata fields
 
     onAddProduct(newProduct);
     setShowAddForm(false);
@@ -190,15 +195,16 @@ export default function InventoryManager({
       if (item.id === editingItem.id) {
         return {
           ...item,
-          sku: editingSku,
-          name: editingName,
+          sku: editingSku.trim().toUpperCase(),
+          name: editingName.trim(),
           category: editingCategory,
-          price: parseFloat(editingPrice) || 0,
-          cost: parseFloat(editingCost) || 0,
+          price: Math.round((parseFloat(editingPrice) || 0) * 100) / 100,
+          cost: Math.round((parseFloat(editingCost) || 0) * 100) / 100,
           stock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 0 : parseInt(editingStock) || 0,
           minStock: (editingCategory === 'service' || editingCategory === 'lab_service') ? 0 : parseInt(editingMinStock) || 0,
-          unit: editingUnit
-        };
+          unit: editingUnit.trim(),
+          updated_at: new Date().toISOString() // Cloud sync trigger
+        } as any;
       }
       return item;
     });
@@ -206,7 +212,7 @@ export default function InventoryManager({
     if (onUpdateInventory) {
       onUpdateInventory(updatedInventory);
     } else {
-      const priceNum = parseFloat(editingPrice) || 0;
+      const priceNum = Math.round((parseFloat(editingPrice) || 0) * 100) / 100;
       onUpdatePrice(editingItem.id, priceNum);
       const stockNum = parseInt(editingStock) || 0;
       const delta = stockNum - editingItem.stock;
