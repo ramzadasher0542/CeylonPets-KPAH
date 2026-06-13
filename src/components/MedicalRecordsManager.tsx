@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   FileText, 
   Search, 
@@ -1000,11 +1001,11 @@ export default function MedicalRecordsManager({
       </div>
 
       {/* New EHR Consultation Record Overlay */}
-      {showNewRecordForm && (
+      {showNewRecordForm && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-lg w-full p-6 text-xs shadow-xl animate-fade-in max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-lg w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
                 <h4 className="text-base font-extrabold text-slate-800 leading-none">Assemble New Patient Medical Chart</h4>
                 <p className="text-[11px] text-slate-400 mt-1">Populate baseline medical files for pet care tracking</p>
@@ -1017,7 +1018,8 @@ export default function MedicalRecordsManager({
               </button>
             </div>
 
-            <form onSubmit={handleCreateNewEHR} className="space-y-4">
+            <form onSubmit={handleCreateNewEHR} className="flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
               {formError && (
                 <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
                   {formError}
@@ -1183,7 +1185,8 @@ export default function MedicalRecordsManager({
                 </div>
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
+              </div>
+              <div className="shrink-0 flex gap-2 p-6 pt-4 justify-end border-t border-slate-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setShowNewRecordForm(false)}
@@ -1200,15 +1203,16 @@ export default function MedicalRecordsManager({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Edit EHR Consultation Record Overlay */}
-      {showEditRecordForm && activeRecord && (
+      {showEditRecordForm && activeRecord && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-lg w-full p-6 text-xs shadow-xl animate-fade-in max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-lg w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
                 <h4 className="text-base font-extrabold text-slate-800 leading-none">Edit Patient Medical Profile</h4>
                 <p className="text-[11px] text-slate-400 mt-1">Update patient demographics and owner information</p>
@@ -1221,7 +1225,8 @@ export default function MedicalRecordsManager({
               </button>
             </div>
 
-            <form onSubmit={handleSaveEditEHR} className="space-y-4">
+            <form onSubmit={handleSaveEditEHR} className="flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <div className="space-y-1">
@@ -1325,12 +1330,12 @@ export default function MedicalRecordsManager({
                   />
                 </div>
               </div>
-
-              <div className="flex gap-2 justify-end pt-4 mt-4 border-t border-slate-100">
+                          </div>
+              <div className="shrink-0 flex gap-2 p-6 pt-4 justify-end border-t border-slate-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setShowEditRecordForm(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold rounded-xl transition-all cursor-pointer"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-650 font-extrabold rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1343,7 +1348,8 @@ export default function MedicalRecordsManager({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Dedicated Print View Template */}

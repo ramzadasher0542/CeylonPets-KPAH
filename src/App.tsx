@@ -43,25 +43,23 @@ export class ClinicErrorBoundary extends React.Component<Props, State> {
 }
 import { db } from './lib/localDb';
 import { 
-  HeartHandshake, 
+  Calculator, 
   LayoutDashboard, 
-  Gamepad, 
   Calendar, 
-  FileHeart, 
-  FolderHeart, 
-  Warehouse, 
-  AlertTriangle, 
-  PhoneCall, 
+  PawPrint, 
   Users, 
-  LogOut, 
-  Activity, 
+  Syringe, 
+  Stethoscope, 
+  TestTube, 
+  BriefcaseMedical, 
+  Package, 
+  FileText, 
+  BarChart3, 
+  Settings,
+  LogOut,
   CloudLightning,
-  Sparkles,
-  Lock,
-  Smartphone,
-  CheckCircle2,
-  Bookmark,
-  Printer
+  Printer,
+  Lock
 } from 'lucide-react';
 
 import { 
@@ -311,7 +309,7 @@ function App() {
   const [currentUser, setCurrentUser] = useState<any>(null);
 
   // Current Screen selection
-  const [activeView, setActiveView] = useState<'dashboard' | 'pos' | 'appointments' | 'records' | 'inventory' | 'reminders' | 'portal' | 'settings'>('dashboard');
+  const [activeView, setActiveView] = useState<string>('pos');
 
 
   // ─── Sync state to localStorage (offline cache) ──
@@ -743,6 +741,8 @@ function App() {
     // Explicitly block non-admin users from accessing system settings
     if (viewName === 'settings') return false;
     
+    const checkedView = viewName === 'reports' ? 'dashboard' : viewName;
+    
     // Dynamically retrieve configured permissions
     const userRole = user.role; // 'admin', 'veterinarian', 'cashier'
     const defaultPermissions = {
@@ -753,9 +753,9 @@ function App() {
     const permissions = (systemConfig.rolePermissions || defaultPermissions)[userRole as 'cashier' | 'veterinarian' | 'admin' | 'owner'] || [];
     
     // Clinicians & administrative staff have general permission to load Pet Parent control
-    if (viewName === 'portal') return true;
+    if (checkedView === 'portal') return true;
     
-    return permissions.includes(viewName);
+    return permissions.includes(checkedView);
   };
 
   const getDefaultViewForUser = (user: any): any => {
@@ -768,7 +768,7 @@ function App() {
     const priorityViews = ['dashboard', 'pos', 'appointments', 'records', 'inventory', 'reminders', 'portal'] as const;
     for (const view of priorityViews) {
       if (isViewPermitted(view, user)) {
-        return view;
+        return view === 'dashboard' ? 'reports' : view;
       }
     }
     return 'portal';
@@ -865,6 +865,146 @@ function App() {
       setPinError(true);
       setTimeout(() => setPinError(false), 2000);
       setEnteredPin('');
+    }
+  };
+
+  const navItems = [
+    { id: 'pos', label: 'POS', icon: Calculator, isLive: true },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isLive: false },
+    { id: 'appointments', label: 'Appointments', icon: Calendar, isLive: true },
+    { id: 'pets', label: 'Pets', icon: PawPrint, isLive: false },
+    { id: 'customers', label: 'Customers', icon: Users, isLive: false },
+    { id: 'vaccinations', label: 'Vaccinations', icon: Syringe, isLive: false },
+    { id: 'examinations', label: 'Examinations', icon: Stethoscope, isLive: false },
+    { id: 'laboratory', label: 'Laboratory', icon: TestTube, isLive: false },
+    { id: 'services', label: 'Services', icon: BriefcaseMedical, isLive: false },
+    { id: 'inventory', label: 'Inventory', icon: Package, isLive: true },
+    { id: 'invoices', label: 'Invoices', icon: FileText, isLive: false },
+    { id: 'reports', label: 'Reports', icon: BarChart3, isLive: true }
+  ];
+
+  const renderCanvas = () => {
+    switch (activeView) {
+      case 'pos': {
+        const { masterPin, dummyAdminPin, ...safeSystemConfig } = systemConfig;
+        return (
+          <POSRegister
+            inventory={inventory}
+            appointments={appointments}
+            records={records}
+            isOnline={isOnline}
+            currentUser={currentUser}
+            invoices={invoices}
+            onUpdateStock={handleUpdateStock}
+            onAddInvoice={handleAddInvoice}
+            onVoidInvoice={handleVoidInvoice}
+            systemConfig={safeSystemConfig}
+            onVerifyMasterPin={handleVerifyMasterPin}
+            onTriggerInventorySync={triggerAutoSynchronize}
+          />
+        );
+      }
+      case 'appointments':
+        return (
+          <AppointmentsManager
+            appointments={appointments}
+            records={records}
+            isOnline={isOnline}
+            onAddAppointment={handleAddAppointment}
+            onUpdateStatus={handleUpdateAppointmentStatus}
+            onAddRecord={handleAddRecord}
+          />
+        );
+      case 'inventory':
+        return (
+          <InventoryManager
+            inventory={inventory}
+            onAddProduct={handleAddProduct}
+            onUpdateStock={handleUpdateStock}
+            onUpdatePrice={handleUpdatePrice}
+            onUpdateInventory={setInventory}
+            systemConfig={systemConfig}
+          />
+        );
+      case 'reports':
+        return (
+          <DashboardAnalytics 
+            inventory={inventory}
+            appointments={appointments}
+            records={records}
+            invoices={invoices}
+            onTriggerSync={triggerAutoSynchronize}
+            isOnline={isOnline}
+            syncQueueLength={syncQueue.length}
+            systemConfig={systemConfig}
+            currentUser={currentUser}
+          />
+        );
+      case 'settings': {
+        const { masterPin, dummyAdminPin, ...safeSystemConfig } = systemConfig;
+        return (
+          <SystemSettings
+            config={safeSystemConfig}
+            onChangeConfig={setSystemConfig}
+            users={users.map(({ pin, ...safeU }) => safeU)}
+            onForceCloudSync={handleForceCloudSync}
+            onRefreshUsers={hydrateUsers}
+            onAddUser={(user) => {
+              try {
+                const saved = localStorage.getItem('ceylon_users_v3');
+                const baseUsers = saved ? JSON.parse(saved) : [];
+                const arr = Array.isArray(baseUsers) ? baseUsers : [];
+                
+                const idx = arr.findIndex((u: any) => u.username === user.username);
+                if (idx >= 0) arr[idx] = user;
+                else arr.push(user);
+                
+                localStorage.setItem('ceylon_users_v3', JSON.stringify(arr));
+                
+                const { pin, ...safeUser } = user;
+                if (pin) {
+                  setPinCache(prev => ({ ...prev, [user.username]: pin }));
+                }
+                setUsers(prev => {
+                  const existingIdx = prev.findIndex(u => u.username === user.username);
+                  if (existingIdx >= 0) {
+                    const newArr = [...prev];
+                    newArr[existingIdx] = safeUser;
+                    return newArr;
+                  }
+                  return [...prev, safeUser];
+                });
+                showToast(`User ${safeUser.name} added successfully.`);
+              } catch (e) {
+                console.error('Failed to save user', e);
+              }
+            }}
+            onRemoveUser={(id) => {
+              try {
+                const saved = localStorage.getItem('ceylon_users_v3');
+                if (saved) {
+                  let arr = JSON.parse(saved);
+                  if (Array.isArray(arr)) {
+                    arr = arr.filter((u: any) => u.id !== id);
+                    localStorage.setItem('ceylon_users_v3', JSON.stringify(arr));
+                  }
+                }
+              } catch(e) {}
+              setUsers(prev => prev.filter(u => u.id !== id));
+              showToast('User removed.');
+            }}
+            inventory={inventory}
+            invoices={invoices}
+            currentUser={currentUser}
+            onUpdateInventory={(newInv) => setInventory(newInv)}
+            onRestoreSnapshot={handleRestoreSnapshot}
+            onPurgeDatabases={handlePurgeDatabases}
+            onHardReboot={handleHardReboot}
+          />
+        );
+      }
+      default:
+        return null;
     }
   };
 
@@ -1020,270 +1160,34 @@ function App() {
 
       {/* 3. Main Convertible Dashboard App Shell */}
       {currentUser && (
-        <>
-          {/* Header Bar */}
-          <header className="bg-white border-b border-sky-100 sticky top-0 z-40 px-6 py-2 shadow-sm print:hidden">
-            <div className="w-full max-w-[1920px] mx-auto px-4 md:px-8 flex flex-col sm:flex-row justify-between items-center gap-3">
-              
-              {/* Title & Logo */}
-              <div className="flex items-center gap-2.5 justify-center sm:justify-start">
-                <div className="p-2 bg-indigo-600 text-white rounded-xl text-xs font-sans flex items-center justify-center leading-none">
-                  <span className="text-sm select-none">{systemConfig.invoiceLogo}</span>
+        currentUser.role === 'pet_parent' ? (
+          <div className="flex flex-col h-screen w-full bg-gray-50 overflow-hidden font-sans text-gray-900">
+            <header className="bg-white border-b border-gray-200 h-16 flex items-center px-6 justify-between shrink-0 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-600 p-1.5 rounded-lg shadow-sm">
+                  <PawPrint className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-base font-extrabold tracking-tight font-display text-slate-800 flex items-center gap-1.5 animate-pulse">
-                    {systemConfig.hospitalName}
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-100 text-yellow-850 border border-yellow-250 rounded font-sans uppercase">{systemConfig.appName} POS Suite</span>
-                  </h1>
-                  <p className="text-[9px] text-slate-400 font-bold tracking-widest uppercase mt-0.5">Desktop Clinical POS Suite • Powered by {systemConfig.resellerName}</p>
+                  <h1 className="text-lg font-bold leading-none tracking-tight">{systemConfig.appName || 'CeylonPets'}</h1>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-1">Ash Point</p>
                 </div>
               </div>
-
-              {/* Status and Logged User Details */}
-              <div className="flex items-center gap-3 flex-wrap justify-center">
-                
-
-                {/* User Profile info */}
-                <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
-                  <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold font-mono text-[11px] ${
-                    currentUser.role === 'admin' ? 'bg-emerald-100 text-emerald-700 border-emerald-300' :
-                    currentUser.role === 'veterinarian' ? 'bg-blue-100 text-blue-700 border-blue-300' : 
-                    currentUser.role === 'owner' ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : 'bg-amber-100 text-amber-700 border-amber-300'
-                  }`}>
-                    {currentUser.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  <div className="text-left text-[11px] font-semibold text-slate-600">
-                    <span className="block font-black text-slate-800 leading-none">{currentUser.name}</span>
-                    <span className="block text-[9px] mt-0.5 text-slate-400 capitalize">{currentUser.role} console</span>
-                  </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <span className="block font-black text-slate-800 text-xs leading-none">{currentUser.name}</span>
+                  <span className="block text-[9px] mt-0.5 text-slate-400 capitalize">Pet Parent Portal</span>
                 </div>
-
-                {/* Logout */}
                 <button
                   onClick={() => setCurrentUser(null)}
                   className="p-2 border border-slate-200 hover:border-rose-200 text-slate-400 hover:text-rose-600 bg-white hover:bg-rose-50/25 rounded-xl cursor-pointer transition-colors"
-                  title="Secure lock screen"
+                  title="Log out"
                 >
                   <LogOut className="h-4.5 w-4.5" />
                 </button>
               </div>
-            </div>
-          </header>
-
-          {/* Core App Body Container */}
-          <main className="flex-1 overflow-y-auto custom-scrollbar w-full max-w-[1920px] mx-auto px-4 md:px-8 py-4 sm:py-6 space-y-6">
-            
-            {/* Primary Navigation Hub (Staff Navigation Tabs) *) */}
-            {currentUser?.role === 'dummy_admin' ? (
-              <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 text-xs font-sans print:hidden">
-                <button
-                  onClick={() => setActiveView('settings')}
-                  className="px-4 py-2 rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer bg-indigo-600 text-white border-indigo-700 shadow-sm"
-                >
-                  <Printer className="h-4.5 w-4.5" />
-                  <span>Printer Setup (Hardware Panel Only)</span>
-                </button>
-              </nav>
-            ) : (
-              <nav className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-thin scrollbar-thumb-sky-100 text-xs print:hidden">
-                {isViewPermitted('dashboard', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('dashboard')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'dashboard' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <LayoutDashboard className="h-4.5 w-4.5 text-sky-500" />
-                    <span>Executive Dashboard</span>
-                  </button>
-                )}
-
-                {isViewPermitted('pos', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('pos')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'pos' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <Warehouse className="h-4.5 w-4.5 text-sky-500" />
-                    <span>POS Terminal checkout</span>
-                  </button>
-                )}
-
-
-
-                {isViewPermitted('appointments', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('appointments')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'appointments' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <Calendar className="h-4.5 w-4.5 text-sky-500" />
-                    <span>Scheduling Planner</span>
-                  </button>
-                )}
-
-                {isViewPermitted('records', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('records')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'records' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <FileHeart className="h-4.5 w-4.5 text-sky-500" />
-                    <span>EHR Health Charts</span>
-                  </button>
-                )}
-
-                {isViewPermitted('inventory', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('inventory')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'inventory' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <Warehouse className="h-4.5 w-4.5 text-sky-500" />
-                    <span>Item & Shop Stock</span>
-                  </button>
-                )}
-
-                {isViewPermitted('reminders', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('reminders')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'reminders' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <AlertTriangle className="h-4.5 w-4.5 text-sky-500" />
-                    <span>Hospital Reminders</span>
-                    {alerts.filter(a => !a.read).length > 0 && (
-                      <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                    )}
-                  </button>
-                )}
-
-                {isViewPermitted('portal', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('portal')}
-                    className={`px-4 py-2 bg-white rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
-                      activeView === 'portal' ? 'border-sky-500 text-sky-800 shadow-sm bg-sky-50/20' : 'border-slate-100 hover:bg-slate-100 text-slate-500'
-                    }`}
-                  >
-                    <Smartphone className="h-4.5 w-4.5 text-sky-500" />
-                    <span>Pet Parent Portal</span>
-                  </button>
-                )}
-
-                {isViewPermitted('settings', currentUser) && (
-                  <button
-                    onClick={() => setActiveView('settings')}
-                    className={`px-4 py-2 rounded-xl border flex items-center gap-1.5 font-bold cursor-pointer transition-all ml-auto ${
-                      activeView === 'settings' 
-                        ? 'border-indigo-500 text-indigo-800 shadow-sm bg-indigo-50/30' 
-                        : 'border-slate-100 hover:bg-slate-100 text-slate-500 bg-white'
-                    }`}
-                  >
-                    <Lock className={`h-4.5 w-4.5 font-bold ${activeView === 'settings' ? 'text-indigo-600' : 'text-indigo-500'}`} />
-                    <span>{systemConfig.appName} Settings</span>
-                  </button>
-                )}
-              </nav>
-            )}
-
-            {/* Render selected subview panel */}
-            <div className="fade-in-only">
-              {activeView === 'dashboard' && isViewPermitted('dashboard', currentUser) && (
-                <DashboardAnalytics 
-                  inventory={inventory}
-                  appointments={appointments}
-                  records={records}
-                  invoices={invoices}
-                  onTriggerSync={triggerAutoSynchronize}
-                  isOnline={isOnline}
-                  syncQueueLength={syncQueue.length}
-                  systemConfig={systemConfig}
-                  currentUser={currentUser}
-                />
-              )}
-
-              {activeView === 'pos' && isViewPermitted('pos', currentUser) && (() => {
-                const { masterPin, dummyAdminPin, ...safeSystemConfig } = systemConfig;
-                return (
-                  <POSRegister
-                    inventory={inventory}
-                    appointments={appointments}
-                    records={records}
-                    isOnline={isOnline}
-                    currentUser={currentUser}
-                    invoices={invoices}
-                    onUpdateStock={handleUpdateStock}
-                    onAddInvoice={handleAddInvoice}
-                    onVoidInvoice={handleVoidInvoice}
-                    systemConfig={safeSystemConfig}
-                    onVerifyMasterPin={handleVerifyMasterPin}
-                    onTriggerInventorySync={triggerAutoSynchronize}
-                  />
-                );
-              })()}
-
-              {activeView === 'appointments' && isViewPermitted('appointments', currentUser) && (
-                <AppointmentsManager
-                  appointments={appointments}
-                  records={records}
-                  isOnline={isOnline}
-                  onAddAppointment={handleAddAppointment}
-                  onUpdateStatus={handleUpdateAppointmentStatus}
-                  onAddRecord={handleAddRecord}
-                />
-              )}
-
-              {activeView === 'records' && isViewPermitted('records', currentUser) && (
-                <MedicalRecordsManager
-                  records={records}
-                  inventory={inventory}
-                  isOnline={isOnline}
-                  onUpdateRecord={handleUpdateRecord}
-                  onDeleteRecord={handleDeleteRecord}
-                  users={users}
-                  onAddRecord={handleAddEHRRecord => {
-                    handleAddRecord(handleAddEHRRecord);
-                    const mockAlert: SystemAlert = {
-                      // Enforce pure numeric identity strings to satisfy relational integrity rules
-                      id: String(Date.now() + Math.floor(Math.random() * 1000)),
-                      severity: 'info',
-                      category: 'system',
-                      message: `New EHR Profile Assembled: ${handleAddEHRRecord.petName} has been fully registered inside the cloud EHR under phone ${handleAddEHRRecord.ownerPhone}`,
-                      timestamp: new Date().toISOString(),
-                      read: false
-                    };
-                    setAlerts(prev => [mockAlert, ...prev]);
-                  }}
-                  systemConfig={systemConfig}
-                />
-              )}
-
-              {activeView === 'inventory' && isViewPermitted('inventory', currentUser) && (
-                <InventoryManager
-                  inventory={inventory}
-                  onAddProduct={handleAddProduct}
-                  onUpdateStock={handleUpdateStock}
-                  onUpdatePrice={handleUpdatePrice}
-                  onUpdateInventory={setInventory}
-                  systemConfig={systemConfig}
-                />
-              )}
-
-              {activeView === 'reminders' && isViewPermitted('reminders', currentUser) && (
-                <NotificationsModal
-                  notifications={notifications}
-                  alerts={alerts}
-                  onDismissAlert={handleDismissAlert}
-                  onSendNotification={handleSendNotification}
-                />
-              )}
-
-              {activeView === 'portal' && isViewPermitted('portal', currentUser) && (
+            </header>
+            <main className="flex-1 overflow-hidden relative bg-gray-100 p-4 md:p-6">
+              <div className="w-full h-full overflow-y-auto">
                 <PatientPortal
                   records={records}
                   appointments={appointments}
@@ -1291,7 +1195,6 @@ function App() {
                   onBookAppointment={(apt) => {
                     handleAddAppointment(apt);
                     const portalAlert: SystemAlert = {
-                      // Enforce pure numeric identity strings to satisfy relational integrity rules
                       id: String(Date.now() + Math.floor(Math.random() * 1000)),
                       severity: 'info',
                       category: 'appointment',
@@ -1303,79 +1206,118 @@ function App() {
                   }}
                   systemConfig={systemConfig}
                 />
-              )}
+              </div>
+            </main>
+          </div>
+        ) : (
+          <div className="flex h-screen w-full bg-gray-50 overflow-hidden font-sans text-gray-900">
+            {/* LEFT SIDEBAR PANEL */}
+            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col flex-shrink-0 z-20 shadow-sm">
+              {/* Branding Header */}
+              <div className="h-16 flex items-center px-6 border-b border-gray-100">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-600 p-1.5 rounded-lg shadow-sm">
+                    <PawPrint className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold leading-none tracking-tight">{systemConfig.appName || 'CeylonPets'}</h1>
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mt-1">{systemConfig.resellerName || 'Ash Point'}</p>
+                  </div>
+                </div>
+              </div>
 
-              {activeView === 'settings' && isViewPermitted('settings', currentUser) && (() => {
-                const { masterPin, dummyAdminPin, ...safeSystemConfig } = systemConfig;
-                return (
-                  <SystemSettings
-                    config={safeSystemConfig}
-                    onChangeConfig={setSystemConfig}
-                    users={users.map(({ pin, ...safeU }) => safeU)}
-                    onForceCloudSync={handleForceCloudSync}
-                    onRefreshUsers={hydrateUsers}
-                    onAddUser={(user) => {
-                      try {
-                        const saved = localStorage.getItem('ceylon_users_v3');
-                        const baseUsers = saved ? JSON.parse(saved) : [];
-                        const arr = Array.isArray(baseUsers) ? baseUsers : [];
-                        
-                        const idx = arr.findIndex((u: any) => u.username === user.username);
-                        if (idx >= 0) arr[idx] = user;
-                        else arr.push(user);
-                        
-                        localStorage.setItem('ceylon_users_v3', JSON.stringify(arr));
-                        
-                        const { pin, ...safeUser } = user;
-                        if (pin) {
-                          setPinCache(prev => ({ ...prev, [user.username]: pin }));
-                        }
-                        setUsers(prev => {
-                          const existingIdx = prev.findIndex(u => u.username === user.username);
-                          if (existingIdx >= 0) {
-                            const newArr = [...prev];
-                            newArr[existingIdx] = safeUser;
-                            return newArr;
-                          }
-                          return [...prev, safeUser];
-                        });
-                        showToast(`User ${safeUser.name} added successfully.`);
-                      } catch (e) {
-                        console.error('Failed to save user', e);
-                      }
-                    }}
-                    onRemoveUser={(id) => {
-                      try {
-                        const saved = localStorage.getItem('ceylon_users_v3');
-                        if (saved) {
-                          let arr = JSON.parse(saved);
-                          if (Array.isArray(arr)) {
-                            arr = arr.filter((u: any) => u.id !== id);
-                            localStorage.setItem('ceylon_users_v3', JSON.stringify(arr));
-                          }
-                        }
-                      } catch(e) {}
-                      setUsers(prev => prev.filter(u => u.id !== id));
-                      showToast('User removed.');
-                    }}
-                    inventory={inventory}
-                    invoices={invoices}
-                    currentUser={currentUser}
-                    onUpdateInventory={(newInv) => setInventory(newInv)}
-                    onRestoreSnapshot={handleRestoreSnapshot}
-                    onPurgeDatabases={handlePurgeDatabases}
-                    onHardReboot={handleHardReboot}
-                  />
-                );
-              })()}
-            </div>
-          </main>
+              {/* Main Navigation List */}
+              <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  
+                  if (!item.isLive) {
+                    return (
+                      <a 
+                        key={item.id}
+                        href="#"
+                        onClick={(e) => e.preventDefault()}
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-50 transition-colors opacity-80 cursor-default"
+                      >
+                        <Icon className="w-5 h-5" />
+                        {item.label}
+                      </a>
+                    );
+                  }
 
-        </>
+                  const permissionKey = item.id === 'reports' ? 'dashboard' : item.id;
+                  if (!isViewPermitted(permissionKey, currentUser)) {
+                    return null;
+                  }
+
+                  const isSelected = activeView === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setActiveView(item.id)}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        isSelected 
+                          ? 'bg-blue-50 text-blue-700' 
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${isSelected ? 'text-blue-600' : 'text-gray-500'}`} />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* User Profile Footer */}
+              <div className="p-4 border-t border-gray-100 flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center font-bold font-mono text-xs shrink-0 ${
+                  currentUser.role === 'admin' ? 'bg-emerald-100 text-emerald-700 border-emerald-250' :
+                  currentUser.role === 'veterinarian' ? 'bg-blue-100 text-blue-700 border-blue-250' : 
+                  currentUser.role === 'owner' ? 'bg-indigo-100 text-indigo-700 border-indigo-250' : 'bg-amber-100 text-amber-700 border-amber-250'
+                }`}>
+                  {currentUser.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <span className="block font-bold text-gray-800 text-xs truncate leading-tight">{currentUser.name}</span>
+                  <span className="block text-[10px] text-gray-400 capitalize font-medium mt-0.5 truncate">{currentUser.role} console</span>
+                </div>
+              </div>
+
+              {/* Settings & Lock Footer */}
+              <div className="p-3 border-t border-gray-200 bg-gray-50/50 space-y-1">
+                {isViewPermitted('settings', currentUser) && (
+                  <button
+                    onClick={() => setActiveView('settings')}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                      activeView === 'settings' 
+                        ? 'bg-blue-50 text-blue-700' 
+                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <Settings className={`w-5 h-5 ${activeView === 'settings' ? 'text-blue-600' : 'text-gray-500'}`} />
+                    Settings
+                  </button>
+                )}
+                <button
+                  onClick={() => setCurrentUser(null)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-5 h-5 text-rose-500" />
+                  Lock/Logout
+                </button>
+              </div>
+            </aside>
+
+            {/* MAIN CANVAS */}
+            <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-gray-100">
+              <div className="flex-1 w-full h-full overflow-y-auto">
+                {renderCanvas()}
+              </div>
+            </main>
+          </div>
+        )
       )}
       <ToastContainer />
-
-
     </div>
   );
 }

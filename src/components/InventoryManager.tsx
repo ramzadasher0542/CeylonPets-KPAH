@@ -497,9 +497,9 @@ export default function InventoryManager({
       {/* Add Item Modal Overlay using React Portal to prevent containing block scrolling bug */}
       {showAddForm && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 text-xs shadow-xl animate-fade-in">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
                 <h4 className="text-base font-extrabold text-slate-800 leading-none">Register New Supplies SKU</h4>
                 <p className="text-[11px] text-slate-400 mt-1">Configure pricing rates, medication descriptors, and initial stock levels if retail</p>
@@ -513,7 +513,8 @@ export default function InventoryManager({
               </button>
             </div>
 
-            <form onSubmit={handleAddProductSubmit} className="space-y-4">
+            <form onSubmit={handleAddProductSubmit} className="flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
               {formError && (
                 <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">
                   {formError}
@@ -635,7 +636,8 @@ export default function InventoryManager({
                 )}
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
+              </div>
+              <div className="shrink-0 flex gap-2 p-6 pt-4 justify-end border-t border-slate-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
@@ -659,9 +661,9 @@ export default function InventoryManager({
       {/* Edit Item Modal Overlay using React Portal to prevent containing block scrolling bug */}
       {editingItem && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full p-6 text-xs shadow-xl animate-fade-in">
+          <div className="bg-white rounded-3xl border border-sky-100 max-w-md w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
                 <h4 className="text-base font-extrabold text-slate-800 leading-none">Modify Supplies SKU Details</h4>
                 <p className="text-[11px] text-slate-400 mt-1">Update price rates, name, cost, unit labels and stock thresholds</p>
@@ -675,7 +677,8 @@ export default function InventoryManager({
               </button>
             </div>
 
-            <form onSubmit={handleEditProductSubmit} className="space-y-4">
+            <form onSubmit={handleEditProductSubmit} className="flex flex-col min-h-0 overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 
                 <div className="space-y-1">
@@ -792,7 +795,8 @@ export default function InventoryManager({
                 )}
               </div>
 
-              <div className="flex gap-2 justify-end pt-2">
+              </div>
+              <div className="shrink-0 flex gap-2 p-6 pt-4 justify-end border-t border-slate-100 bg-white">
                 <button
                   type="button"
                   onClick={() => setEditingItem(null)}
