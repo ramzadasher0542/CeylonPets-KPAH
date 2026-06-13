@@ -53,11 +53,11 @@ export default function MedicalRecordsManager({
   const [searchQuery, setSearchQuery] = useState('');
   const [activeEHRSubTab, setActiveEHRSubTab] = useState<'details' | 'vaccines' | 'labs'>('details');
 
-  // Enforce rigid scaling factor math constraints to avoid floating-point string leaks in veterinary charts
+  // 1. Enforce rigid scaling factor math constraints to avoid floating-point UI layout shifts in veterinary charts
   const formatClinicalDosageValue = (rawQuantity: number): string => {
     const value = parseFloat(String(rawQuantity)) || 0;
-    // Scale up to treat calculations as localized integers, round, then return clean layout string
-    return String(Math.round(value * 100) / 100);
+    // Scale up, round, and return a fixed 2-decimal string to prevent tabular jitter
+    return (Math.round(value * 100) / 100).toFixed(2);
   };
 
   // Encryption visualization fields
@@ -170,6 +170,7 @@ export default function MedicalRecordsManager({
     }, 1200);
   };
 
+  // 2. Inside handleCreateNewEHR (replace the object creation):
   const handleCreateNewEHR = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPetName || !newDiagnosis || !newAttendingVet) {
@@ -177,10 +178,12 @@ export default function MedicalRecordsManager({
       return;
     }
 
-    const newRec: MedicalRecord = {
-      // Enforce pure numeric identity string to align with Local-First Constitution
-      id: String(Date.now()),
-      patientId: `${newPetName}_${newOwnerPhone.replace(/\D/g, '')}`,
+    const now = new Date().toISOString();
+    
+    const newRec = {
+      // CRITICAL: Supabase-Ready UUIDs to prevent primary key collisions on sync
+      id: crypto.randomUUID(),
+      patientId: crypto.randomUUID(),
       petName: newPetName,
       petType: newPetType,
       breed: newBreed || 'Mixed Lineage',
@@ -189,16 +192,20 @@ export default function MedicalRecordsManager({
       ownerName: newOwnerName,
       ownerPhone: newOwnerPhone,
       ownerEmail: newOwnerEmail || `no-email@${(systemConfig?.appName || 'CeylonPets').toLowerCase()}.com`,
-      visitDate: new Date().toISOString().split('T')[0],
+      visitDate: now.split('T')[0],
       symptoms: newSymptoms,
       diagnosis: newDiagnosis,
       treatmentNotes: newTreatmentNotes,
       prescribedMeds: [],
       vaccinations: [],
       labResults: [],
-      createdDate: new Date().toISOString().split('T')[0],
-      attendingVet: newAttendingVet
-    };
+      createdDate: now.split('T')[0],
+      attendingVet: newAttendingVet,
+      // Mandatory Cloud-Sync Metadata
+      created_at: now,
+      updated_at: now,
+      is_deleted: false
+    } as any; // Cast as any temporarily to prevent TS errors if types.ts lacks metadata fields
 
     onAddRecord(newRec);
     setSelectedRecordId(newRec.id);
@@ -218,6 +225,7 @@ export default function MedicalRecordsManager({
     setFormError('');
   };
 
+  // 3. Inside handleSaveEditEHR (ensure update tracker fires):
   const handleSaveEditEHR = (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeRecord) return;
@@ -225,7 +233,7 @@ export default function MedicalRecordsManager({
       showToast('Patient descriptors cannot be empty.', 'error');
       return;
     }
-    const updatedRec: MedicalRecord = {
+    const updatedRec = {
       ...activeRecord,
       petName: editPetName,
       petType: editPetType,
@@ -234,8 +242,10 @@ export default function MedicalRecordsManager({
       weight: parseFloat(formatClinicalDosageValue(parseFloat(editWeight) || 5.0)),
       ownerName: editOwnerName,
       ownerPhone: editOwnerPhone,
-      ownerEmail: editOwnerEmail
-    };
+      ownerEmail: editOwnerEmail,
+      updated_at: new Date().toISOString() // Cloud sync trigger
+    } as any;
+    
     onUpdateRecord(updatedRec);
     setShowEditRecordForm(false);
   };
@@ -848,16 +858,20 @@ export default function MedicalRecordsManager({
                               };
                             } else {
                               updatedLabs.push({
-                                // Enforce pure numeric identity string to align with Local-First Constitution
-                                id: String(Date.now()),
+                                // CRITICAL: Supabase-Ready UUIDs to prevent primary key collisions on sync
+                                id: crypto.randomUUID(),
                                 testName: newLabTestName,
                                 requestDate: new Date().toISOString().split('T')[0],
                                 resultDate: newLabDate,
                                 status: newLabStatus,
                                 value: newLabValue,
                                 referenceRange: newLabRefRange,
-                                notes: newLabNotes
-                              });
+                                notes: newLabNotes,
+                                // Metadata tags
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                is_deleted: false
+                              } as any);
                             }
                             onUpdateRecord({
                               ...activeRecord,
