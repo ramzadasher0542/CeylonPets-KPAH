@@ -104,10 +104,11 @@ export default function AppointmentsManager({
   const [address, setAddress] = useState('');
   const [sex, setSex] = useState('Male');
 
-  // Popover State
+  // Popover States
   const [selectedPopoverApt, setSelectedPopoverApt] = useState<Appointment | null>(null);
+  const [overflowPopover, setOverflowPopover] = useState<{date: string, apts: Appointment[]} | null>(null);
 
-  // Global Escape handler for UI Physics compliance
+  // Global Escape Key Listener for UI/UX Compliance
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -115,14 +116,13 @@ export default function AppointmentsManager({
           setShowAddModal(false);
           resetForm();
         }
-        if (selectedPopoverApt) {
-          setSelectedPopoverApt(null);
-        }
+        if (selectedPopoverApt) setSelectedPopoverApt(null);
+        if (overflowPopover) setOverflowPopover(null);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showAddModal, selectedPopoverApt]);
+  }, [showAddModal, selectedPopoverApt, overflowPopover]);
 
   // Core Handlers
   const resetForm = () => {
@@ -226,7 +226,7 @@ export default function AppointmentsManager({
   };
 
   const handleCheckIn = (apt: Appointment) => {
-    if (apt.status === 'completed' || apt.status === 'cancelled') return;
+    if (apt.status === 'completed' || apt.status === 'cancelled') return; // Strict Lockout
     const normalizedPhone = apt.ownerPhone.replace(/\D/g, '');
     const patientExists = records.some(r => r.ownerPhone.replace(/\D/g, '') === normalizedPhone && r.petName.toLowerCase() === apt.petName.toLowerCase());
     
@@ -255,6 +255,12 @@ export default function AppointmentsManager({
       onAddRecord(newRecord);
     }
     onUpdateStatus(apt.id, 'in-progress');
+    setSelectedPopoverApt(null);
+  };
+
+  const handleCancelApt = (apt: Appointment) => {
+    if (apt.status === 'completed' || apt.status === 'cancelled') return; // Strict Lockout
+    onUpdateStatus(apt.id, 'cancelled');
     setSelectedPopoverApt(null);
   };
 
@@ -360,45 +366,59 @@ export default function AppointmentsManager({
       for(let i=1; i<=end.getDate(); i++) days.push(new Date(currentDate.getFullYear(), currentDate.getMonth(), i));
       
       return (
-        <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm h-full overflow-hidden">
           <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="p-3 text-center text-[10px] uppercase font-bold text-slate-500">{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 flex-1 bg-slate-200 gap-px border-t border-slate-200 overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-7 flex-1 bg-slate-200 gap-px border-t border-slate-200 overflow-y-auto custom-scrollbar h-full">
             {days.map((d, i) => {
-              if(!d) return <div key={`empty-${i}`} className="bg-slate-50/50 min-h-[100px]" />;
+              if(!d) return <div key={`empty-${i}`} className="bg-slate-50/50 min-h-[100px] h-full" />;
               const dayStr = toLocalISODate(d);
               const apts = baseFilteredApts.filter(a => a.date === dayStr);
+              
+              const displayApts = apts.slice(0, 3);
+              const hasOverflow = apts.length > 3;
+
               return (
                 <div 
                   key={dayStr} 
-                  className="bg-white p-2 min-h-[100px] hover:bg-slate-50 transition-colors cursor-pointer flex flex-col relative"
+                  className="bg-white p-2 min-h-[100px] h-full hover:bg-slate-50 transition-colors cursor-pointer flex flex-col relative"
                   onClick={() => { setCurrentDate(d); setTimeframe('day'); }}
                 >
                   <div className={`text-xs font-bold mb-1.5 z-10 ${d.toDateString() === new Date().toDateString() ? 'text-indigo-600 bg-indigo-50 w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-600'}`}>{d.getDate()}</div>
-                  <div className="space-y-1 flex-1 z-10">
+                  <div className="space-y-1 flex-1 z-10 overflow-hidden">
                     {apts.length === 0 ? (
                       <div className="flex items-center justify-center h-full opacity-30 mt-2">
                         <span className="text-[10px] font-medium text-slate-400 select-none">No scheduled visits</span>
                       </div>
                     ) : (
-                      apts.map(a => {
-                        const isLocked = a.status === 'completed' || a.status === 'cancelled';
-                        return (
+                      <>
+                        {displayApts.map(a => {
+                          const isLocked = a.status === 'completed' || a.status === 'cancelled';
+                          return (
+                            <div 
+                              key={a.id} 
+                              onClick={(e) => { e.stopPropagation(); setSelectedPopoverApt(a); }}
+                              className={`text-[10px] p-1.5 rounded-lg truncate shadow-xs font-medium transition-colors flex items-center justify-between ${
+                                isLocked 
+                                  ? 'bg-slate-50 text-slate-500 border border-slate-200' 
+                                  : 'bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100'
+                              }`}
+                            >
+                              <span className="truncate">{a.time} - {a.petName}</span>
+                              {isLocked && <Lock className="w-2.5 h-2.5 ml-1 opacity-50 shrink-0" />}
+                            </div>
+                          )
+                        })}
+                        {hasOverflow && (
                           <div 
-                            key={a.id} 
-                            onClick={(e) => { e.stopPropagation(); setSelectedPopoverApt(a); }}
-                            className={`text-[10px] p-1.5 rounded-lg truncate shadow-xs font-medium transition-colors flex items-center justify-between ${
-                              isLocked 
-                                ? 'bg-slate-50 text-slate-500 border border-slate-200' 
-                                : 'bg-indigo-50 text-indigo-700 border border-indigo-100 hover:bg-indigo-100'
-                            }`}
+                            onClick={(e) => { e.stopPropagation(); setOverflowPopover({ date: dayStr, apts }); }}
+                            className="text-[9px] font-bold text-slate-500 hover:text-indigo-600 mt-1 cursor-pointer w-full text-center py-1 bg-slate-50 hover:bg-indigo-50 rounded-lg transition-colors border border-slate-100"
                           >
-                            <span className="truncate">{a.time} - {a.petName}</span>
-                            {isLocked && <Lock className="w-2.5 h-2.5 ml-1 opacity-50 shrink-0" />}
+                            +{apts.length - 3} more
                           </div>
-                        )
-                      })
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -414,7 +434,7 @@ export default function AppointmentsManager({
     const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
-      <div className="flex-1 flex flex-col border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
+      <div className="flex-1 flex flex-col border border-slate-200 rounded-2xl bg-white shadow-sm h-full overflow-hidden">
         <div className="grid border-b border-slate-200 bg-slate-50 sticky top-0 z-10" style={{ gridTemplateColumns: `70px repeat(${days.length}, minmax(0, 1fr))` }}>
           <div className="p-3 border-r border-slate-200 flex items-end justify-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time</div>
           {days.map(d => (
@@ -428,7 +448,7 @@ export default function AppointmentsManager({
             </div>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+        <div className="flex-1 overflow-y-auto custom-scrollbar relative h-full">
           {hours.map(hour => (
             <div key={hour} className="grid border-b border-slate-100 min-h-[90px]" style={{ gridTemplateColumns: `70px repeat(${days.length}, minmax(0, 1fr))` }}>
               <div className="p-2 border-r border-slate-200 bg-slate-50 flex items-start justify-center pt-3 text-[10px] font-bold text-slate-400">
@@ -474,8 +494,8 @@ export default function AppointmentsManager({
   };
 
   const renderListView = () => (
-    <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex items-center gap-2 overflow-x-auto custom-scrollbar">
+    <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm h-full overflow-hidden">
+      <div className="p-4 border-b border-slate-100 flex items-center gap-4 overflow-x-auto custom-scrollbar">
         {listFilters.map(filter => (
           <button 
             key={filter} 
@@ -486,7 +506,7 @@ export default function AppointmentsManager({
           </button>
         ))}
       </div>
-      <div className="flex-1 overflow-auto custom-scrollbar">
+      <div className="flex-1 overflow-auto custom-scrollbar h-full">
         <table className="w-full min-w-[1200px] text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
@@ -556,7 +576,7 @@ export default function AppointmentsManager({
                       {isLocked ? <Lock className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
                     </button>
                     <button 
-                      onClick={() => onUpdateStatus(apt.id, 'cancelled')} 
+                      onClick={() => handleCancelApt(apt)} 
                       disabled={isLocked}
                       title={isLocked ? "Record Locked" : "Cancel Appointment"} 
                       className={`p-1.5 rounded-lg transition-colors ${isLocked ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'}`}
@@ -574,21 +594,16 @@ export default function AppointmentsManager({
   );
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col space-y-4" id="appointments-tab-system">
+    <div className="h-full flex flex-col gap-4" id="appointments-tab-system">
       
-      {/* Unified Control Header with Telemetry Flex Container */}
+      {/* Unified Control Header with Reorganized Action Zone & Strict Grid/Flex gaps */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 shrink-0">
         
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
           <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-            {viewMode === 'calendar' && timeframe === 'day' && (
-              <button onClick={() => setTimeframe('month')} className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors flex items-center gap-1.5 text-[10px] font-bold mr-1 shadow-sm cursor-pointer">
-                <ChevronLeft className="h-3.5 w-3.5" /> Back
-              </button>
-            )}
             Appointment Calendar
           </h2>
-          <div className="flex bg-slate-100 p-1 rounded-xl">
+          <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
             <button onClick={() => setViewMode('calendar')} className={`p-1.5 px-3 rounded-lg flex items-center gap-2 text-[10px] font-bold transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700 cursor-pointer'}`}>
               <CalendarIcon className="h-4 w-4" /> Calendar
             </button>
@@ -599,7 +614,7 @@ export default function AppointmentsManager({
         </div>
 
         {/* Dynamic Telemetry Injector */}
-        <div className="hidden lg:flex items-center gap-2.5 flex-1 justify-center px-4">
+        <div className="hidden lg:flex items-center gap-4 flex-1 justify-center px-4">
           <div className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[10px] font-extrabold shadow-xs flex items-center gap-1.5 uppercase tracking-wider">
             Today's Volume <span className="bg-white px-2 py-0.5 rounded-md border border-slate-100 text-slate-800">{todayVolume}</span>
           </div>
@@ -626,8 +641,8 @@ export default function AppointmentsManager({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full xl:w-auto justify-end flex-wrap">
-          {/* Global Search Input */}
+        {/* Action Zone: Strict Component Styling & Gaps */}
+        <div className="flex items-center gap-4 w-full xl:w-auto justify-end flex-wrap">
           <div className="relative flex-1 min-w-[180px] max-w-[220px]">
             <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-slate-400" />
             <input 
@@ -635,33 +650,71 @@ export default function AppointmentsManager({
               placeholder="Search apts, names..." 
               value={searchQuery} 
               onChange={e => setSearchQuery(e.target.value)} 
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[10px] font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500" 
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500" 
             />
           </div>
 
           {viewMode === 'calendar' && (
-            <div className="flex bg-slate-100 p-1 rounded-xl hidden sm:flex">
+            <div className="flex bg-slate-100 p-1 rounded-xl hidden sm:flex gap-1">
               {['day', 'week', 'month'].map(t => (
-                <button key={t} onClick={() => setTimeframe(t as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold capitalize transition-all cursor-pointer ${timeframe === t ? 'bg-white shadow-sm text-slate-850' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button key={t} onClick={() => setTimeframe(t as any)} className={`px-3 py-1.5 rounded-lg text-[10px] font-bold capitalize transition-all cursor-pointer ${timeframe === t ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
                   {t}
                 </button>
               ))}
             </div>
           )}
           
-          <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="hidden md:block px-3 py-2 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
+          <select value={doctorFilter} onChange={e => setDoctorFilter(e.target.value)} className="hidden md:block px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer">
             <option>All Doctors</option>
             <option>Dr. Bandara</option>
             <option>Dr. Ismail</option>
           </select>
 
-          <button onClick={() => { resetForm(); setShowAddModal(true); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap">
+          <button onClick={() => { resetForm(); setShowAddModal(true); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap">
             <Plus className="h-4 w-4" /> New Appointment
           </button>
         </div>
       </div>
 
       {viewMode === 'calendar' ? renderCalendarView() : renderListView()}
+
+      {/* Overflow Appointments Mini-Popover */}
+      {overflowPopover && createPortal(
+        <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setOverflowPopover(null)}>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full animate-fade-in relative max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setOverflowPopover(null)} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"><X className="h-4 w-4" /></button>
+            <h3 className="text-sm font-extrabold text-slate-800 mb-1">Appointments Overflow</h3>
+            <p className="text-[10px] text-slate-500 font-medium mb-4">{overflowPopover.date}</p>
+            
+            <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1 pr-1">
+              {overflowPopover.apts.map(a => {
+                const isLocked = a.status === 'completed' || a.status === 'cancelled';
+                return (
+                  <div 
+                    key={a.id} 
+                    onClick={() => { setOverflowPopover(null); setSelectedPopoverApt(a); }}
+                    className={`p-2.5 rounded-xl text-xs shadow-xs cursor-pointer hover:shadow-sm transition-all group border ${
+                      isLocked 
+                        ? 'bg-slate-50 border-slate-200 text-slate-500' 
+                        : 'bg-indigo-50 border-indigo-100 text-indigo-800 hover:border-indigo-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-0.5">
+                      <div className="font-bold truncate">{a.petName}</div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[9px] font-mono bg-white px-1 py-0.5 rounded border border-slate-200">{a.time}</span>
+                        {isLocked && <Lock className="w-3 h-3 opacity-50 shrink-0" />}
+                      </div>
+                    </div>
+                    <div className="truncate opacity-80 text-[10px] font-medium">{a.ownerName} - {a.reason.replace(/:::METADATA(.*?):::/, '').substring(0, 30)}...</div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* Calendar Quick Action Popover Modal */}
       {selectedPopoverApt && createPortal(
@@ -686,7 +739,7 @@ export default function AppointmentsManager({
                   <button onClick={() => handleEditClick(selectedPopoverApt)} className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-pointer transition-colors">
                     <Edit2 className="h-4 w-4" /> Edit Details
                   </button>
-                  <button onClick={() => { onUpdateStatus(selectedPopoverApt.id, 'cancelled'); setSelectedPopoverApt(null); }} className="w-full py-2 bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-pointer transition-colors">
+                  <button onClick={() => handleCancelApt(selectedPopoverApt)} className="w-full py-2 bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-pointer transition-colors">
                     <Trash2 className="h-4 w-4" /> Cancel Appointment
                   </button>
                 </>
@@ -716,21 +769,21 @@ export default function AppointmentsManager({
               <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
                 {formError && <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">{formError}</div>}
                 
-                <div className="grid grid-cols-3 gap-2.5 text-[11px]">
+                <div className="grid grid-cols-3 gap-4 text-[11px]">
                   {/* Read-Only Apt Number & Admission Type */}
                   <div className="col-span-3 pb-2 border-b border-slate-100 mb-2 flex items-center gap-4">
                     <div className="flex-1 max-w-[150px]">
-                      <label className="font-bold text-slate-600 block text-[10px] mb-0.5">Appointment Number</label>
+                      <label className="font-bold text-slate-600 block text-[10px] mb-1">Appointment Number</label>
                       <input 
                         type="text" 
                         readOnly 
                         value={currentDisplayAptNumber} 
-                        className="w-full px-2 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 font-mono font-bold cursor-not-allowed focus:outline-none text-[10px]" 
+                        className="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono font-bold cursor-not-allowed focus:outline-none text-xs" 
                       />
                     </div>
                     <div className="flex-1 max-w-[200px]">
-                      <label className="font-bold text-slate-600 block text-[10px] mb-0.5" htmlFor="admission-type">Admission Type</label>
-                      <select name="admissionType" id="admission-type" value={admissionType} onChange={(e) => setAdmissionType(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]">
+                      <label className="font-bold text-slate-600 block text-[10px] mb-1" htmlFor="admission-type">Admission Type</label>
+                      <select name="admissionType" id="admission-type" value={admissionType} onChange={(e) => setAdmissionType(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs">
                         <option value="OPD">OPD</option>
                         <option value="Hospital Admission">Hospital Admission</option>
                         <option value="Vaccination">Vaccination</option>
@@ -738,13 +791,13 @@ export default function AppointmentsManager({
                     </div>
                   </div>
 
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-name">Patient Name *</label>
-                    <input name="patientName" id="patient-name" type="text" required maxLength={100} placeholder="Coco, Buster, etc." value={petName} onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }} className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !petName ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]`} />
+                    <input name="patientName" id="patient-name" type="text" required maxLength={100} placeholder="Coco, Buster, etc." value={petName} onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }} className={`w-full px-3 py-2 bg-slate-50 border ${formError && !petName ? 'border-red-500' : 'border-slate-200'} rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs`} />
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="animal-classification">Animal Classification</label>
-                    <select name="animalClassification" id="animal-classification" value={petType} onChange={(e) => setPetType(e.target.value as any)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]">
+                    <select name="animalClassification" id="animal-classification" value={petType} onChange={(e) => setPetType(e.target.value as any)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs">
                       <option value="Dog">Dog</option>
                       <option value="Cat">Cat</option>
                       <option value="Rabbit">Rabbit</option>
@@ -752,52 +805,52 @@ export default function AppointmentsManager({
                       <option value="Other">Other</option>
                     </select>
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="breed-description">Breed / Description</label>
-                    <input name="breedDescription" id="breed-description" type="text" maxLength={100} placeholder="Goldendoodle, etc." value={breed} onChange={(e) => setBreed(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]" />
+                    <input name="breedDescription" id="breed-description" type="text" maxLength={100} placeholder="Goldendoodle, etc." value={breed} onChange={(e) => setBreed(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs" />
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-sex">Patient Sex</label>
-                    <select name="patientSex" id="patient-sex" value={sex} onChange={(e) => setSex(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]">
+                    <select name="patientSex" id="patient-sex" value={sex} onChange={(e) => setSex(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs">
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                     </select>
                   </div>
-                  <div className="space-y-0.5 col-span-3 border-t border-slate-100 pt-3 mt-1" />
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-3 border-t border-slate-100 pt-3 mt-1" />
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-name">Owner Name *</label>
-                    <input name="ownerName" id="owner-name" type="text" required maxLength={100} placeholder="Isabella Bennett" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]" />
+                    <input name="ownerName" id="owner-name" type="text" required maxLength={100} placeholder="Isabella Bennett" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs" />
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone">Owner Phone *</label>
                     <div className="flex relative items-center">
-                      <span className="absolute left-2 font-mono font-bold text-slate-400 text-[10px]">+94</span>
-                      <input name="ownerPhone" id="owner-phone" type="text" required maxLength={15} placeholder="77 123 4567" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono text-[10px]" />
+                      <span className="absolute left-3 font-mono font-bold text-slate-400 text-[10px]">+94</span>
+                      <input name="ownerPhone" id="owner-phone" type="text" required maxLength={15} placeholder="77 123 4567" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono text-xs" />
                     </div>
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-phone2">Backup Phone</label>
                     <div className="flex relative items-center">
-                      <span className="absolute left-2 font-mono font-bold text-slate-400 text-[10px]">+94</span>
-                      <input name="ownerPhone2" id="owner-phone2" type="text" maxLength={15} placeholder="71 987 6543" value={phone2} onChange={(e) => setPhone2(e.target.value)} className="w-full pl-8 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono text-[10px]" />
+                      <span className="absolute left-3 font-mono font-bold text-slate-400 text-[10px]">+94</span>
+                      <input name="ownerPhone2" id="owner-phone2" type="text" maxLength={15} placeholder="71 987 6543" value={phone2} onChange={(e) => setPhone2(e.target.value)} className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold font-mono text-xs" />
                     </div>
                   </div>
-                  <div className="space-y-0.5 col-span-3">
+                  <div className="space-y-1 col-span-3">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="owner-address">Address</label>
-                    <input name="ownerAddress" id="owner-address" type="text" maxLength={200} placeholder="123 Peradeniya Rd" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]" />
+                    <input name="ownerAddress" id="owner-address" type="text" maxLength={200} placeholder="123 Peradeniya Rd" value={address} onChange={(e) => setAddress(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs" />
                   </div>
-                  <div className="space-y-0.5 col-span-3 border-t border-slate-100 pt-3 mt-1" />
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-3 border-t border-slate-100 pt-3 mt-1" />
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="visit-date">Visit Date</label>
-                    <input name="visitDate" id="visit-date" type="date" value={date} onChange={(e) => { setDate(e.target.value); if (formError) setFormError(''); }} className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !date ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]`} />
+                    <input name="visitDate" id="visit-date" type="date" value={date} onChange={(e) => { setDate(e.target.value); if (formError) setFormError(''); }} className={`w-full px-3 py-2 bg-slate-50 border ${formError && !date ? 'border-red-500' : 'border-slate-200'} rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs`} />
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="hour-slot">Hour Slot</label>
-                    <input name="hourSlot" id="hour-slot" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]" />
+                    <input name="hourSlot" id="hour-slot" type="time" value={time} onChange={(e) => setTime(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 font-mono focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs" />
                   </div>
-                  <div className="space-y-0.5 col-span-1">
+                  <div className="space-y-1 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="assigned-doctor-vet">Assigned Doctor/Vet</label>
-                    <select name="assignedDoctorVet" id="assigned-doctor-vet" value={veterinarian} onChange={(e) => setVeterinarian(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]">
+                    <select name="assignedDoctorVet" id="assigned-doctor-vet" value={veterinarian} onChange={(e) => setVeterinarian(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs">
                       <option value="Dr. Bandara">Dr. Bandara</option>
                       <option value="Dr. Ismail">Dr. Ismail</option>
                       <option value="Residential Doctor">Residential Doctor</option>
@@ -805,9 +858,9 @@ export default function AppointmentsManager({
                       <option value="Emergency Doctor">Emergency Doctor</option>
                     </select>
                   </div>
-                  <div className="space-y-0.5 col-span-3">
+                  <div className="space-y-1 col-span-3">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="reason-for-care">Reason for Care / Chief Complaint *</label>
-                    <textarea name="reasonForCare" id="reason-for-care" required maxLength={1000} rows={2} placeholder="e.g. Coughing, rabies vaccines booster need..." value={reason} onChange={(e) => setReason(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-normal focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-[10px]" />
+                    <textarea name="reasonForCare" id="reason-for-care" required maxLength={1000} rows={2} placeholder="e.g. Coughing, rabies vaccines booster need..." value={reason} onChange={(e) => setReason(e.target.value)} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 leading-normal focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs" />
                   </div>
                 </div>
               </div>
