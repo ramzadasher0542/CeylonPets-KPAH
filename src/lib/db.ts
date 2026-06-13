@@ -407,3 +407,16 @@ export async function reconstituteSystemState(payload: any): Promise<void> {
   if (payload.collections.system_alerts) safeWrite('ceylon_alerts_v2', payload.collections.system_alerts);
   if (payload.collections.notifications) safeWrite('ceylon_notifications_v2', payload.collections.notifications);
 }
+
+export async function addRevenueToActiveShift(method: 'cash' | 'card' | 'bank_transfer', amountCents: number): Promise<void> {
+  const activeId = localStorage.getItem('ceylon_active_shift_id');
+  if (!activeId) return;
+  const shifts = safeCache<any>('ceylon_shifts_v2', []);
+  const idx = shifts.findIndex((s: any) => s && s.id === activeId && s.isOpen);
+  if (idx >= 0) {
+    if (method === 'cash') shifts[idx].cashCollectedCents = (shifts[idx].cashCollectedCents || 0) + Math.round(amountCents);
+    if (method === 'card') shifts[idx].cardCollectedCents = (shifts[idx].cardCollectedCents || 0) + Math.round(amountCents);
+    if (method === 'bank_transfer') shifts[idx].bankTransferCollectedCents = (shifts[idx].bankTransferCollectedCents || 0) + Math.round(amountCents);
+    safeWrite('ceylon_shifts_v2', shifts);
+  }
+}

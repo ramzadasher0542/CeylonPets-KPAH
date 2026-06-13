@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { InventoryItem, Appointment, Invoice, InvoiceItem, PaymentMethod, User as StaffUser, MedicalRecord, CATEGORY_DISPLAY_MAP, Shift } from '../types';
 import { showToast } from './Toast';
-import { fetchActiveShiftId, openShift, closeShift, fetchActiveShiftDetails } from '../lib/db';
+import { fetchActiveShiftId, openShift, closeShift, fetchActiveShiftDetails, addRevenueToActiveShift } from '../lib/db';
 
 interface POSProps {
   inventory: InventoryItem[];
@@ -77,24 +77,20 @@ export default function POSRegister({
   const petDropdownRef = useRef<HTMLDivElement>(null);
 
   // Enforce explicit lifecycle flag shields to prevent async context memory leaks during rapid tab toggling
+  // 1. Unified State Hydration Engine
+  const fetchAndHydrateShiftContext = async () => {
+    try {
+      const shiftDetails = await fetchActiveShiftDetails();
+      setCurrentActiveShift(shiftDetails);
+    } catch (err) {
+      console.error('[CeylonPets POS] Failed to fetch active shift context.', err);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
-
-    const loadActiveRegisterContext = async () => {
-      try {
-        const activeShift = await fetchActiveShiftId();
-        if (!isMounted) return;
-        // Proceed with state updates only if component layer remains securely mounted
-      } catch (err) {
-        console.error('[CeylonPets POS] Secondary register initialization leak intercepted.', err);
-      }
-    };
-
-    loadActiveRegisterContext();
-
-    return () => {
-      isMounted = false;
-    };
+    if (isMounted) fetchAndHydrateShiftContext();
+    return () => { isMounted = false; };
   }, []);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -487,9 +483,11 @@ export default function POSRegister({
   };
 
 
-  const mutateShift = async () => {};
+  const mutateShift = async () => {
+    await fetchAndHydrateShiftContext();
+  };
 
-  // Hardened shift opening action guard to update operational cache arrays without root login shell redirects
+  // 2. Hardened handler to pass the integer float directly to the database and sync the UI
   const handleOpenShift = async (initialFloatAmount: string) => {
     if (isProcessing) return;
     try {
@@ -497,17 +495,13 @@ export default function POSRegister({
       console.log('[CeylonPets POS] Securing shift opening action. Compiling integer float cents...');
       const floatCents = Math.round((parseFloat(initialFloatAmount) || 0) * 100);
       
-      // Persist directly into the indexed database session storage mapping layer
+      // CRITICAL FIX: Pass both the user name AND the floatCents directly to the db cache!
       const resultShiftId = await openShift(currentUser?.name || 'Terminal Operator', floatCents);
       
       if (resultShiftId) {
         showToast('Shift session successfully established.', 'success');
         setOpeningFloatInput('');
-        
-        // Execute smooth state validation inside the active frame context
-        if (typeof mutateShift === 'function') {
-          await mutateShift();
-        }
+        await mutateShift(); // Hydrate the UI instantly to dismiss the overlay modal
       }
     } catch (err) {
       console.error('[CeylonPets POS] Critical crash during shift initialization sequence:', err);
@@ -709,6 +703,7 @@ export default function POSRegister({
 
       // CRITICAL: Await database write synchronously before changing layout view state to satisfy Local-First Constitution Rule 4
       await Promise.all([...stockPromises, onAddInvoice(invoiceObj)]);
+      await addRevenueToActiveShift(paymentMethod, Math.round(total * 100));
       console.log('[CeylonPets] Local database persistence verified successfully.');
 
       // UI Transition commits only after guaranteed storage commit
@@ -1848,7 +1843,7 @@ export default function POSRegister({
         </div>
       )}
       {/* HARDENED SHIFT OPENING CONTROL OVERLAY */}
-      {!currentActiveShiftId && (
+      {!currentActiveShift && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 text-xs animate-fade-in">
           <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center space-x-2.5 border-b border-slate-100 pb-3">
@@ -1910,43 +1905,39 @@ export default function POSRegister({
             <div className="flex items-center space-x-2.5 border-b border-slate-100 pb-3">
               <span className="text-sm px-2 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-bold">💵</span>
               <div>
-                <h3 className="font-black text-slate-800 text-sm">Real-Time Cash Drawer Registry</h3>
-                <p className="text-slate-400 font-medium">Synchronized Terminal Financial States</p>
+                <h3 className="font-black text-slate-800 text-sm">Real-Time Cash Drawer</h3>
+                <p className="text-slate-400 font-medium">Physical Till & Digital Ledger Sync</p>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-xl px-4 py-3 mb-4">
+              <div className="flex justify-between font-semibold text-slate-600 mb-1">
+                <span>Opening Cash Float:</span>
+                <span>Rs. {((currentActiveShift?.openingFloatCents || 0) / 100).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between font-semibold text-slate-600 mb-2 border-b border-emerald-100 pb-2">
+                <span>(+) Cash Sales Added:</span>
+                <span className="text-emerald-600">Rs. {((currentActiveShift?.cashCollectedCents || 0) / 100).toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between items-center font-black text-slate-900 text-sm">
+                <span>Physical Cash In Drawer:</span>
+                <span className="text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">
+                  Rs. {(((currentActiveShift?.openingFloatCents || 0) + (currentActiveShift?.cashCollectedCents || 0)) / 100).toFixed(2)}
+                </span>
               </div>
             </div>
 
             <div className="divide-y divide-slate-100 bg-slate-50/80 border border-slate-200/60 rounded-xl px-4 py-1">
-              <div className="flex justify-between py-3 font-semibold text-slate-600">
-                <span>Opening Cash Float:</span>
-                <span className="font-bold text-slate-900">
-                  Rs. {((currentActiveShift?.openingFloatCents || 0) / 100).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between py-3 font-semibold text-slate-600">
-                <span>Cash Revenue Balance:</span>
-                <span className="font-bold text-emerald-600">
-                  Rs. {((currentActiveShift?.cashCollectedCents || 0) / 100).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between py-3 font-semibold text-slate-600">
-                <span>Card Revenue Balance:</span>
+              <div className="flex justify-between py-2.5 font-semibold text-slate-600">
+                <span>Card Revenue (Digital):</span>
                 <span className="font-bold text-indigo-600">
                   Rs. {((currentActiveShift?.cardCollectedCents || 0) / 100).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between py-3 font-semibold text-slate-600">
-                <span>Bank Transfer Revenue:</span>
+              <div className="flex justify-between py-2.5 font-semibold text-slate-600">
+                <span>Bank Transfer (Digital):</span>
                 <span className="font-bold text-amber-600">
                   Rs. {((currentActiveShift?.bankTransferCollectedCents || 0) / 100).toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between py-3 font-bold text-slate-800 border-t border-slate-200 pt-3">
-                <span>Total Operational Funds:</span>
-                <span className="font-black text-slate-900 text-sm">
-                  Rs. {(((currentActiveShift?.openingFloatCents || 0) + 
-                         (currentActiveShift?.cashCollectedCents || 0) + 
-                         (currentActiveShift?.cardCollectedCents || 0) + 
-                         (currentActiveShift?.bankTransferCollectedCents || 0)) / 100).toFixed(2)}
                 </span>
               </div>
             </div>
