@@ -48,7 +48,6 @@ export default function DashboardAnalytics({
 }: DashboardProps) {
   const currencySign = systemConfig?.currencySymbol || 'Rs. ';
   const [reportMonth, setReportMonth] = useState('2026-05');
-  const [exportSuccess, setExportSuccess] = useState(false);
   const [chartType, setChartType] = useState<'revenue' | 'appointments'>('revenue');
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
 
@@ -69,9 +68,10 @@ export default function DashboardAnalytics({
   const { data: lowStockCount } = useSWR('lowStockCount', fetchLowStockCount, { refreshInterval: 60000 });
   const { data: activeShiftId, mutate: mutateShiftId } = useSWR('activeShiftId', fetchActiveShiftId, { refreshInterval: 30000 });
 
+  // 1. Strict Integer-Cent Expected Drawer Cash Calculation
   const expectedDrawerCash = invoices
     .filter(inv => inv.shiftId === activeShiftId && inv.paymentMethod === 'cash')
-    .reduce((sum, inv) => sum + inv.sales_total, 0);
+    .reduce((sum, inv) => sum + Math.round((inv.sales_total || 0) * 100), 0) / 100;
 
   const handleOpenShift = async () => {
     try {
@@ -84,6 +84,7 @@ export default function DashboardAnalytics({
     }
   };
 
+  // 2. Hardened Shift Closure Handler
   const handleCloseShift = async () => {
     if (!activeShiftId) return;
     const actual = parseFloat(actualDrawerCash);
@@ -92,15 +93,21 @@ export default function DashboardAnalytics({
       return;
     }
     
-    // Strict Validation
-    if (actual !== expectedDrawerCash && !zReportNotes.trim()) {
+    // Scale everything to absolute integers to prevent float-comparison drift bypasses
+    const actualCents = Math.round(actual * 100);
+    const expectedCents = Math.round(expectedDrawerCash * 100);
+    const discrepancyCents = actualCents - expectedCents;
+    
+    // Strict Validation using integer cents
+    if (actualCents !== expectedCents && !zReportNotes.trim()) {
       showToast('Discrepancy detected: Please provide notes explaining the difference.', 'error');
       return;
     }
 
     setIsClosingShift(true);
     try {
-      await closeShift(activeShiftId, actual, expectedDrawerCash, 0, zReportNotes);
+      // Pass the strict whole-integer cents to the DB as required by the schema
+      await closeShift(activeShiftId, actualCents, expectedCents, discrepancyCents, zReportNotes);
       mutateShiftId();
       mutateShift();
       setIsZReportModalOpen(false);
@@ -331,9 +338,6 @@ export default function DashboardAnalytics({
 
   // Simulated highly human-readable clinic report exporter
   const handleExportTXT = () => {
-    setExportSuccess(true);
-    setTimeout(() => setExportSuccess(false), 3000);
-
     const separator = "=================================================================================";
     const thinSeparator = "---------------------------------------------------------------------------------";
 
@@ -428,6 +432,9 @@ export default function DashboardAnalytics({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Globally safe UI feedback replacing volatile unmounted state
+    showToast('Monthly clinical report exported successfully!', 'success');
   };
 
   return (
@@ -995,12 +1002,6 @@ export default function DashboardAnalytics({
         </div>
       </div>
 
-      {exportSuccess && (
-        <div className="fixed bottom-4 right-4 bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg text-xs font-bold z-50 flex items-center gap-2 animate-bounce">
-          <CheckCircle className="h-4 w-4" />
-          Report exported successfully to your downloads!
-        </div>
-      )}
     </div>
   );
 }
