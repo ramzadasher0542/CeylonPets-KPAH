@@ -33,6 +33,7 @@ export type AppointmentStatus = 'booked' | 'in-progress' | 'completed' | 'cancel
 
 export interface Appointment {
   id: string;
+  aptNumber?: string;
   petName: string;
   petType: 'Dog' | 'Cat' | 'Bird' | 'Rabbit' | 'Other';
   breed: string;
@@ -44,6 +45,9 @@ export interface Appointment {
   veterinarian: string;
   reason: string;
   status: AppointmentStatus;
+  created_at?: string;
+  updated_at?: string;
+  is_deleted?: boolean;
 }
 
 export interface Vaccination {
