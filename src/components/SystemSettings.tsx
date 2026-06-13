@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Lock, 
   Shield, 
@@ -212,6 +213,25 @@ export default function SystemSettings({
     view: string;
     checked: boolean;
   } | null>(null);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showPrintModal) setShowPrintModal(false);
+        if (showPendingSummaryModal) {
+          setShowPendingSummaryModal(false);
+          setPendingPermissionChange(null);
+        }
+        if (showPermissionPinModal) {
+          setShowPermissionPinModal(false);
+          setEnteredPin('');
+          setPinError('');
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showPrintModal, showPendingSummaryModal, showPermissionPinModal]);
 
   // Helper updates
   const setConfigValue = (key: keyof SystemConfig, value: any) => {
@@ -2243,7 +2263,7 @@ export default function SystemSettings({
       </div>
 
       {/* SECURE SPOOLED TEST PRINT PREVIEW LIGHTBOX MODAL */}
-      {showPrintModal && (
+      {showPrintModal && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-3xl border border-sky-100 max-w-sm w-full p-6 text-xs shadow-xl animate-fade-in space-y-4">
             
@@ -2302,7 +2322,7 @@ export default function SystemSettings({
             ) : (
               /* Report print spooler rendering */
               <div className="p-4 bg-slate-50 rounded-2xl border flex flex-col items-center">
-                <span className="text-[10px] bg-sky-100 text-sky-800 font-extrabold px-2 py-0.5 rounded-full mb-3 uppercase font-sans">Lab Report Document test finished</span>
+                <span className="text-[10px] bg-sky-100 text-sky-850 font-extrabold px-2 py-0.5 rounded-full mb-3 uppercase font-sans">Lab Report Document test finished</span>
                 <div className="bg-white p-5 rounded border font-sans text-[8px] text-zinc-700 w-full max-w-[240px] space-y-3.5 shadow-xs">
                   
                   {/* Title of report */}
@@ -2364,11 +2384,12 @@ export default function SystemSettings({
               Close test page Spooler
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* PENDING CHANGE SUMMARY MODAL */}
-      {showPendingSummaryModal && pendingPermissionChange && (() => {
+      {showPendingSummaryModal && pendingPermissionChange && createPortal((() => {
         const viewNames: Record<string, string> = {
           dashboard: 'Executive Dashboard (Revenue counts, charts, stats)',
           pos: 'POS Register Terminal (Product search, cart billing, receipt print)',
@@ -2464,10 +2485,10 @@ export default function SystemSettings({
             </div>
           </div>
         );
-      })()}
+      })(), document.body)}
 
       {/* MASTER PIN SECURITY CONFIRMATION DIALOG */}
-      {showPermissionPinModal && (
+      {showPermissionPinModal && createPortal(
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-xs">
           <div className="bg-white rounded-3xl border border-rose-100 max-w-sm w-full p-6 text-xs shadow-xl animate-fade-in space-y-4">
             
@@ -2534,7 +2555,8 @@ export default function SystemSettings({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Satisfying Save Button */}

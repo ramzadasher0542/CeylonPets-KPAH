@@ -106,6 +106,22 @@ export default function AppointmentsManager({
   // Popover State
   const [selectedPopoverApt, setSelectedPopoverApt] = useState<Appointment | null>(null);
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAddModal) {
+          setShowAddModal(false);
+          resetForm();
+        }
+        if (selectedPopoverApt) {
+          setSelectedPopoverApt(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showAddModal, selectedPopoverApt]);
+
   // Core Handlers
   const resetForm = () => {
     setEditingAptId(null);

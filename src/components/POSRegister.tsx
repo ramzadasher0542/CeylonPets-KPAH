@@ -145,13 +145,18 @@ export default function POSRegister({
 
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (showCheckoutModal && e.key === 'Escape') {
-        setShowCheckoutModal(false);
+      if (e.key === 'Escape') {
+        if (showCheckoutModal) setShowCheckoutModal(false);
+        if (showCloseShiftModal) setShowCloseShiftModal(false);
+        if (showPinChallenge) setShowPinChallenge(false);
+        if (selectedInvoiceDetails) setSelectedInvoiceDetails(null);
+        if (showCashDrawerModal) setShowCashDrawerModal(false);
+        if (showDrawerBalancePopup) setShowDrawerBalancePopup(false);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showCheckoutModal]);
+  }, [showCheckoutModal, showCloseShiftModal, showPinChallenge, selectedInvoiceDetails, showCashDrawerModal, showDrawerBalancePopup]);
 
   const [amountReceived, setAmountReceived] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
@@ -1720,14 +1725,23 @@ export default function POSRegister({
                   </div>
                   {amountReceived && (
                     <div className="pt-1 flex justify-between items-center font-mono">
-                      {parseFloat(amountReceived) < total ? (
-                        <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{(total - parseFloat(amountReceived)).toFixed(2)}</span>
-                      ) : (
-                        <>
-                          <span className="text-sm font-bold text-teal-800">Change Due:</span>
-                          <span className="text-emerald-600 font-bold text-lg">{currencySign}{(parseFloat(amountReceived) - total).toFixed(2)}</span>
-                        </>
-                      )}
+                      {(() => {
+                        const receivedCents = Math.round((parseFloat(amountReceived) || 0) * 100);
+                        if (receivedCents < centsTotal) {
+                          const remaining = (centsTotal - receivedCents) / 100;
+                          return (
+                            <span className="text-sm font-semibold text-rose-500">Remaining: {currencySign}{remaining.toFixed(2)}</span>
+                          );
+                        } else {
+                          const change = (receivedCents - centsTotal) / 100;
+                          return (
+                            <>
+                              <span className="text-sm font-bold text-teal-800">Change Due:</span>
+                              <span className="text-emerald-600 font-bold text-lg">{currencySign}{change.toFixed(2)}</span>
+                            </>
+                          );
+                        }
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1744,7 +1758,7 @@ export default function POSRegister({
               </button>
               <button
                 onClick={handleCheckoutSubmit}
-                disabled={isProcessing || (paymentMethod === 'cash' && Number(amountReceived) < total)}
+                disabled={isProcessing || (paymentMethod === 'cash' && Math.round((parseFloat(amountReceived) || 0) * 100) < centsTotal)}
                 className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-3.5 font-bold transition-colors shadow-md shadow-indigo-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (

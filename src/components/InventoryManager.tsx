@@ -113,6 +113,20 @@ export default function InventoryManager({
   const [editingPriceId, setEditingPriceId] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState('');
 
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showAddForm) {
+          setShowAddForm(false);
+          setSku(''); setName(''); setPrice(''); setCost(''); setStock(''); setMinStock(''); setFormError('');
+        }
+        if (editingItem) setEditingItem(null);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showAddForm, editingItem]);
+
   // Force absolute real-time UI data recalculation to eliminate stale stock cache lag
   const filteredInventoryItems = useMemo(() => {
     const term = (searchTerm || '').toLowerCase().trim();

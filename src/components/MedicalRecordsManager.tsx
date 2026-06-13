@@ -122,6 +122,19 @@ export default function MedicalRecordsManager({
   const [newLabRefRange, setNewLabRefRange] = useState('');
   const [newLabNotes, setNewLabNotes] = useState('');
 
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showNewRecordForm) setShowNewRecordForm(false);
+        if (showEditRecordForm) setShowEditRecordForm(false);
+        if (showAddVaccine) setShowAddVaccine(false);
+        if (showAddLab) setShowAddLab(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showNewRecordForm, showEditRecordForm, showAddVaccine, showAddLab]);
+
   const activeRecord = records.find(r => r.id === selectedRecordId);
 
   // Enforce rigid chronological descending sorting on medical history records to prevent scrambled timelines

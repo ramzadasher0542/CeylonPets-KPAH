@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Heart, 
@@ -48,6 +48,20 @@ export default function PatientPortal({
   const [bookingDate, setBookingDate] = useState('2026-05-23');
   const [bookingTime, setBookingTime] = useState('10:00');
   const [bookingOutcome, setBookingOutcome] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (bookingPet) {
+          setBookingPet(null);
+          setBookingReason('');
+          setBookingOutcome(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [bookingPet]);
 
   const handleDownloadPassport = (pet: MedicalRecord) => {
     const printWindow = window.open('', '_blank', 'width=500,height=700');
