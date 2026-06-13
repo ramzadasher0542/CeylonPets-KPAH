@@ -497,31 +497,18 @@ function App() {
   const handleUpdateAppointmentStatus = (id: string, status: AppointmentStatus) => {
     const aptDetails = appointments.find(a => a.id === id);
     if (!aptDetails) return;
+    
+    // 1. Mutate the status cleanly
     const updatedApt = { ...aptDetails, status };
 
-    if (status === 'completed' || status === 'cancelled') {
-      try {
-        const storedHistory = localStorage.getItem('ceylon_history_v2');
-        const historyArr = storedHistory ? JSON.parse(storedHistory) : [];
-        if (Array.isArray(historyArr)) {
-          // Remove if it somehow already exists to prevent duplicates, then unshift
-          const filteredArr = historyArr.filter((a: any) => a.id !== id);
-          filteredArr.unshift(updatedApt);
-          localStorage.setItem('ceylon_history_v2', JSON.stringify(filteredArr));
-        }
-      } catch (e) {
-        console.error('Failed to update appointment history', e);
-      }
-      setAppointments(prev => prev.filter(apt => apt.id !== id));
-    } else {
-      setAppointments(prev => 
-        prev.map(apt => apt.id === id ? updatedApt : apt)
-      );
-    }
+    // 2. Preserve relational integrity: Keep all records inside the primary flat array
+    setAppointments(prev => 
+      prev.map(apt => apt.id === id ? updatedApt : apt)
+    );
 
+    // 3. Dispatch clinical alerts if the patient moves to in-progress
     if (status === 'in-progress') {
       const checkAlert: SystemAlert = {
-        // Enforce pure numeric identity strings to satisfy relational integrity rules
         id: String(Date.now() + Math.floor(Math.random() * 1000)),
         severity: 'info',
         category: 'appointment',
@@ -531,6 +518,7 @@ function App() {
       };
       setAlerts(prev => [checkAlert, ...prev]);
     }
+    
     showToast(`Appointment status updated to ${status}.`);
   };
 
