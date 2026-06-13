@@ -20,7 +20,7 @@ import {
   Landmark
 } from 'lucide-react';
 import { InventoryItem, Appointment, MedicalRecord, Invoice, CATEGORY_DISPLAY_MAP } from '../types';
-import { fetchShiftMetrics, fetchLowStockCount, fetchActiveShiftId, openShift, closeShift, safeCache } from '../lib/db';
+import { fetchShiftMetrics, fetchLowStockCount, fetchActiveShiftId, safeCache } from '../lib/db';
 import { showToast } from './Toast';
 
 interface DashboardProps {
@@ -40,24 +40,16 @@ export default function DashboardAnalytics({
   appointments, 
   records, 
   invoices, 
-  onTriggerSync, 
   isOnline,
-  syncQueueLength,
-  systemConfig,
-  currentUser
+  systemConfig
 }: DashboardProps) {
   const currencySign = systemConfig?.currencySymbol || 'Rs. ';
   const [reportMonth, setReportMonth] = useState('2026-05');
   const [chartType, setChartType] = useState<'revenue' | 'appointments'>('revenue');
   const [hoveredSlice, setHoveredSlice] = useState<string | null>(null);
 
-  const [isZReportModalOpen, setIsZReportModalOpen] = useState(false);
-  const [actualDrawerCash, setActualDrawerCash] = useState<string>('');
-  const [zReportNotes, setZReportNotes] = useState('');
-  const [isClosingShift, setIsClosingShift] = useState(false);
-
   // Hardened SWR initialization with immutable fallback safety bounds to survive loading frames
-  const { data: rawShiftMetrics, mutate: mutateShift } = useSWR('shift_metrics', () => fetchShiftMetrics());
+  const { data: rawShiftMetrics } = useSWR('shift_metrics', () => fetchShiftMetrics());
   
   const shiftMetrics = rawShiftMetrics || {
     gross_sales: 0,
@@ -66,60 +58,12 @@ export default function DashboardAnalytics({
     payment_breakdown: []
   } as any;
   const { data: lowStockCount } = useSWR('lowStockCount', fetchLowStockCount, { refreshInterval: 60000 });
-  const { data: activeShiftId, mutate: mutateShiftId } = useSWR('activeShiftId', fetchActiveShiftId, { refreshInterval: 30000 });
+  const { data: activeShiftId } = useSWR('activeShiftId', fetchActiveShiftId, { refreshInterval: 30000 });
 
   // 1. Strict Integer-Cent Expected Drawer Cash Calculation
   const expectedDrawerCash = invoices
     .filter(inv => inv.shiftId === activeShiftId && inv.paymentMethod === 'cash')
     .reduce((sum, inv) => sum + Math.round((inv.sales_total || 0) * 100), 0) / 100;
-
-  const handleOpenShift = async () => {
-    try {
-      await openShift(currentUser?.name || 'Admin', 0);
-      mutateShiftId();
-      mutateShift();
-      showToast('Shift opened successfully!', 'success');
-    } catch (err) {
-      showToast('Error opening shift', 'error');
-    }
-  };
-
-  // 2. Hardened Shift Closure Handler
-  const handleCloseShift = async () => {
-    if (!activeShiftId) return;
-    const actual = parseFloat(actualDrawerCash);
-    if (isNaN(actual)) {
-      showToast('Please enter a valid amount', 'error');
-      return;
-    }
-    
-    // Scale everything to absolute integers to prevent float-comparison drift bypasses
-    const actualCents = Math.round(actual * 100);
-    const expectedCents = Math.round(expectedDrawerCash * 100);
-    const discrepancyCents = actualCents - expectedCents;
-    
-    // Strict Validation using integer cents
-    if (actualCents !== expectedCents && !zReportNotes.trim()) {
-      showToast('Discrepancy detected: Please provide notes explaining the difference.', 'error');
-      return;
-    }
-
-    setIsClosingShift(true);
-    try {
-      // Pass the strict whole-integer cents to the DB as required by the schema
-      await closeShift(activeShiftId, actualCents, expectedCents, discrepancyCents, zReportNotes);
-      mutateShiftId();
-      mutateShift();
-      setIsZReportModalOpen(false);
-      setActualDrawerCash('');
-      setZReportNotes('');
-      showToast('Shift closed successfully!', 'success');
-    } catch (err) {
-      showToast('Error closing shift', 'error');
-    } finally {
-      setIsClosingShift(false);
-    }
-  };
 
   // Ensure all invoice financial sums use strict rounded integer cents arithmetic
   const activePaidInvoices = (invoices || []).filter(inv => inv && inv.paymentStatus === 'paid' && activeShiftId && inv.shiftId === activeShiftId);
@@ -439,71 +383,6 @@ export default function DashboardAnalytics({
 
   return (
     <div className="space-y-6" id="dashboard-analytics">
-      {/* Real-time sync panel */}
-      {!isOnline && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between shadow-xs animate-pulse">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-amber-600" />
-            <div>
-              <p className="text-sm font-semibold text-amber-900">Clinician Field Mode Active (Offline)</p>
-              <p className="text-xs text-amber-700">
-                {syncQueueLength > 0 
-                  ? `${syncQueueLength} transactional updates queued. All actions are securely cached locally and compliant.` 
-                  : "Changes will be securely saved locally in encrypted state."}
-              </p>
-            </div>
-          </div>
-          {syncQueueLength > 0 && (
-            <button 
-              onClick={onTriggerSync}
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1.5 transition-colors"
-            >
-              <RefreshCw className="h-3 w-3 animate-spin" />
-              Sync Manually Now
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Shift Status Indicator */}
-      <div className="flex justify-between items-center bg-white px-4 py-3 rounded-2xl border shadow-sm border-indigo-100">
-        <div className="flex items-center gap-4">
-          {activeShiftId ? (
-            <>
-              <div className="flex items-center gap-3">
-                <span className="relative flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                </span>
-                <span className="text-sm font-bold text-slate-700">Active Register Shift Open</span>
-              </div>
-              <button 
-                onClick={() => setIsZReportModalOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"
-              >
-                <CheckCircle className="w-4 h-4" />
-                Close Shift (Z-Report)
-              </button>
-            </>
-          ) : (
-            <>
-              <div className="flex items-center gap-3">
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span>
-                <span className="text-sm font-bold text-slate-700">Register Closed (No Active Shift)</span>
-              </div>
-              <button 
-                onClick={handleOpenShift}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition-colors flex items-center gap-2"
-              >
-                <Activity className="w-4 h-4" />
-                Open New Shift
-              </button>
-            </>
-          )}
-        </div>
-
-        <div className="text-xs text-slate-500 font-semibold">Metrics show data for the current shift only</div>
-      </div>
 
       {/* Main KPI metrics bar */}
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -893,82 +772,7 @@ export default function DashboardAnalytics({
         </div>
       </div>
 
-      {/* Z-Report Modal */}
-      {isZReportModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl flex flex-col max-h-[calc(100vh-40px)] max-w-xl w-full overflow-hidden shadow-2xl">
-            <div className="p-6 shrink-0 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
-              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <CheckCircle className="w-6 h-6 text-indigo-600" />
-                Close Shift (Z-Report)
-              </h2>
-              <button 
-                onClick={() => setIsZReportModalOpen(false)}
-                className="p-2 hover:bg-white rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
-              <div className="bg-indigo-50 text-indigo-800 p-4 rounded-xl flex justify-between items-center border border-indigo-100">
-                <span className="font-semibold">Expected Drawer Cash:</span>
-                <span className="text-xl font-black">{currencySign}{expectedDrawerCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              
-              <div>
-                <label htmlFor="actual-drawer-cash" className="block text-sm font-bold text-slate-700 mb-2">Actual Drawer Cash Count *</label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-slate-500 font-bold">{currencySign}</span>
-                  </div>
-                  <input
-                    id="actual-drawer-cash"
-                    name="actualDrawerCash"
-                    type="number"
-                    value={actualDrawerCash}
-                    onChange={(e) => setActualDrawerCash(e.target.value)}
-                    className="w-full pl-8 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all font-mono text-lg font-bold"
-                    placeholder="0.00"
-                    step="0.01"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="z-report-notes" className="block text-sm font-bold text-slate-700 mb-2">
-                  Reconciliation Notes {parseFloat(actualDrawerCash) !== expectedDrawerCash && <span className="text-rose-500">(Required due to discrepancy)</span>}
-                </label>
-                <textarea
-                  id="z-report-notes"
-                  name="zReportNotes"
-                  value={zReportNotes}
-                  onChange={(e) => setZReportNotes(e.target.value)}
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all min-h-[100px]"
-                  placeholder="Explain any over/short amounts, or record end-of-shift notes..."
-                />
-              </div>
-            </div>
-            
-            <div className="p-6 shrink-0 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-              <button 
-                onClick={() => setIsZReportModalOpen(false)}
-                className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-                disabled={isClosingShift}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleCloseShift}
-                disabled={isClosingShift || actualDrawerCash === ''}
-                className="px-6 py-2.5 font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-all shadow-sm shadow-indigo-200 flex items-center gap-2"
-              >
-                {isClosingShift ? 'Processing...' : 'Submit Z-Report'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
       
 
 
