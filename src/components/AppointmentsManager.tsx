@@ -56,6 +56,7 @@ export default function AppointmentsManager({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [timeframe, setTimeframe] = useState<'day' | 'week' | 'month'>('week');
   const [doctorFilter, setDoctorFilter] = useState('All Doctors');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // List View Specific State
   const [statusFilter, setStatusFilter] = useState('All');
@@ -114,6 +115,7 @@ export default function AppointmentsManager({
   };
 
   const handleEditClick = (apt: Appointment) => {
+    if (apt.status === 'completed') return; // Secure Lockout
     setEditingAptId(apt.id);
     setPetName(apt.petName);
     setPetType(apt.petType);
@@ -125,7 +127,6 @@ export default function AppointmentsManager({
     setTime(apt.time);
     setVeterinarian(apt.veterinarian);
     
-    // Unpack reason and metadata
     let displayReason = apt.reason;
     const match = apt.reason.match(/:::METADATA(.*?):::/);
     if (match) {
@@ -273,9 +274,21 @@ export default function AppointmentsManager({
     setCurrentDate(d);
   };
 
-  // Data Filtering
+  // Data Filtering with Global Search
   const baseFilteredApts = allAppointments.filter(apt => {
     if (doctorFilter !== 'All Doctors' && apt.veterinarian !== doctorFilter) return false;
+    
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      const matchesSearch = 
+        apt.petName.toLowerCase().includes(q) || 
+        apt.ownerName.toLowerCase().includes(q) || 
+        apt.ownerPhone.toLowerCase().includes(q) ||
+        (apt.aptNumber && apt.aptNumber.toLowerCase().includes(q));
+      
+      if (!matchesSearch) return false;
+    }
+    
     return true;
   });
 
@@ -307,6 +320,10 @@ export default function AppointmentsManager({
     const type = meta?.type || 'OPD';
     return <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md text-[10px] font-bold border border-indigo-100">{type}</span>;
   };
+
+  const currentDisplayAptNumber = editingAptId 
+    ? allAppointments.find(a => a.id === editingAptId)?.aptNumber || 'N/A'
+    : 'APT-' + (1000 + allAppointments.length + 1);
 
   // Render Core Views
   const renderCalendarView = () => {
@@ -353,9 +370,9 @@ export default function AppointmentsManager({
       );
     }
 
-    // Day or Week View Time Grid
+    // 24-Hour Loop Integration
     const days = timeframe === 'day' ? [currentDate] : getWeekDays(currentDate);
-    const hours = [8,9,10,11,12,13,14,15,16,17,18];
+    const hours = Array.from({ length: 24 }, (_, i) => i);
 
     return (
       <div className="flex-1 flex flex-col border border-slate-200 rounded-2xl bg-white shadow-sm overflow-hidden">
@@ -376,7 +393,7 @@ export default function AppointmentsManager({
           {hours.map(hour => (
             <div key={hour} className="grid border-b border-slate-100 min-h-[90px]" style={{ gridTemplateColumns: `70px repeat(${days.length}, minmax(0, 1fr))` }}>
               <div className="p-2 border-r border-slate-200 bg-slate-50 flex items-start justify-center pt-3 text-[10px] font-bold text-slate-400">
-                {hour > 12 ? `${hour-12} PM` : hour === 12 ? '12 PM' : `${hour} AM`}
+                {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
               </div>
               {days.map(d => {
                 const dayStr = toLocalISODate(d);
@@ -387,9 +404,13 @@ export default function AppointmentsManager({
                       <div 
                         key={a.id} 
                         onClick={(e) => { e.stopPropagation(); setSelectedPopoverApt(a); }}
-                        className="mb-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-[10px] text-indigo-800 leading-tight shadow-xs cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"
+                        className={`mb-1.5 p-2 border rounded-xl text-[10px] leading-tight shadow-xs cursor-pointer hover:shadow-sm transition-all group ${
+                          a.status === 'completed' 
+                            ? 'bg-slate-50 border-slate-200 text-slate-500' 
+                            : 'bg-indigo-50 border-indigo-100 text-indigo-800 hover:border-indigo-300'
+                        }`}
                       >
-                        <div className="font-bold truncate text-indigo-900">{a.petName}</div>
+                        <div className="font-bold truncate">{a.petName}</div>
                         <div className="truncate opacity-80 mt-0.5 font-medium">{a.ownerName}</div>
                       </div>
                     ))}
@@ -420,62 +441,75 @@ export default function AppointmentsManager({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
-              <th className="py-3.5 px-4">Time</th>
-              <th className="py-3.5 px-4">Pet</th>
-              <th className="py-3.5 px-4">Owner</th>
-              <th className="py-3.5 px-4">Service</th>
-              <th className="py-3.5 px-4">Status</th>
-              <th className="py-3.5 px-4 text-right">Actions</th>
+              <th className="py-4 px-4">Apt #</th>
+              <th className="py-4 px-4">Time</th>
+              <th className="py-4 px-4">Pet</th>
+              <th className="py-4 px-4">Owner</th>
+              <th className="py-4 px-4">Service</th>
+              <th className="py-4 px-4">Status</th>
+              <th className="py-4 px-4 text-right">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {listFilteredApts.length === 0 ? (
               <tr>
-                <td colSpan={6} className="py-12 text-center text-slate-400 font-medium">
+                <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
                   <CalendarIcon className="h-10 w-10 text-slate-200 mx-auto mb-3" />
                   No appointments found for the selected filters.
                 </td>
               </tr>
-            ) : listFilteredApts.map((apt) => (
+            ) : listFilteredApts.map((apt) => {
+              const isLocked = apt.status === 'completed';
+              return (
               <tr key={apt.id} className="hover:bg-slate-50 transition-colors group">
-                <td className="py-3 px-4">
+                <td className="py-4 px-4">
+                  <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-1 rounded-md">{apt.aptNumber || 'N/A'}</span>
+                </td>
+                <td className="py-4 px-4">
                   <div className="font-bold text-slate-800">{formatDisplayDate(apt.date)}</div>
                   <div className="text-[10px] text-slate-500 font-medium">{formatDisplayTime(apt.time)}</div>
                 </td>
-                <td className="py-3 px-4">
-                  <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                    {apt.petName} 
-                    {apt.aptNumber && <span className="text-[8px] font-mono bg-slate-100 text-slate-400 px-1 py-0.5 rounded">{apt.aptNumber}</span>}
-                  </div>
+                <td className="py-4 px-4">
+                  <div className="font-bold text-slate-800 flex items-center gap-1.5">{apt.petName}</div>
                   <div className="text-[10px] text-slate-500 font-medium">{apt.petType} - {apt.breed || 'Mixed'}</div>
                 </td>
-                <td className="py-3 px-4">
+                <td className="py-4 px-4">
                   <div className="font-bold text-slate-700">{apt.ownerName}</div>
                   <div className="text-[10px] text-slate-500 font-medium font-mono">{apt.ownerPhone}</div>
                 </td>
-                <td className="py-3 px-4">
+                <td className="py-4 px-4">
                   {getServicePill(apt.reason)}
                 </td>
-                <td className="py-3 px-4">
+                <td className="py-4 px-4">
                   {getStatusPill(apt.status)}
                 </td>
-                <td className="py-3 px-4">
-                  <div className="flex items-center justify-end gap-1 opacity-100">
+                <td className="py-4 px-4">
+                  <div className="flex items-center justify-end gap-1">
                     {apt.status === 'booked' && (
                       <button onClick={() => handleCheckIn(apt)} title="Check In" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer">
                         <CheckCircle2 className="h-4 w-4" />
                       </button>
                     )}
-                    <button onClick={() => handleEditClick(apt)} title="Edit" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer">
+                    <button 
+                      onClick={() => handleEditClick(apt)} 
+                      disabled={isLocked}
+                      title={isLocked ? "Read Only" : "Edit"} 
+                      className={`p-1.5 rounded-lg transition-colors ${isLocked ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer'}`}
+                    >
                       <Edit2 className="h-4 w-4" />
                     </button>
-                    <button onClick={() => onUpdateStatus(apt.id, 'cancelled')} title="Delete/Cancel" className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
+                    <button 
+                      onClick={() => onUpdateStatus(apt.id, 'cancelled')} 
+                      disabled={isLocked}
+                      title={isLocked ? "Read Only" : "Delete/Cancel"} 
+                      className={`p-1.5 rounded-lg transition-colors ${isLocked ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'}`}
+                    >
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
       </div>
@@ -485,11 +519,18 @@ export default function AppointmentsManager({
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col space-y-4" id="appointments-tab-system">
       
-      {/* Unified Control Header */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-4 shrink-0">
+      {/* Unified Control Header with Wrap and Spacing */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap items-center justify-between gap-4 shrink-0">
         
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">Appointment Calendar</h2>
+          <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
+            {viewMode === 'calendar' && timeframe === 'day' && (
+              <button onClick={() => setTimeframe('month')} className="p-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-bold mr-1 shadow-sm cursor-pointer">
+                <ChevronLeft className="h-3.5 w-3.5" /> Back
+              </button>
+            )}
+            Appointment Calendar
+          </h2>
           <div className="flex bg-slate-100 p-1 rounded-xl">
             <button onClick={() => setViewMode('calendar')} className={`p-1.5 px-3 rounded-lg flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700 cursor-pointer'}`}>
               <CalendarIcon className="h-4 w-4" /> Calendar
@@ -500,7 +541,7 @@ export default function AppointmentsManager({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100 w-full sm:w-auto justify-center">
+        <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100 w-full md:w-auto justify-center">
           <button onClick={prevPeriod} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-xs transition-colors cursor-pointer">
             <ChevronLeft className="h-4 w-4" />
           </button>
@@ -515,7 +556,19 @@ export default function AppointmentsManager({
           </div>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-3 w-full xl:w-auto justify-end flex-wrap flex-1">
+          {/* Global Search Input */}
+          <div className="relative flex-1 min-w-[180px] max-w-xs">
+            <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Search apts, names, phone..." 
+              value={searchQuery} 
+              onChange={e => setSearchQuery(e.target.value)} 
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500" 
+            />
+          </div>
+
           {viewMode === 'calendar' && (
             <div className="flex bg-slate-100 p-1 rounded-xl hidden sm:flex">
               {['day', 'week', 'month'].map(t => (
@@ -545,7 +598,10 @@ export default function AppointmentsManager({
         <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedPopoverApt(null)}>
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full animate-fade-in relative" onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelectedPopoverApt(null)} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"><X className="h-4 w-4" /></button>
-            <h3 className="text-sm font-extrabold text-slate-800">{selectedPopoverApt.petName}</h3>
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="text-sm font-extrabold text-slate-800">{selectedPopoverApt.petName}</h3>
+              <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded">{selectedPopoverApt.aptNumber}</span>
+            </div>
             <p className="text-xs text-slate-500 font-medium mb-4">{selectedPopoverApt.date} at {selectedPopoverApt.time}</p>
             
             <div className="space-y-2">
@@ -554,12 +610,21 @@ export default function AppointmentsManager({
                   <CheckCircle2 className="h-4 w-4" /> Check In Patient
                 </button>
               )}
-              <button onClick={() => handleEditClick(selectedPopoverApt)} className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
-                <Edit2 className="h-4 w-4" /> Edit Details
-              </button>
-              <button onClick={() => { onUpdateStatus(selectedPopoverApt.id, 'cancelled'); setSelectedPopoverApt(null); }} className="w-full py-2 bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
-                <Trash2 className="h-4 w-4" /> Cancel Appointment
-              </button>
+              
+              {selectedPopoverApt.status !== 'completed' ? (
+                <>
+                  <button onClick={() => handleEditClick(selectedPopoverApt)} className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
+                    <Edit2 className="h-4 w-4" /> Edit Details
+                  </button>
+                  <button onClick={() => { onUpdateStatus(selectedPopoverApt.id, 'cancelled'); setSelectedPopoverApt(null); }} className="w-full py-2 bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
+                    <Trash2 className="h-4 w-4" /> Cancel Appointment
+                  </button>
+                </>
+              ) : (
+                <div className="w-full py-2 bg-slate-50 text-slate-400 border border-slate-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-not-allowed">
+                  Completed (Read Only)
+                </div>
+              )}
             </div>
           </div>
         </div>,
@@ -580,15 +645,29 @@ export default function AppointmentsManager({
             <form onSubmit={handleCreateAppointment} className="flex flex-col min-h-0 overflow-hidden">
               <div className="flex-1 overflow-y-auto p-6 custom-scrollbar space-y-4">
                 {formError && <div className="text-red-600 bg-red-50 p-2 rounded mb-4 border border-red-200">{formError}</div>}
+                
                 <div className="grid grid-cols-3 gap-2.5 text-[11px]">
-                  <div className="space-y-0.5 col-span-3 pb-2 border-b border-slate-100 mb-2">
-                    <label className="font-bold text-slate-600 block text-[10px]" htmlFor="admission-type">Admission Type</label>
-                    <select name="admissionType" id="admission-type" value={admissionType} onChange={(e) => setAdmissionType(e.target.value)} className="w-full md:w-1/3 px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold">
-                      <option value="OPD">OPD</option>
-                      <option value="Hospital Admission">Hospital Admission</option>
-                      <option value="Vaccination">Vaccination</option>
-                    </select>
+                  {/* Read-Only Apt Number & Admission Type */}
+                  <div className="col-span-3 pb-2 border-b border-slate-100 mb-2 flex items-center gap-4">
+                    <div className="flex-1 max-w-[150px]">
+                      <label className="font-bold text-slate-600 block text-[10px] mb-0.5">Appointment Number</label>
+                      <input 
+                        type="text" 
+                        readOnly 
+                        value={currentDisplayAptNumber} 
+                        className="w-full px-2 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-slate-500 font-mono font-bold cursor-not-allowed focus:outline-none" 
+                      />
+                    </div>
+                    <div className="flex-1 max-w-[200px]">
+                      <label className="font-bold text-slate-600 block text-[10px] mb-0.5" htmlFor="admission-type">Admission Type</label>
+                      <select name="admissionType" id="admission-type" value={admissionType} onChange={(e) => setAdmissionType(e.target.value)} className="w-full px-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold">
+                        <option value="OPD">OPD</option>
+                        <option value="Hospital Admission">Hospital Admission</option>
+                        <option value="Vaccination">Vaccination</option>
+                      </select>
+                    </div>
                   </div>
+
                   <div className="space-y-0.5 col-span-1">
                     <label className="font-bold text-slate-600 block text-[10px]" htmlFor="patient-name">Patient Name *</label>
                     <input name="patientName" id="patient-name" type="text" required maxLength={100} placeholder="Coco, Buster, etc." value={petName} onChange={(e) => { setPetName(e.target.value); if (formError) setFormError(''); }} className={`w-full px-2 py-1.5 bg-slate-50 border ${formError && !petName ? 'border-red-500' : 'border-slate-200'} rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-semibold`} />
