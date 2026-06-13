@@ -55,8 +55,6 @@ import {
   Users, 
   LogOut, 
   Activity, 
-  Wifi, 
-  WifiOff,
   CloudLightning,
   Sparkles,
   Lock,
@@ -422,10 +420,6 @@ function App() {
     // Auto synchronize disabled.
   };
 
-  // Connectivity Toggler
-  const handleToggleConnectivity = () => {
-    // Connectivity manual toggle is disabled in offline-only mode
-  };
 
   // State manipulation triggers
   const handleAddProduct = (product: InventoryItem) => {
@@ -1048,33 +1042,6 @@ function App() {
               {/* Status and Logged User Details */}
               <div className="flex items-center gap-3 flex-wrap justify-center">
                 
-                {/* Connection switch button */}
-                <button
-                  onClick={handleToggleConnectivity}
-                  className={`px-3 py-1 rounded-full border text-[9px] font-bold tracking-wider uppercase inline-flex items-center justify-center gap-1.5 cursor-pointer select-none transition-all ${
-                    isOnline 
-                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100' 
-                      : 'bg-amber-50 border-amber-200 text-amber-800 hover:bg-amber-100 animate-pulse'
-                  }`}
-                  title={isOnline ? "Switch to Offline field mode" : "Restore server link"}
-                >
-                  {isOnline ? (
-                    <>
-                      <Wifi className="h-3.5 w-3.5 text-emerald-600 animate-pulse" />
-                      <span>Online Synchronized</span>
-                    </>
-                  ) : (
-                    <>
-                      <WifiOff className="h-3.5 w-3.5 text-amber-600" />
-                      <span>Remote Camp (Offline)</span>
-                      {syncQueue.length > 0 && (
-                        <span className="bg-amber-600 text-white px-1.5 py-0.5 rounded text-[9px] font-mono leading-none">
-                          {syncQueue.length} Queue
-                        </span>
-                      )}
-                    </>
-                  )}
-                </button>
 
                 {/* User Profile info */}
                 <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
