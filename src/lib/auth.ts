@@ -40,7 +40,25 @@ export function fetchSystemConfig(): SystemConfig {
     posLogoUrl: '',
     taxRate: 0.0825,
     currencySymbol: 'Rs. ',
-    masterPin: 'e4f165a2'
+    masterPin: 'e4f165a2',
+    selectedReceiptPrinter: '',
+    selectedReportPrinter: '',
+    receiptPaperSize: '58mm',
+    connectionType: 'usb',
+    autoPrintReceipt: true,
+    localAutosaveInterval: 15,
+    cloudEndpoint: '',
+    cloudBackupSchedule: 'manual',
+    cloudBackupEnabled: false,
+    emailDigestEnabled: false,
+    recipientEmails: [],
+    digestSchedule: 'daily_end',
+    rolePermissions: {
+      cashier: [],
+      veterinarian: [],
+      admin: [],
+      owner: []
+    }
   };
 }
 

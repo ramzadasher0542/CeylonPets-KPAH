@@ -66,6 +66,7 @@ export default function POSRegister({
   const [customItemName, setCustomItemName] = useState('');
   const [customItemPrice, setCustomItemPrice] = useState('');
   const [customItemCategory, setCustomItemCategory] = useState<'service' | 'retail'>('service');
+  const [openingFloatInput, setOpeningFloatInput] = useState('');
   
   // Resolve undeclared variable reference
   const selectedApt = appointments.find(a => a.id === selectedPetId) || null;
@@ -189,6 +190,11 @@ export default function POSRegister({
   // Cash Drawer Register State
   const [showCashDrawerModal, setShowCashDrawerModal] = useState(false);
   const [currentActiveShift, setCurrentActiveShift] = useState<Shift | null>(null);
+  const currentActiveShiftId = currentActiveShift?.id;
+
+  const [actualCashInput, setActualCashInput] = useState('');
+  const [closeNotesInput, setCloseNotesInput] = useState('');
+  const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -480,29 +486,28 @@ export default function POSRegister({
     };
   };
 
-  const startNewLocalShiftSession = async (floatCents: number) => {
-    const shiftId = await openShift(currentUser?.id || 'admin');
-    return shiftId;
-  };
+
   const mutateShift = async () => {};
 
-  // Hardened shift opening action guard to eliminate overlapping session allocations
-  const handleExecuteOpenShiftShiftSafely = async (initialFloatAmount: string) => {
-    if (isProcessing) return; // Immediate interception if action is already mid-flight
-    
+  // Hardened shift opening action guard to update operational cache arrays without root login shell redirects
+  const handleOpenShift = async (initialFloatAmount: string) => {
+    if (isProcessing) return;
     try {
       setIsProcessing(true);
       console.log('[CeylonPets POS] Securing shift opening action. Compiling integer float cents...');
-      
       const floatCents = Math.round((parseFloat(initialFloatAmount) || 0) * 100);
       
-      // Execute the storage mutation loop directly using our clamped whole integer cent units
-      const resultShiftId = await startNewLocalShiftSession(floatCents);
+      // Persist directly into the indexed database session storage mapping layer
+      const resultShiftId = await openShift(currentUser?.name || 'Terminal Operator', floatCents);
       
       if (resultShiftId) {
         showToast('Shift session successfully established.', 'success');
-        // Instantly force state synchronization recalculation
-        if (typeof mutateShift === 'function') await mutateShift();
+        setOpeningFloatInput('');
+        
+        // Execute smooth state validation inside the active frame context
+        if (typeof mutateShift === 'function') {
+          await mutateShift();
+        }
       }
     } catch (err) {
       console.error('[CeylonPets POS] Critical crash during shift initialization sequence:', err);
@@ -512,10 +517,7 @@ export default function POSRegister({
     }
   };
 
-  const finalizeLocalShiftSession = async (shiftId: string, actualCents: number) => {
-    // Expected cash is computed dynamically, defaulting to 0 for pure closure logic
-    await closeShift(shiftId, actualCents, 0, 'Closed via POS Terminal');
-  };
+
 
   const handleCompileAndCloseShiftZReport = async (
     actualCountedCashInput: string,
@@ -1845,53 +1847,102 @@ export default function POSRegister({
           </div>
         </div>
       )}
+      {/* HARDENED SHIFT OPENING CONTROL OVERLAY */}
+      {!currentActiveShiftId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 text-xs animate-fade-in">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 space-y-4">
+            <div className="flex items-center space-x-2.5 border-b border-slate-100 pb-3">
+              <span className="text-sm px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg font-bold">🔑</span>
+              <div>
+                <h3 className="font-black text-slate-800 text-sm">Initialize Terminal Shift</h3>
+                <p className="text-slate-400 font-medium">Define Starting Cash Vault Asset States</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-slate-600 font-bold">Opening Cash Float (LKR):</label>
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-[11px]">Rs.</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={openingFloatInput}
+                  onChange={(e) => setOpeningFloatInput(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-hidden focus:border-emerald-500 focus:bg-white transition-all"
+                />
+              </div>
+              <p className="text-slate-400 font-medium text-[10px]">
+                Input whole counted currency bills present inside physical till drawer on terminal startup.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (!openingFloatInput.trim() || parseFloat(openingFloatInput) < 0) {
+                  showToast('Please specify a valid starting cash float amount.', 'error');
+                  return;
+                }
+                handleOpenShift(openingFloatInput);
+              }}
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer text-center text-xs focus:outline-hidden"
+            >
+              Establish Open Shift Session
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* HARDENED MULTI-METHOD CASH DRAWER BALANCE LOOKUP MODAL */}
       {showCashDrawerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs text-xs animate-fade-in">
-          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-xl p-6 relative space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs text-xs p-4 animate-fade-in">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 relative space-y-4">
             <button 
+              type="button"
               onClick={() => setShowCashDrawerModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold p-1 transition-colors"
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer transition-colors focus:outline-hidden"
             >
               ✕
             </button>
             
-            <div className="flex items-center space-x-2 border-b border-slate-100 pb-3">
-              <span className="text-xl">💵</span>
+            <div className="flex items-center space-x-2.5 border-b border-slate-100 pb-3">
+              <span className="text-sm px-2 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-bold">💵</span>
               <div>
                 <h3 className="font-black text-slate-800 text-sm">Real-Time Cash Drawer Registry</h3>
                 <p className="text-slate-400 font-medium">Synchronized Terminal Financial States</p>
               </div>
             </div>
 
-            <div className="divide-y divide-slate-100 bg-slate-50 border border-slate-200/60 rounded-xl px-4 py-1">
-              <div className="flex justify-between py-3 font-semibold text-slate-700">
+            <div className="divide-y divide-slate-100 bg-slate-50/80 border border-slate-200/60 rounded-xl px-4 py-1">
+              <div className="flex justify-between py-3 font-semibold text-slate-600">
                 <span>Opening Cash Float:</span>
-                <span className="font-black text-slate-900">
+                <span className="font-bold text-slate-900">
                   Rs. {((currentActiveShift?.openingFloatCents || 0) / 100).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between py-3 font-semibold text-slate-700">
+              <div className="flex justify-between py-3 font-semibold text-slate-600">
                 <span>Cash Revenue Balance:</span>
-                <span className="font-black text-emerald-600">
+                <span className="font-bold text-emerald-600">
                   Rs. {((currentActiveShift?.cashCollectedCents || 0) / 100).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between py-3 font-semibold text-slate-700">
+              <div className="flex justify-between py-3 font-semibold text-slate-600">
                 <span>Card Revenue Balance:</span>
-                <span className="font-black text-indigo-600">
+                <span className="font-bold text-indigo-600">
                   Rs. {((currentActiveShift?.cardCollectedCents || 0) / 100).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between py-3 font-semibold text-slate-700">
+              <div className="flex justify-between py-3 font-semibold text-slate-600">
                 <span>Bank Transfer Revenue:</span>
-                <span className="font-black text-amber-600">
+                <span className="font-bold text-amber-600">
                   Rs. {((currentActiveShift?.bankTransferCollectedCents || 0) / 100).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between py-3 font-bold text-slate-800 border-t border-slate-200">
+              <div className="flex justify-between py-3 font-bold text-slate-800 border-t border-slate-200 pt-3">
                 <span>Total Operational Funds:</span>
-                <span className="font-black text-slate-900">
+                <span className="font-black text-slate-900 text-sm">
                   Rs. {(((currentActiveShift?.openingFloatCents || 0) + 
                          (currentActiveShift?.cashCollectedCents || 0) + 
                          (currentActiveShift?.cardCollectedCents || 0) + 
@@ -1900,11 +1951,79 @@ export default function POSRegister({
               </div>
             </div>
 
-            <div className="text-center pt-2">
-              <kbd className="px-2 py-1 bg-slate-100 border border-slate-300 text-slate-500 rounded-md font-mono text-[10px] shadow-2xs">
+            <div className="flex items-center justify-center space-x-2 text-center pt-2 border-t border-slate-100">
+              <kbd className="px-1.5 py-0.5 bg-slate-100 border border-slate-300 text-slate-500 rounded-md font-mono text-[10px] shadow-2xs">
                 ESC
               </kbd>
-              <span className="text-slate-400 font-medium ml-2">to dismiss tracking view</span>
+              <span className="text-slate-400 font-medium text-[11px]">to escape tracking view</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HARDENED SHIFT CLOSURE & Z-REPORT EMITTER OVERLAY */}
+      {showCloseShiftModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 text-xs animate-fade-in">
+          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 relative space-y-4">
+            <button 
+              type="button"
+              onClick={() => setShowCloseShiftModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer transition-colors focus:outline-hidden"
+            >
+              ✕
+            </button>
+
+            <div className="flex items-center space-x-2.5 border-b border-slate-100 pb-3">
+              <span className="text-sm px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold">🔒</span>
+              <div>
+                <h3 className="font-black text-slate-800 text-sm">Conclude Active Shift Session</h3>
+                <p className="text-slate-400 font-medium">Reconcile Cash Drawers & Spool Z-Reports</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-slate-600 font-bold mb-1">Actual Counted Till Cash (LKR):</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={actualCashInput}
+                  onChange={(e) => setActualCashInput(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-hidden focus:border-rose-500 focus:bg-white transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-600 font-bold mb-1">Reconciliation Notes / Discrepancy Reason:</label>
+                <textarea
+                  placeholder="Specify variance causes or terminal remarks here..."
+                  value={closeNotesInput}
+                  onChange={(e) => setCloseNotesInput(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 text-xs h-20 resize-none focus:outline-hidden focus:border-rose-500 focus:bg-white transition-all"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!actualCashInput.trim()) {
+                    showToast('Please input the physical counted cash balance before closure.', 'error');
+                    return;
+                  }
+                  handleCompileAndCloseShiftZReport(actualCashInput, closeNotesInput);
+                  setShowCloseShiftModal(false);
+                  setActualCashInput('');
+                  setCloseNotesInput('');
+                }}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer text-center text-xs flex items-center justify-center space-x-2 focus:outline-hidden"
+              >
+                <span>🖨️</span>
+                <span>Print Z-Report & Close Shift</span>
+              </button>
             </div>
           </div>
         </div>
