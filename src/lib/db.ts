@@ -322,17 +322,24 @@ export async function fetchActiveShiftDetails(): Promise<Shift | null> {
 
 export async function openShift(openedBy: string, openingFloatCents: number): Promise<string | null> {
   const shifts = safeCache<Shift>('ceylon_shifts_v2', []);
-  const newShiftId = String(Date.now());
+  const newShiftId = crypto.randomUUID();
+  const now = new Date().toISOString();
   
   const newShift: Shift = {
     id: newShiftId,
     openedBy: openedBy || 'Unknown',
-    startTime: new Date().toISOString(),
+    startTime: now,
     openingFloatCents: Math.round(openingFloatCents || 0),
     cashCollectedCents: 0,
     cardCollectedCents: 0,
     bankTransferCollectedCents: 0,
-    isOpen: true
+    isOpen: true,
+    opening_float: openingFloatCents / 100,
+    actual_cash: null,
+    discrepancy_reason: '',
+    created_at: now,
+    updated_at: now,
+    is_deleted: false
   };
 
   shifts.push(newShift);
@@ -352,14 +359,18 @@ export async function closeShift(
   const idx = shifts.findIndex(s => s && s.id === shiftId);
   
   if (idx >= 0) {
+    const now = new Date().toISOString();
     shifts[idx] = {
       ...shifts[idx],
-      endTime: new Date().toISOString(),
+      endTime: now,
       expectedCashCents: Math.round(expectedCashCents),
       actualCashCents: Math.round(actualCashCents),
       discrepancyCents: Math.round(discrepancyCents),
       notes: notes || 'Shift closed',
-      isOpen: false
+      isOpen: false,
+      actual_cash: actualCashCents / 100,
+      discrepancy_reason: notes || '',
+      updated_at: now
     };
     safeWrite('ceylon_shifts_v2', shifts);
   }

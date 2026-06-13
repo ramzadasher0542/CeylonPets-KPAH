@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { mutate } from 'swr';
 import { 
   ShoppingBag, 
   Search, 
@@ -191,6 +192,7 @@ export default function POSRegister({
   const [actualCashInput, setActualCashInput] = useState('');
   const [closeNotesInput, setCloseNotesInput] = useState('');
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
+  const [showDrawerBalancePopup, setShowDrawerBalancePopup] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -485,6 +487,8 @@ export default function POSRegister({
 
   const mutateShift = async () => {
     await fetchAndHydrateShiftContext();
+    mutate('shift_metrics');
+    mutate('activeShiftId');
   };
 
   // 2. Hardened handler to pass the integer float directly to the database and sync the UI
@@ -513,6 +517,132 @@ export default function POSRegister({
 
 
 
+  const getLiveDrawerBalances = () => {
+    if (!currentActiveShift) {
+      return {
+        cashBalance: 0,
+        cardBalance: 0,
+        bankTransferBalance: 0,
+        openingFloat: 0
+      };
+    }
+
+    const activeInvoices = invoices.filter(
+      inv => inv.shiftId === currentActiveShift.id && inv.paymentStatus === 'paid'
+    );
+
+    let cashSales = 0;
+    let cardSales = 0;
+    let bankTransferSales = 0;
+
+    activeInvoices.forEach(inv => {
+      const totalCents = Math.round(inv.sales_total * 100);
+      if (inv.paymentMethod === 'cash') {
+        cashSales += totalCents;
+      } else if (inv.paymentMethod === 'card') {
+        cardSales += totalCents;
+      } else if (inv.paymentMethod === 'bank_transfer') {
+        bankTransferSales += totalCents;
+      }
+    });
+
+    const openingFloat = currentActiveShift.openingFloatCents || 0;
+    const expenses = 0; // default to 0 for now
+    const cashBalance = openingFloat + cashSales - expenses;
+
+    return {
+      cashBalance,
+      cardBalance: cardSales,
+      bankTransferBalance: bankTransferSales,
+      openingFloat
+    };
+  };
+
+  const getZReportCalculations = () => {
+    if (!currentActiveShift) {
+      return {
+        openingFloat: 0,
+        cashCollected: 0,
+        cardCollected: 0,
+        bankTransferCollected: 0,
+        expectedClosingCash: 0,
+        petSuppliesShop: 0,
+        pharmacyRx: 0,
+        labsServices: 0,
+        clinicalCare: 0,
+        vaccinations: 0,
+        grossRevenue: 0,
+        cogs: 0,
+        netProfit: 0
+      };
+    }
+
+    const shiftInvoices = invoices.filter(
+      inv => inv.shiftId === currentActiveShift.id && inv.paymentStatus === 'paid'
+    );
+
+    let cashCollected = 0;
+    let cardCollected = 0;
+    let bankTransferCollected = 0;
+
+    let petSuppliesShop = 0;
+    let pharmacyRx = 0;
+    let labsServices = 0;
+    let clinicalCare = 0;
+    let vaccinations = 0;
+
+    let grossRevenue = 0;
+    let cogs = 0;
+
+    shiftInvoices.forEach(inv => {
+      const totalCents = Math.round(inv.sales_total * 100);
+      if (inv.paymentMethod === 'cash') {
+        cashCollected += totalCents;
+      } else if (inv.paymentMethod === 'card') {
+        cardCollected += totalCents;
+      } else if (inv.paymentMethod === 'bank_transfer') {
+        bankTransferCollected += totalCents;
+      }
+
+      grossRevenue += totalCents;
+      cogs += Math.round((inv.cogs || 0) * 100);
+
+      inv.items.forEach(item => {
+        const itemPriceCents = Math.round(item.totalPrice * 100);
+        if (item.category === 'retail') {
+          petSuppliesShop += itemPriceCents;
+        } else if (item.category === 'prescription') {
+          pharmacyRx += itemPriceCents;
+        } else if (item.category === 'lab_service') {
+          labsServices += itemPriceCents;
+        } else if (item.category === 'service') {
+          clinicalCare += itemPriceCents;
+        } else if (item.category === 'vaccine') {
+          vaccinations += itemPriceCents;
+        }
+      });
+    });
+
+    const openingFloat = currentActiveShift.openingFloatCents || 0;
+    const expectedClosingCash = openingFloat + cashCollected;
+
+    return {
+      openingFloat,
+      cashCollected,
+      cardCollected,
+      bankTransferCollected,
+      expectedClosingCash,
+      petSuppliesShop,
+      pharmacyRx,
+      labsServices,
+      clinicalCare,
+      vaccinations,
+      grossRevenue,
+      cogs,
+      netProfit: grossRevenue - cogs
+    };
+  };
+
   const handleCompileAndCloseShiftZReport = async (
     actualCountedCashInput: string,
     staffNotes: string
@@ -520,15 +650,16 @@ export default function POSRegister({
     if (!currentActiveShift) return;
 
     try {
-      const openedFloat = currentActiveShift.openingFloatCents || 0;
-      const cashRev = currentActiveShift.cashCollectedCents || 0;
-      const cardRev = currentActiveShift.cardCollectedCents || 0;
-      const bankRev = currentActiveShift.bankTransferCollectedCents || 0;
+      const zCalculations = getZReportCalculations();
       
-      const expectedCashTotal = openedFloat + cashRev;
+      const openedFloat = zCalculations.openingFloat;
+      const cashRev = zCalculations.cashCollected;
+      const cardRev = zCalculations.cardCollected;
+      const bankRev = zCalculations.bankTransferCollected;
+      const expectedCashTotal = zCalculations.expectedClosingCash;
       const actualCountedCashCents = Math.round((parseFloat(actualCountedCashInput) || 0) * 100);
       const shiftDiscrepancyCents = actualCountedCashCents - expectedCashTotal;
-      const grandTotalCollectedCents = cashRev + cardRev + bankRev;
+      const grandTotalCollectedCents = zCalculations.grossRevenue;
 
       // Compile Z-Report text output dynamically for physical ticket presentation
       let zReportBuffer = `========================================\n`;
@@ -554,8 +685,16 @@ export default function POSRegister({
       zReportBuffer += `- Total Collected    : Rs. ${(grandTotalCollectedCents / 100).toFixed(2)}\n\n`;
 
       zReportBuffer += `BLOCK 3: PERFORMANCE BY CATEGORY\n`;
-      zReportBuffer += `- Clinical Care (Services): Rs. ${(cashRev / 100).toFixed(2)}\n`;
-      zReportBuffer += `- Gross Shift Revenue     : Rs. ${(grandTotalCollectedCents / 100).toFixed(2)}\n\n`;
+      zReportBuffer += `- Pet Supplies Shop  : Rs. ${(zCalculations.petSuppliesShop / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Pharmacy Rx        : Rs. ${(zCalculations.pharmacyRx / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Labs services      : Rs. ${(zCalculations.labsServices / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Clinical Care (srv): Rs. ${(zCalculations.clinicalCare / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Vaccinations       : Rs. ${(zCalculations.vaccinations / 100).toFixed(2)}\n\n`;
+
+      zReportBuffer += `BLOCK 4: BOTTOM LINE\n`;
+      zReportBuffer += `- Gross Revenue      : Rs. ${(grandTotalCollectedCents / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Cost of Goods Sold : Rs. ${(zCalculations.cogs / 100).toFixed(2)}\n`;
+      zReportBuffer += `- Net Profit         : Rs. ${(zCalculations.netProfit / 100).toFixed(2)}\n\n`;
       
       zReportBuffer += `========================================\n`;
       zReportBuffer += `         END OF TERMINAL SUMMARY        \n`;
@@ -1227,8 +1366,78 @@ export default function POSRegister({
       {/* Right Column - Active Invoice Cart System (5 Cols) */}
       <div className="lg:col-span-5 flex flex-col justify-between">
         
-        <div className="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 h-[calc(100vh-140px)] flex flex-col justify-between space-y-4">
+        <div className="bg-white rounded-2xl border border-sky-100 shadow-sm p-4 h-[calc(100vh-140px)] flex flex-col justify-between space-y-4 relative">
           
+          {/* Shift Actions Bar */}
+          {currentActiveShift && (
+            <div className="flex gap-2 flex-none justify-between items-center bg-slate-50 p-2 rounded-xl border border-sky-100 relative">
+              <button
+                type="button"
+                onClick={() => setShowDrawerBalancePopup(!showDrawerBalancePopup)}
+                className="bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer border border-slate-700/50 active:scale-95"
+              >
+                <span>💰</span> View Drawer Balance
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => setShowCloseShiftModal(true)}
+                className="bg-rose-600 hover:bg-rose-750 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+              >
+                <span>🔒</span> Close Shift (Z-Report)
+              </button>
+
+              {/* Floating Slide-out Panel / Micro-modal */}
+              {showDrawerBalancePopup && (() => {
+                const balances = getLiveDrawerBalances();
+                return (
+                  <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/60 p-4 rounded-2xl text-white shadow-xl max-w-sm absolute right-4 top-16 z-50 animate-in slide-in-from-top-4 space-y-3 w-72">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <span className="text-[11px] font-black tracking-wider text-slate-400 uppercase">Cash Drawer Balance</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowDrawerBalancePopup(false)}
+                        className="text-slate-400 hover:text-white font-bold text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between items-center py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400 font-semibold">Opening Float:</span>
+                        <span className="font-mono font-bold text-slate-200">
+                          Rs. {(balances.openingFloat / 100).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400 font-semibold">Cash Balance:</span>
+                        <span className="font-mono font-bold text-emerald-400">
+                          Rs. {(balances.cashBalance / 100).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-1 border-b border-slate-800/50">
+                        <span className="text-slate-400 font-semibold">Card Balance:</span>
+                        <span className="font-mono font-bold text-indigo-400">
+                          Rs. {(balances.cardBalance / 100).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-slate-400 font-semibold">Bank Transfer:</span>
+                        <span className="font-mono font-bold text-amber-400">
+                          Rs. {(balances.bankTransferBalance / 100).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
           {/* Patient checkout linking */}
           <div className="pb-3 border-b border-sky-50">
             <div className="flex items-center justify-between">
@@ -1952,73 +2161,211 @@ export default function POSRegister({
         </div>
       )}
 
-      {/* HARDENED SHIFT CLOSURE & Z-REPORT EMITTER OVERLAY */}
-      {showCloseShiftModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 text-xs animate-fade-in">
-          <div className="max-w-md w-full bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 relative space-y-4">
-            <button 
-              type="button"
-              onClick={() => setShowCloseShiftModal(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer transition-colors focus:outline-hidden"
-            >
-              ✕
-            </button>
-
-            <div className="flex items-center space-x-2.5 border-b border-slate-100 pb-3">
-              <span className="text-sm px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold">🔒</span>
-              <div>
-                <h3 className="font-black text-slate-800 text-sm">Conclude Active Shift Session</h3>
-                <p className="text-slate-400 font-medium">Reconcile Cash Drawers & Spool Z-Reports</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">Actual Counted Till Cash (LKR):</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="0.00"
-                  value={actualCashInput}
-                  onChange={(e) => setActualCashInput(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-hidden focus:border-rose-500 focus:bg-white transition-all"
-                />
+      {/* DAILY Z-REPORT MODAL */}
+      {showCloseShiftModal && (() => {
+        const zCalculations = getZReportCalculations();
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 text-xs animate-fade-in">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xl flex flex-col max-h-[calc(100vh-40px)] w-full max-w-xl overflow-hidden relative">
+              
+              {/* Frozen Header */}
+              <div className="flex items-center justify-between border-b border-slate-100 p-4 shrink-0">
+                <div className="flex items-center space-x-2.5">
+                  <span className="text-sm px-2 py-1 bg-rose-50 text-rose-600 rounded-lg font-bold">🔒</span>
+                  <div>
+                    <h3 className="font-black text-slate-800 text-sm">Daily Z-Report & Terminal Closure</h3>
+                    <p className="text-slate-400 font-medium">Reconcile shift accounts to conclude session</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setShowCloseShiftModal(false)}
+                  className="text-slate-400 hover:text-slate-600 font-bold p-1 cursor-pointer transition-colors focus:outline-hidden"
+                >
+                  ✕
+                </button>
               </div>
 
-              <div>
-                <label className="block text-slate-600 font-bold mb-1">Reconciliation Notes / Discrepancy Reason:</label>
-                <textarea
-                  placeholder="Specify variance causes or terminal remarks here..."
-                  value={closeNotesInput}
-                  onChange={(e) => setCloseNotesInput(e.target.value)}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-700 text-xs h-20 resize-none focus:outline-hidden focus:border-rose-500 focus:bg-white transition-all"
-                />
-              </div>
-            </div>
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                
+                {/* BLOCK 1: Drawer Reconciliation */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-3">
+                  <h4 className="font-black text-slate-700 uppercase tracking-wider text-[10px] border-b border-slate-200 pb-1.5">
+                    Block 1: Drawer Reconciliation
+                  </h4>
+                  <div className="grid grid-cols-3 gap-4 border-b border-slate-200/50 pb-2">
+                    <div>
+                      <span className="text-slate-500 font-bold block mb-0.5 font-[system-ui]">Opening Cash Float</span>
+                      <span className="font-mono text-slate-800 font-bold text-xs">
+                        Rs. {(zCalculations.openingFloat / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-bold block mb-0.5 font-[system-ui]">Expected Closing Cash</span>
+                      <span className="font-mono text-slate-800 font-bold text-xs">
+                        Rs. {(zCalculations.expectedClosingCash / 100).toFixed(2)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-bold block mb-0.5 font-[system-ui]">Calculated Variance</span>
+                      <span className={`font-mono font-bold text-xs ${
+                        Math.round((parseFloat(actualCashInput) || 0) * 100) - zCalculations.expectedClosingCash === 0
+                          ? 'text-slate-500'
+                          : Math.round((parseFloat(actualCashInput) || 0) * 100) - zCalculations.expectedClosingCash > 0
+                          ? 'text-emerald-600'
+                          : 'text-rose-600'
+                      }`}>
+                        Rs. {((Math.round((parseFloat(actualCashInput) || 0) * 100) - zCalculations.expectedClosingCash) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 font-bold mb-1">Actual Counted Cash (LKR)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="0.00"
+                      value={actualCashInput}
+                      onChange={(e) => setActualCashInput(e.target.value)}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-hidden focus:border-rose-500 transition-all font-mono"
+                    />
+                  </div>
+                  {/* Conditional Textarea for discrepancy */}
+                  {Math.round((parseFloat(actualCashInput) || 0) * 100) !== zCalculations.expectedClosingCash && (
+                    <div className="animate-fade-in">
+                      <label className="block text-rose-600 font-bold mb-1">Reason for Discrepancy</label>
+                      <textarea
+                        placeholder="Please specify why expected cash does not match counted cash..."
+                        value={closeNotesInput}
+                        onChange={(e) => setCloseNotesInput(e.target.value)}
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl font-medium text-slate-700 text-xs h-16 resize-none focus:outline-hidden focus:border-rose-500 transition-all"
+                      />
+                    </div>
+                  )}
+                </div>
 
-            <div className="flex items-center space-x-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!actualCashInput.trim()) {
-                    showToast('Please input the physical counted cash balance before closure.', 'error');
-                    return;
-                  }
-                  handleCompileAndCloseShiftZReport(actualCashInput, closeNotesInput);
-                  setShowCloseShiftModal(false);
-                  setActualCashInput('');
-                  setCloseNotesInput('');
-                }}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer text-center text-xs flex items-center justify-center space-x-2 focus:outline-hidden"
-              >
-                <span>🖨️</span>
-                <span>Print Z-Report & Close Shift</span>
-              </button>
+                {/* BLOCK 2: Payment Balances */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-2">
+                  <h4 className="font-black text-slate-700 uppercase tracking-wider text-[10px] border-b border-slate-200 pb-1.5">
+                    Block 2: Payment Balances
+                  </h4>
+                  <div className="divide-y divide-slate-200/60">
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Cash Sales:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.cashCollected / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Card Sales:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.cardCollected / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Bank Transfer Sales:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.bankTransferCollected / 100).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BLOCK 3: Category Performance Breakdown */}
+                <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-2">
+                  <h4 className="font-black text-slate-700 uppercase tracking-wider text-[10px] border-b border-slate-200 pb-1.5">
+                    Block 3: Category Performance Breakdown
+                  </h4>
+                  <div className="divide-y divide-slate-200/60">
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Pet Supplies Shop:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.petSuppliesShop / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Pharmacy Rx:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.pharmacyRx / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Labs & Diagnostics:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.labsServices / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Clinical Care (services):</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.clinicalCare / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold text-slate-600">
+                      <span>Vaccinations:</span>
+                      <span className="font-mono text-slate-800 font-bold">Rs. {(zCalculations.vaccinations / 100).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* BLOCK 4: Bottom Line Financial Health */}
+                <div className="bg-slate-900 text-slate-100 rounded-xl p-4 space-y-2 border border-slate-850">
+                  <h4 className="font-black text-slate-400 uppercase tracking-wider text-[10px] border-b border-slate-800 pb-1.5">
+                    Block 4: Bottom Line Financial Health
+                  </h4>
+                  <div className="divide-y divide-slate-800">
+                    <div className="flex justify-between py-1.5 font-semibold">
+                      <span className="text-slate-400">Gross Revenue:</span>
+                      <span className="font-mono text-slate-200 font-bold">Rs. {(zCalculations.grossRevenue / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-1.5 font-semibold">
+                      <span className="text-slate-400">Cost of Goods Sold (COGS):</span>
+                      <span className="font-mono text-slate-200 font-bold">Rs. {(zCalculations.cogs / 100).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-2 items-center">
+                      <span className="font-black text-sm text-slate-300">Net Profit:</span>
+                      <span className={`font-mono text-base font-black px-2 py-0.5 rounded-md ${zCalculations.netProfit >= 0 ? 'text-emerald-400 bg-emerald-950/50' : 'text-rose-400 bg-rose-950/50'}`}>
+                        Rs. {(zCalculations.netProfit / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Frozen Footer */}
+              <div className="border-t border-slate-100 p-4 shrink-0 bg-slate-50 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCloseShiftModal(false)}
+                  className="w-1/3 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold rounded-xl text-center text-xs cursor-pointer transition-colors focus:outline-hidden"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const actualCounted = parseFloat(actualCashInput || '0');
+                    if (isNaN(actualCounted) || actualCounted < 0) {
+                      showToast('Please specify a valid actual counted cash amount.', 'error');
+                      return;
+                    }
+                    
+                    const actualCents = Math.round(actualCounted * 100);
+                    const isDiscrepancy = actualCents !== zCalculations.expectedClosingCash;
+                    if (isDiscrepancy && !closeNotesInput.trim()) {
+                      showToast('Please provide a reason for the cash discrepancy.', 'error');
+                      return;
+                    }
+
+                    try {
+                      await handleCompileAndCloseShiftZReport(actualCashInput, closeNotesInput);
+                      setShowCloseShiftModal(false);
+                      setActualCashInput('');
+                      setCloseNotesInput('');
+                    } catch (err) {
+                      console.error(err);
+                    }
+                  }}
+                  className="w-2/3 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl shadow-md transition-all cursor-pointer text-center text-xs flex items-center justify-center space-x-2 focus:outline-hidden"
+                >
+                  <span>🖨️</span>
+                  <span>Confirm Shift Close</span>
+                </button>
+              </div>
+
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

@@ -861,7 +861,9 @@ export default function DashboardAnalytics({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-600 font-medium">
-              {(safeCache<any>('ceylon_shifts_v2', [])).slice().reverse().map((s: any) => (
+              {[...safeCache<any>('ceylon_shifts_v2', [])]
+                .sort((a: any, b: any) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                .map((s: any) => (
                 <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
                   <td className="p-3 font-mono text-slate-900 font-bold">{s.id}</td>
                   <td className="p-3">{s.openedBy}</td>
@@ -886,7 +888,7 @@ export default function DashboardAnalytics({
 
       {/* Z-Report Modal */}
       {isZReportModalOpen && (
-        <div className="fixed inset-0 bg-slate-800/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl flex flex-col max-h-[calc(100vh-40px)] max-w-xl w-full overflow-hidden shadow-2xl">
             <div className="p-6 shrink-0 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">

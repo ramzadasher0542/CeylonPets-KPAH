@@ -1233,7 +1233,7 @@ function App() {
             )}
 
             {/* Render selected subview panel */}
-            <div className="animate-fade-in">
+            <div className="fade-in-only">
               {activeView === 'dashboard' && isViewPermitted('dashboard', currentUser) && (
                 <DashboardAnalytics 
                   inventory={inventory}

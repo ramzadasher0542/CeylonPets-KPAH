@@ -126,6 +126,12 @@ export interface Shift {
   discrepancyCents?: number;
   notes?: string;
   isOpen: boolean;
+  opening_float: number;
+  actual_cash: number | null;
+  discrepancy_reason: string;
+  created_at: string;
+  updated_at: string;
+  is_deleted: boolean;
 }
 
 export interface Invoice {
