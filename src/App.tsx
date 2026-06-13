@@ -499,7 +499,11 @@ function App() {
     if (!aptDetails) return;
     
     // 1. Mutate the status cleanly
-    const updatedApt = { ...aptDetails, status };
+    const updatedApt = { 
+      ...aptDetails, 
+      status,
+      updated_at: new Date().toISOString() // Cloud sync trigger
+    } as any;
 
     // 2. Preserve relational integrity: Keep all records inside the primary flat array
     setAppointments(prev => 

@@ -166,10 +166,11 @@ export default function AppointmentsManager({
     const metadata = JSON.stringify({ type: admissionType, phone2, address, sex });
     const tokenBlock = `:::METADATA${metadata}:::`;
     const packedReason = `${tokenBlock}\n${reason}`;
+    const now = new Date().toISOString();
 
-    const newApt: Appointment = {
-      // Enforce pure numeric identity string
-      id: String(Date.now()),
+    const newApt = {
+      // CRITICAL: Supabase-Ready UUIDs to prevent primary key collisions on offline sync
+      id: crypto.randomUUID(),
       petName,
       petType,
       breed: breed || 'Mixed breed',
@@ -180,8 +181,12 @@ export default function AppointmentsManager({
       time: formatDisplayTime(time),
       veterinarian,
       reason: packedReason,
-      status: 'booked'
-    };
+      status: 'booked',
+      // Mandatory Cloud-Sync Metadata
+      created_at: now,
+      updated_at: now,
+      is_deleted: false
+    } as any; // Cast as any temporarily to prevent TS errors if types.ts lacks metadata fields
 
     onAddAppointment(newApt);
     setShowAddModal(false);
