@@ -24,9 +24,10 @@ import {
   List as ListIcon,
   Edit2,
   Trash2,
-  Filter
+  Filter,
+  MoreVertical
 } from 'lucide-react';
-import { Appointment, AppointmentStatus, MedicalRecord, User as StaffUser } from '../types';
+import { Appointment, AppointmentStatus, MedicalRecord } from '../types';
 import { showToast } from './Toast';
 import { formatDisplayDate, formatDisplayTime } from '../utils/time';
 
@@ -37,6 +38,7 @@ interface AppointmentsProps {
   onAddAppointment: (appointment: Appointment) => void;
   onUpdateStatus: (id: string, status: AppointmentStatus) => void;
   onAddRecord: (record: MedicalRecord) => void;
+  onUpdateAppointment?: (appointment: Appointment) => void;
 }
 
 export default function AppointmentsManager({ 
@@ -45,7 +47,8 @@ export default function AppointmentsManager({
   isOnline, 
   onAddAppointment, 
   onUpdateStatus,
-  onAddRecord
+  onAddRecord,
+  onUpdateAppointment
 }: AppointmentsProps) {
   
   // Dual-View & Header State
@@ -78,8 +81,10 @@ export default function AppointmentsManager({
     setAllAppointments(unique);
   }, [appointments]);
 
-  // Original Form State
+  // Original Form State + Edit State
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingAptId, setEditingAptId] = useState<string | null>(null);
+  
   const [petName, setPetName] = useState('');
   const [petType, setPetType] = useState<'Dog' | 'Cat' | 'Bird' | 'Rabbit' | 'Other'>('Dog');
   const [breed, setBreed] = useState('');
@@ -97,7 +102,50 @@ export default function AppointmentsManager({
   const [address, setAddress] = useState('');
   const [sex, setSex] = useState('Male');
 
+  // Popover State
+  const [selectedPopoverApt, setSelectedPopoverApt] = useState<Appointment | null>(null);
+
   // Core Handlers
+  const resetForm = () => {
+    setEditingAptId(null);
+    setPetName(''); setBreed(''); setOwnerName(''); setOwnerPhone(''); setOwnerEmail('');
+    setReason(''); setFormError(''); setAdmissionType('OPD'); setPhone2(''); setAddress('');
+    setSex('Male'); setDate(formatDisplayDate(new Date())); setTime(formatDisplayTime(new Date()));
+  };
+
+  const handleEditClick = (apt: Appointment) => {
+    setEditingAptId(apt.id);
+    setPetName(apt.petName);
+    setPetType(apt.petType);
+    setBreed(apt.breed);
+    setOwnerName(apt.ownerName);
+    setOwnerPhone(apt.ownerPhone);
+    setOwnerEmail(apt.ownerEmail);
+    setDate(apt.date);
+    setTime(apt.time);
+    setVeterinarian(apt.veterinarian);
+    
+    // Unpack reason and metadata
+    let displayReason = apt.reason;
+    const match = apt.reason.match(/:::METADATA(.*?):::/);
+    if (match) {
+      try {
+        const meta = JSON.parse(match[1]);
+        setAdmissionType(meta.type || 'OPD');
+        setPhone2(meta.phone2 || '');
+        setAddress(meta.address || '');
+        setSex(meta.sex || 'Male');
+        displayReason = apt.reason.replace(match[0], '').trim();
+      } catch(e){}
+    } else {
+      setAdmissionType('OPD'); setPhone2(''); setAddress(''); setSex('Male');
+    }
+    
+    setReason(displayReason);
+    setSelectedPopoverApt(null);
+    setShowAddModal(true);
+  };
+
   const handleCreateAppointment = (e: React.FormEvent | React.KeyboardEvent) => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault();
     if (!petName || !date || !time) {
@@ -110,30 +158,52 @@ export default function AppointmentsManager({
     const packedReason = `${tokenBlock}\n${reason}`;
     const now = new Date().toISOString();
 
-    const newApt = {
-      id: crypto.randomUUID(),
-      petName,
-      petType,
-      breed: breed || 'Mixed breed',
-      ownerName,
-      ownerPhone,
-      ownerEmail: ownerEmail || 'not-provided@example.com',
-      date: formatDisplayDate(date),
-      time: formatDisplayTime(time),
-      veterinarian,
-      reason: packedReason,
-      status: 'booked',
-      created_at: now,
-      updated_at: now,
-      is_deleted: false
-    } as any;
+    if (editingAptId) {
+      const existingApt = allAppointments.find(a => a.id === editingAptId);
+      const updatedApt = {
+        ...existingApt,
+        id: editingAptId,
+        petName,
+        petType,
+        breed: breed || 'Mixed breed',
+        ownerName,
+        ownerPhone,
+        ownerEmail: ownerEmail || 'not-provided@example.com',
+        date: formatDisplayDate(date),
+        time: formatDisplayTime(time),
+        veterinarian,
+        reason: packedReason,
+        updated_at: now
+      } as any;
+      
+      if (onUpdateAppointment) {
+        onUpdateAppointment(updatedApt);
+      }
+    } else {
+      const aptNumber = 'APT-' + (1000 + allAppointments.length + 1);
+      const newApt = {
+        id: crypto.randomUUID(),
+        aptNumber,
+        petName,
+        petType,
+        breed: breed || 'Mixed breed',
+        ownerName,
+        ownerPhone,
+        ownerEmail: ownerEmail || 'not-provided@example.com',
+        date: formatDisplayDate(date),
+        time: formatDisplayTime(time),
+        veterinarian,
+        reason: packedReason,
+        status: 'booked',
+        created_at: now,
+        updated_at: now,
+        is_deleted: false
+      } as any;
+      onAddAppointment(newApt);
+    }
 
-    onAddAppointment(newApt);
     setShowAddModal(false);
-
-    setPetName(''); setBreed(''); setOwnerName(''); setOwnerPhone(''); setOwnerEmail('');
-    setReason(''); setFormError(''); setAdmissionType('OPD'); setPhone2(''); setAddress('');
-    setSex('Male'); setDate(formatDisplayDate(new Date())); setTime(formatDisplayTime(new Date()));
+    resetForm();
   };
 
   const handleCheckIn = (apt: Appointment) => {
@@ -165,6 +235,7 @@ export default function AppointmentsManager({
       onAddRecord(newRecord);
     }
     onUpdateStatus(apt.id, 'in-progress');
+    setSelectedPopoverApt(null);
   };
 
   // Date Math Helpers
@@ -251,16 +322,28 @@ export default function AppointmentsManager({
           <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="p-3 text-center text-[10px] uppercase font-bold text-slate-500">{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 flex-1 bg-slate-200 gap-px border-t border-slate-200">
+          <div className="grid grid-cols-7 flex-1 bg-slate-200 gap-px border-t border-slate-200 overflow-y-auto custom-scrollbar">
             {days.map((d, i) => {
               if(!d) return <div key={`empty-${i}`} className="bg-slate-50/50 min-h-[100px]" />;
               const dayStr = toLocalISODate(d);
               const apts = baseFilteredApts.filter(a => a.date === dayStr);
               return (
-                <div key={dayStr} className="bg-white p-2 min-h-[100px] hover:bg-slate-50 transition-colors cursor-pointer">
+                <div 
+                  key={dayStr} 
+                  className="bg-white p-2 min-h-[100px] hover:bg-slate-50 transition-colors cursor-pointer flex flex-col"
+                  onClick={() => { setCurrentDate(d); setTimeframe('day'); }}
+                >
                   <div className={`text-xs font-bold mb-1.5 ${d.toDateString() === new Date().toDateString() ? 'text-indigo-600 bg-indigo-50 w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-600'}`}>{d.getDate()}</div>
-                  <div className="space-y-1">
-                    {apts.map(a => <div key={a.id} className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-100 p-1.5 rounded-lg truncate shadow-xs font-medium">{a.time} - {a.petName}</div>)}
+                  <div className="space-y-1 flex-1">
+                    {apts.map(a => (
+                      <div 
+                        key={a.id} 
+                        onClick={(e) => { e.stopPropagation(); setSelectedPopoverApt(a); }}
+                        className="text-[9px] bg-indigo-50 text-indigo-700 border border-indigo-100 p-1.5 rounded-lg truncate shadow-xs font-medium hover:bg-indigo-100 transition-colors"
+                      >
+                        {a.time} - {a.petName}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )
@@ -279,7 +362,11 @@ export default function AppointmentsManager({
         <div className="grid border-b border-slate-200 bg-slate-50 sticky top-0 z-10" style={{ gridTemplateColumns: `70px repeat(${days.length}, minmax(0, 1fr))` }}>
           <div className="p-3 border-r border-slate-200 flex items-end justify-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Time</div>
           {days.map(d => (
-            <div key={d.toISOString()} className="p-3 text-center border-r border-slate-200 last:border-r-0">
+            <div 
+              key={d.toISOString()} 
+              className="p-3 text-center border-r border-slate-200 last:border-r-0 cursor-pointer hover:bg-slate-100 transition-colors"
+              onClick={() => { setCurrentDate(d); setTimeframe('day'); }}
+            >
               <div className="text-[10px] uppercase font-bold text-slate-400">{d.toLocaleDateString('en-US', {weekday:'short'})}</div>
               <div className={`text-sm font-extrabold mt-0.5 ${d.toDateString()===new Date().toDateString() ? 'text-indigo-600':'text-slate-700'}`}>{d.getDate()}</div>
             </div>
@@ -297,7 +384,11 @@ export default function AppointmentsManager({
                 return (
                   <div key={dayStr} className="p-1.5 border-r border-slate-100 last:border-r-0 relative hover:bg-slate-50/50 transition-colors">
                     {apts.map(a => (
-                      <div key={a.id} className="mb-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-[10px] text-indigo-800 leading-tight shadow-xs cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group">
+                      <div 
+                        key={a.id} 
+                        onClick={(e) => { e.stopPropagation(); setSelectedPopoverApt(a); }}
+                        className="mb-1.5 p-2 bg-indigo-50 border border-indigo-100 rounded-xl text-[10px] text-indigo-800 leading-tight shadow-xs cursor-pointer hover:border-indigo-300 hover:shadow-sm transition-all group"
+                      >
                         <div className="font-bold truncate text-indigo-900">{a.petName}</div>
                         <div className="truncate opacity-80 mt-0.5 font-medium">{a.ownerName}</div>
                       </div>
@@ -352,7 +443,10 @@ export default function AppointmentsManager({
                   <div className="text-[10px] text-slate-500 font-medium">{formatDisplayTime(apt.time)}</div>
                 </td>
                 <td className="py-3 px-4">
-                  <div className="font-bold text-slate-800">{apt.petName}</div>
+                  <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                    {apt.petName} 
+                    {apt.aptNumber && <span className="text-[8px] font-mono bg-slate-100 text-slate-400 px-1 py-0.5 rounded">{apt.aptNumber}</span>}
+                  </div>
                   <div className="text-[10px] text-slate-500 font-medium">{apt.petType} - {apt.breed || 'Mixed'}</div>
                 </td>
                 <td className="py-3 px-4">
@@ -366,13 +460,13 @@ export default function AppointmentsManager({
                   {getStatusPill(apt.status)}
                 </td>
                 <td className="py-3 px-4">
-                  <div className="flex items-center justify-end gap-1">
+                  <div className="flex items-center justify-end gap-1 opacity-100">
                     {apt.status === 'booked' && (
-                      <button onClick={() => handleCheckIn(apt)} title="Check In" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                      <button onClick={() => handleCheckIn(apt)} title="Check In" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer">
                         <CheckCircle2 className="h-4 w-4" />
                       </button>
                     )}
-                    <button title="Edit" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer">
+                    <button onClick={() => handleEditClick(apt)} title="Edit" className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer">
                       <Edit2 className="h-4 w-4" />
                     </button>
                     <button onClick={() => onUpdateStatus(apt.id, 'cancelled')} title="Delete/Cancel" className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer">
@@ -394,28 +488,26 @@ export default function AppointmentsManager({
       {/* Unified Control Header */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col xl:flex-row items-center justify-between gap-4 shrink-0">
         
-        {/* Title & View Toggles */}
         <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
           <h2 className="text-lg font-extrabold text-slate-800 tracking-tight">Appointment Calendar</h2>
           <div className="flex bg-slate-100 p-1 rounded-xl">
-            <button onClick={() => setViewMode('calendar')} className={`p-1.5 px-3 rounded-lg flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>
+            <button onClick={() => setViewMode('calendar')} className={`p-1.5 px-3 rounded-lg flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700 cursor-pointer'}`}>
               <CalendarIcon className="h-4 w-4" /> Calendar
             </button>
-            <button onClick={() => setViewMode('list')} className={`p-1.5 px-3 rounded-lg flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}>
+            <button onClick={() => setViewMode('list')} className={`p-1.5 px-3 rounded-lg flex items-center gap-2 text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700 cursor-pointer'}`}>
               <ListIcon className="h-4 w-4" /> List
             </button>
           </div>
         </div>
 
-        {/* Middle Navigation */}
         <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-xl border border-slate-100 w-full sm:w-auto justify-center">
-          <button onClick={prevPeriod} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-xs transition-colors">
+          <button onClick={prevPeriod} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-xs transition-colors cursor-pointer">
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-xs font-extrabold text-slate-700 shadow-xs transition-colors">
+          <button onClick={() => setCurrentDate(new Date())} className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-xs font-extrabold text-slate-700 shadow-xs transition-colors cursor-pointer">
             Today
           </button>
-          <button onClick={nextPeriod} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-xs transition-colors">
+          <button onClick={nextPeriod} className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-600 shadow-xs transition-colors cursor-pointer">
             <ChevronRight className="h-4 w-4" />
           </button>
           <div className="px-3 text-sm font-extrabold text-slate-800 min-w-[140px] text-center">
@@ -423,12 +515,11 @@ export default function AppointmentsManager({
           </div>
         </div>
 
-        {/* Right Actions */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
           {viewMode === 'calendar' && (
             <div className="flex bg-slate-100 p-1 rounded-xl hidden sm:flex">
               {['day', 'week', 'month'].map(t => (
-                <button key={t} onClick={() => setTimeframe(t as any)} className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${timeframe === t ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
+                <button key={t} onClick={() => setTimeframe(t as any)} className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all cursor-pointer ${timeframe === t ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}>
                   {t}
                 </button>
               ))}
@@ -441,23 +532,48 @@ export default function AppointmentsManager({
             <option>Dr. Ismail</option>
           </select>
 
-          <button onClick={() => setShowAddModal(true)} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap">
+          <button onClick={() => { resetForm(); setShowAddModal(true); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap">
             <Plus className="h-4 w-4" /> New Appointment
           </button>
         </div>
       </div>
 
-      {/* Main Render Canvas */}
       {viewMode === 'calendar' ? renderCalendarView() : renderListView()}
 
-      {/* Keep Existing Modal Exactly Untouched */}
+      {/* Calendar Quick Action Popover Modal */}
+      {selectedPopoverApt && createPortal(
+        <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedPopoverApt(null)}>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full animate-fade-in relative" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSelectedPopoverApt(null)} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"><X className="h-4 w-4" /></button>
+            <h3 className="text-sm font-extrabold text-slate-800">{selectedPopoverApt.petName}</h3>
+            <p className="text-xs text-slate-500 font-medium mb-4">{selectedPopoverApt.date} at {selectedPopoverApt.time}</p>
+            
+            <div className="space-y-2">
+              {selectedPopoverApt.status === 'booked' && (
+                <button onClick={() => handleCheckIn(selectedPopoverApt)} className="w-full py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
+                  <CheckCircle2 className="h-4 w-4" /> Check In Patient
+                </button>
+              )}
+              <button onClick={() => handleEditClick(selectedPopoverApt)} className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
+                <Edit2 className="h-4 w-4" /> Edit Details
+              </button>
+              <button onClick={() => { onUpdateStatus(selectedPopoverApt.id, 'cancelled'); setSelectedPopoverApt(null); }} className="w-full py-2 bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 font-bold rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer transition-colors">
+                <Trash2 className="h-4 w-4" /> Cancel Appointment
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Main Appointment Form Modal */}
       {showAddModal && createPortal(
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border border-sky-100 max-w-xl w-full text-xs shadow-xl animate-fade-in flex flex-col overflow-hidden max-h-[calc(100vh-40px)]">
             <div className="flex justify-between items-start shrink-0 p-6 pb-4 border-b border-slate-100">
               <div>
-                <h4 className="text-sm font-extrabold text-slate-800 leading-none">Schedule Veterinary Check-up</h4>
-                <p className="text-[10px] text-slate-400 mt-1">Add details regarding patient and primary clinic complaint</p>
+                <h4 className="text-sm font-extrabold text-slate-800 leading-none">{editingAptId ? 'Edit Appointment' : 'Schedule Veterinary Check-up'}</h4>
+                <p className="text-[10px] text-slate-400 mt-1">Update patient details and primary clinic complaint</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="p-1 hover:bg-slate-100 text-slate-400 rounded-lg cursor-pointer">✕</button>
             </div>
@@ -548,7 +664,7 @@ export default function AppointmentsManager({
               </div>
               <div className="shrink-0 flex gap-2 p-6 pt-4 justify-end border-t border-slate-100 bg-white">
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-4 py-1.5 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 cursor-pointer transition-colors">Close</button>
-                <button type="submit" className="px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl cursor-pointer shadow-xs transition-colors">Create Appointment Slot</button>
+                <button type="submit" className="px-5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl cursor-pointer shadow-xs transition-colors">{editingAptId ? 'Save Changes' : 'Create Appointment Slot'}</button>
               </div>
             </form>
           </div>

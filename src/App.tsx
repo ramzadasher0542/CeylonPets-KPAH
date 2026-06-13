@@ -486,6 +486,11 @@ function App() {
     setNotifications(prev => [emailNotif, ...prev]);
   };
 
+  const handleUpdateAppointment = (updated: Appointment) => {
+    setAppointments(prev => prev.map(a => a.id === updated.id ? updated : a));
+    showToast(`Appointment for ${updated.petName} updated successfully.`);
+  };
+
   const handleUpdateAppointmentStatus = (id: string, status: AppointmentStatus) => {
     const aptDetails = appointments.find(a => a.id === id);
     if (!aptDetails) return;
@@ -913,6 +918,7 @@ function App() {
             onAddAppointment={handleAddAppointment}
             onUpdateStatus={handleUpdateAppointmentStatus}
             onAddRecord={handleAddRecord}
+            onUpdateAppointment={handleUpdateAppointment}
           />
         );
       case 'inventory':
