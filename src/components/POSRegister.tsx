@@ -143,20 +143,7 @@ export default function POSRegister({
     }
   }, [showCheckoutModal, paymentMethod]);
 
-  useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (showCheckoutModal) setShowCheckoutModal(false);
-        if (showCloseShiftModal) setShowCloseShiftModal(false);
-        if (showPinChallenge) setShowPinChallenge(false);
-        if (selectedInvoiceDetails) setSelectedInvoiceDetails(null);
-        if (showCashDrawerModal) setShowCashDrawerModal(false);
-        if (showDrawerBalancePopup) setShowDrawerBalancePopup(false);
-      }
-    };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [showCheckoutModal, showCloseShiftModal, showPinChallenge, selectedInvoiceDetails, showCashDrawerModal, showDrawerBalancePopup]);
+
 
   const [amountReceived, setAmountReceived] = useState('');
   const [checkoutSuccess, setCheckoutSuccess] = useState<Invoice | null>(null);
@@ -198,6 +185,21 @@ export default function POSRegister({
   const [closeNotesInput, setCloseNotesInput] = useState('');
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
   const [showDrawerBalancePopup, setShowDrawerBalancePopup] = useState(false);
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showCheckoutModal) setShowCheckoutModal(false);
+        if (showCloseShiftModal) setShowCloseShiftModal(false);
+        if (showPinChallenge) setShowPinChallenge(false);
+        if (selectedInvoiceDetails) setSelectedInvoiceDetails(null);
+        if (showCashDrawerModal) setShowCashDrawerModal(false);
+        if (showDrawerBalancePopup) setShowDrawerBalancePopup(false);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [showCheckoutModal, showCloseShiftModal, showPinChallenge, selectedInvoiceDetails, showCashDrawerModal, showDrawerBalancePopup]);
 
   useEffect(() => {
     let isMounted = true;
