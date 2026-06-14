@@ -85,6 +85,7 @@ import NotificationsModal from './components/NotificationsModal';
 import PatientPortal from './components/PatientPortal';
 import SystemSettings, { SystemConfig } from './components/SystemSettings';
 import ToastContainer, { showToast } from './components/Toast';
+import CustomersManager from './components/CustomersManager';
 
 // Fully offline architecture - Supabase removed
 import {
