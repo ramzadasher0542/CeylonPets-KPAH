@@ -59,7 +59,8 @@ import {
   LogOut,
   CloudLightning,
   Printer,
-  Lock
+  Lock,
+  ChevronLeft
 } from 'lucide-react';
 
 import { 
@@ -311,6 +312,7 @@ function App() {
 
   // Current Screen selection
   const [activeView, setActiveView] = useState<string>('pos');
+  const [historyStack, setHistoryStack] = useState<string[]>(['dashboard']);
 
 
   // ─── Sync state to localStorage (offline cache) ──
@@ -1019,14 +1021,17 @@ function App() {
             onGoToPOS={(phone) => {
               // Future optimization: pass the phone to POS state
               setActiveView('pos');
+              setHistoryStack(prev => [...prev, 'pos']);
             }}
             onGoToAppointments={(phone) => {
               // Future optimization: auto-fill phone in appointments form
               setActiveView('appointments');
+              setHistoryStack(prev => [...prev, 'appointments']);
             }}
             onGoToRecords={(patientId) => {
               // Future optimization: load specific record
               setActiveView('records');
+              setHistoryStack(prev => [...prev, 'records']);
             }}
           />
         );
@@ -1281,7 +1286,7 @@ function App() {
                   return (
                     <button
                       key={item.id}
-                      onClick={() => setActiveView(item.id)}
+                      onClick={() => { setActiveView(item.id); setHistoryStack([item.id]); }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                         isSelected 
                           ? 'bg-blue-50 text-blue-700' 
@@ -1314,7 +1319,7 @@ function App() {
               <div className="p-3 border-t border-gray-200 bg-gray-50/50 space-y-1">
                 {isViewPermitted('settings', currentUser) && (
                   <button
-                    onClick={() => setActiveView('settings')}
+                    onClick={() => { setActiveView('settings'); setHistoryStack(['settings']); }}
                     className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                       activeView === 'settings' 
                         ? 'bg-blue-50 text-blue-700' 
@@ -1337,6 +1342,21 @@ function App() {
 
             {/* MAIN CANVAS */}
             <main className="flex-1 flex flex-col h-full relative overflow-hidden bg-gray-100">
+              <div className="bg-white border-b border-gray-200 h-14 flex items-center px-6 gap-4 shrink-0 shadow-xs">
+                {historyStack.length > 1 && (
+                  <button 
+                    onClick={() => {
+                      const prev = historyStack[historyStack.length - 2];
+                      setHistoryStack(prev => prev.slice(0, -1));
+                      setActiveView(prev);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-lg transition-all cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3 h-3" /> Back
+                  </button>
+                )}
+                <span className="text-xs font-bold text-slate-500 capitalize">{activeView}</span>
+              </div>
               <div className="flex-1 w-full h-full overflow-y-auto">
                 {renderCanvas()}
               </div>
