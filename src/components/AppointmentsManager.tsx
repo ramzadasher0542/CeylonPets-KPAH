@@ -562,24 +562,39 @@ export default function AppointmentsManager({
                 </td>
                 <td className="py-4 px-4 text-right w-32">
                   <div className="flex items-center justify-end gap-1">
-                    {apt.status === 'booked' && (
-                      <button onClick={() => handleCheckIn(apt)} title="Check In" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer">
-                        <CheckCircle2 className="h-4 w-4" />
-                      </button>
-                    )}
                     <button 
-                      onClick={() => handleEditClick(apt)} 
+                      onClick={() => !isLocked && handleCheckIn(apt)} 
+                      disabled={isLocked || apt.status !== 'booked'}
+                      title={isLocked ? "Record Locked" : "Check In"} 
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isLocked || apt.status !== 'booked'
+                          ? 'text-slate-300 cursor-not-allowed opacity-50 pointer-events-none' 
+                          : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer'
+                      }`}
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                    </button>
+                    <button 
+                      onClick={() => !isLocked && handleEditClick(apt)} 
                       disabled={isLocked}
                       title={isLocked ? "Record Locked" : "Edit Details"} 
-                      className={`p-1.5 rounded-lg transition-colors ${isLocked ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer'}`}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isLocked 
+                          ? 'text-slate-300 cursor-not-allowed opacity-50 pointer-events-none' 
+                          : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 cursor-pointer'
+                      }`}
                     >
                       {isLocked ? <Lock className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />}
                     </button>
                     <button 
-                      onClick={() => handleCancelApt(apt)} 
+                      onClick={() => !isLocked && handleCancelApt(apt)} 
                       disabled={isLocked}
                       title={isLocked ? "Record Locked" : "Cancel Appointment"} 
-                      className={`p-1.5 rounded-lg transition-colors ${isLocked ? 'text-slate-300 cursor-not-allowed opacity-50' : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'}`}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        isLocked 
+                          ? 'text-slate-300 cursor-not-allowed opacity-50 pointer-events-none' 
+                          : 'text-slate-400 hover:text-rose-600 hover:bg-rose-50 cursor-pointer'
+                      }`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -717,42 +732,60 @@ export default function AppointmentsManager({
       )}
 
       {/* Calendar Quick Action Popover Modal */}
-      {selectedPopoverApt && createPortal(
-        <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedPopoverApt(null)}>
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full animate-fade-in relative" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedPopoverApt(null)} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"><X className="h-4 w-4" /></button>
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-sm font-extrabold text-slate-800">{selectedPopoverApt.petName}</h3>
-              <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">{selectedPopoverApt.aptNumber}</span>
-            </div>
-            <p className="text-[10px] text-slate-500 font-medium mb-4">{selectedPopoverApt.date} at {selectedPopoverApt.time}</p>
-            
-            <div className="space-y-2">
-              {selectedPopoverApt.status === 'booked' && (
-                <button onClick={() => handleCheckIn(selectedPopoverApt)} className="w-full py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-pointer transition-colors">
+      {selectedPopoverApt && (() => {
+        const isLocked = ['completed', 'cancelled'].includes(selectedPopoverApt.status);
+        return createPortal(
+          <div className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setSelectedPopoverApt(null)}>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-5 max-w-sm w-full animate-fade-in relative" onClick={e => e.stopPropagation()}>
+              <button onClick={() => setSelectedPopoverApt(null)} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"><X className="h-4 w-4" /></button>
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-sm font-extrabold text-slate-800">{selectedPopoverApt.petName}</h3>
+                <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-600 border border-slate-200 px-1.5 py-0.5 rounded">{selectedPopoverApt.aptNumber}</span>
+              </div>
+              <p className="text-[10px] text-slate-500 font-medium mb-4">{selectedPopoverApt.date} at {selectedPopoverApt.time}</p>
+              
+              <div className="space-y-2">
+                <button 
+                  onClick={() => !isLocked && handleCheckIn(selectedPopoverApt)} 
+                  disabled={isLocked || selectedPopoverApt.status !== 'booked'}
+                  className={`w-full py-2 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 transition-colors ${
+                    isLocked || selectedPopoverApt.status !== 'booked'
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 opacity-50 pointer-events-none'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 cursor-pointer'
+                  }`}
+                >
                   <CheckCircle2 className="h-4 w-4" /> Check In Patient
                 </button>
-              )}
-              
-              {selectedPopoverApt.status !== 'completed' && selectedPopoverApt.status !== 'cancelled' ? (
-                <>
-                  <button onClick={() => handleEditClick(selectedPopoverApt)} className="w-full py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-pointer transition-colors">
-                    <Edit2 className="h-4 w-4" /> Edit Details
-                  </button>
-                  <button onClick={() => handleCancelApt(selectedPopoverApt)} className="w-full py-2 bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-pointer transition-colors">
-                    <Trash2 className="h-4 w-4" /> Cancel Appointment
-                  </button>
-                </>
-              ) : (
-                <div className="w-full py-2 bg-slate-50 text-slate-400 border border-slate-200 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 cursor-not-allowed opacity-70">
-                  <Lock className="h-4 w-4" /> Record Locked
-                </div>
-              )}
+                
+                <button 
+                  onClick={() => !isLocked && handleEditClick(selectedPopoverApt)} 
+                  disabled={isLocked}
+                  className={`w-full py-2 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 transition-colors ${
+                    isLocked
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 opacity-50 pointer-events-none'
+                      : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer'
+                  }`}
+                >
+                  {isLocked ? <Lock className="h-4 w-4" /> : <Edit2 className="h-4 w-4" />} Edit Details
+                </button>
+                
+                <button 
+                  onClick={() => !isLocked && handleCancelApt(selectedPopoverApt)} 
+                  disabled={isLocked}
+                  className={`w-full py-2 font-bold rounded-xl text-[10px] uppercase tracking-wide flex justify-center items-center gap-2 transition-colors ${
+                    isLocked
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200 opacity-50 pointer-events-none'
+                      : 'bg-white text-rose-600 hover:bg-rose-50 border border-slate-200 cursor-pointer'
+                  }`}
+                >
+                  <Trash2 className="h-4 w-4" /> Cancel Appointment
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+          </div>,
+          document.body
+        );
+      })()}
 
       {/* Main Appointment Form Modal */}
       {showAddModal && createPortal(
