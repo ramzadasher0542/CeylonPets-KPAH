@@ -1010,6 +1010,26 @@ function App() {
           />
         );
       }
+      case 'customers': 
+        return (
+          <CustomersManager 
+            records={records}
+            invoices={invoices}
+            appointments={appointments}
+            onGoToPOS={(phone) => {
+              // Future optimization: pass the phone to POS state
+              setActiveView('pos');
+            }}
+            onGoToAppointments={(phone) => {
+              // Future optimization: auto-fill phone in appointments form
+              setActiveView('appointments');
+            }}
+            onGoToRecords={(patientId) => {
+              // Future optimization: load specific record
+              setActiveView('records');
+            }}
+          />
+        );
       default:
         return null;
     }
