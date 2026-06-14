@@ -68,6 +68,7 @@ export default function POSRegister({
   const [customItemPrice, setCustomItemPrice] = useState('');
   const [customItemCategory, setCustomItemCategory] = useState<'service' | 'retail'>('service');
   const [openingFloatInput, setOpeningFloatInput] = useState('');
+  const [lockedClient, setLockedClient] = useState<{ name: string; phone: string } | null>(null);
   
   // Resolve undeclared variable reference
   const selectedApt = appointments.find(a => a.id === selectedPetId) || null;
@@ -1446,87 +1447,115 @@ export default function POSRegister({
           )}
 
           {/* Patient checkout linking */}
-          <div className="pb-3 border-b border-sky-50">
+          <div className="pb-3 border-b border-sky-50 flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 block">Link Pet Patient Care Check-in</span>
-              <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isOnline ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}`}>
-                {isOnline ? 'Direct Hospital Sync' : 'Offline Buffer Mode'}
-              </span>
-            </div>
-            <div className="mt-2 text-xs relative" ref={petDropdownRef}>
-              <div 
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 font-semibold flex items-center justify-between cursor-pointer focus-within:ring-1 focus-within:ring-sky-500 focus-within:border-sky-500"
-                onClick={() => setIsPetDropdownOpen(true)}
-              >
-                <div className="flex items-center gap-2 flex-1">
-                  <Search className="w-4 h-4 text-slate-400" />
-                  <input 
-                    id="pos-pet-search"
-                    name="posPetSearch"
-                    aria-label="Search for pet or patient"
-                    type="text" 
-                    value={isPetDropdownOpen ? petSearchQuery : (selectedPetId === 'walkin' ? 'Walk-in Pet Shop Customer (No Clinical EHR link)' : (activeSelectedApt?.petName || activeSelectedRecord?.petName || ''))}
-                    onChange={(e) => {
-                      setPetSearchQuery(e.target.value);
-                      setIsPetDropdownOpen(true);
-                      if (e.target.value === '') {
-                        setSelectedPetId('walkin');
-                      }
-                    }}
-                    onFocus={() => setIsPetDropdownOpen(true)}
-                    placeholder="Search historical profiles or select active check-in..."
-                    className="bg-transparent border-none outline-none w-full truncate text-slate-800"
-                  />
-                </div>
-                <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isPetDropdownOpen ? 'rotate-180' : ''}`} />
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => {
+                    setSelectedPetId('walkin');
+                    setPetSearchQuery('');
+                    setLockedClient(null);
+                  }}
+                  className="text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 px-2 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  Walk-In / Retail Customer
+                </button>
+                <span className={`text-[9px] font-bold px-2 py-1.5 rounded-lg ${isOnline ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}`}>
+                  {isOnline ? 'Direct Hospital Sync' : 'Offline Buffer Mode'}
+                </span>
               </div>
-
-              {isPetDropdownOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-xl z-20 max-h-60 overflow-y-auto custom-scrollbar overflow-hidden">
-                  <div 
-                    className={`p-2.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${selectedPetId === 'walkin' ? 'bg-sky-50' : ''}`}
-                    onClick={() => {
-                      setSelectedPetId('walkin');
-                      setIsPetDropdownOpen(false);
-                      setPetSearchQuery('');
-                    }}
-                  >
-                    <div className="font-bold text-slate-700">Walk-in Pet Shop Customer</div>
-                    <div className="text-[10px] text-slate-500">No Clinical EHR link</div>
-                  </div>
-                  
-                  {dropdownOptions.length > 0 ? (
-                    dropdownOptions.map(opt => (
-                      <div 
-                        key={opt.id}
-                        className={`p-2.5 border-b border-slate-50 hover:bg-slate-50 cursor-pointer ${selectedPetId === opt.id ? 'bg-sky-50' : ''}`}
-                        onClick={() => {
-                          setSelectedPetId(opt.id);
-                          setIsPetDropdownOpen(false);
-                          setPetSearchQuery('');
-                        }}
-                      >
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <div className="font-bold text-slate-800">{opt.petName} <span className="text-[10px] text-slate-400 font-normal">({opt.petType})</span></div>
-                            <div className="text-[10px] text-slate-500">Owner: {opt.ownerName} <span className="font-mono">[{opt.ownerPhone}]</span></div>
-                          </div>
-                          {opt.isActive && (
-                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold uppercase rounded-md flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Active
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-4 text-center text-slate-500 text-xs italic">
-                      No matching historical profiles found.
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
+
+            {lockedClient ? (
+              <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 p-2.5 rounded-xl">
+                <div>
+                  <div className="text-xs font-bold text-indigo-900">{lockedClient.name}</div>
+                  <div className="text-[10px] font-mono text-indigo-700 mt-0.5">{lockedClient.phone}</div>
+                </div>
+                <button 
+                  onClick={() => { setLockedClient(null); setSelectedPetId('walkin'); setPetSearchQuery(''); }}
+                  className="text-[10px] font-bold bg-white text-rose-600 border border-rose-200 hover:bg-rose-50 px-3 py-1.5 rounded-lg cursor-pointer transition-colors"
+                >
+                  Unlock Session
+                </button>
+              </div>
+            ) : (
+              <div className="mt-2 text-xs relative" ref={petDropdownRef}>
+                <div 
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 text-xs rounded-xl text-slate-700 font-semibold flex items-center justify-between cursor-pointer focus-within:ring-1 focus-within:ring-sky-500 focus-within:border-sky-500"
+                  onClick={() => setIsPetDropdownOpen(true)}
+                >
+                  <div className="flex items-center gap-2 flex-1">
+                    <Search className="w-4 h-4 text-slate-400" />
+                    <input 
+                      id="pos-pet-search"
+                      name="posPetSearch"
+                      aria-label="Search for pet or patient"
+                      type="text" 
+                      value={isPetDropdownOpen ? petSearchQuery : (selectedPetId === 'walkin' ? 'Walk-in Pet Shop Customer (No Clinical EHR link)' : (activeSelectedApt?.petName || activeSelectedRecord?.petName || ''))}
+                      onChange={(e) => {
+                        setPetSearchQuery(e.target.value);
+                        setIsPetDropdownOpen(true);
+                        if (e.target.value === '') {
+                          setSelectedPetId('walkin');
+                        }
+                      }}
+                      onFocus={() => setIsPetDropdownOpen(true)}
+                      placeholder="Search historical profiles or select active check-in..."
+                      className="bg-transparent border-none outline-none w-full truncate text-slate-800"
+                    />
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${isPetDropdownOpen ? 'rotate-180' : ''}`} />
+                </div>
+
+                {isPetDropdownOpen && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 shadow-xl rounded-xl z-20 max-h-60 overflow-y-auto custom-scrollbar overflow-hidden">
+                    <div 
+                      className={`p-2.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer ${selectedPetId === 'walkin' ? 'bg-sky-50' : ''}`}
+                      onClick={() => {
+                        setSelectedPetId('walkin');
+                        setIsPetDropdownOpen(false);
+                        setPetSearchQuery('');
+                      }}
+                    >
+                      <div className="font-bold text-slate-700">Walk-in Pet Shop Customer</div>
+                      <div className="text-[10px] text-slate-500">No Clinical EHR link</div>
+                    </div>
+                    
+                    {dropdownOptions.length > 0 ? (
+                      dropdownOptions.map(opt => (
+                        <div 
+                          key={opt.id}
+                          className={`p-2.5 border-b border-slate-50 hover:bg-slate-50 cursor-pointer ${selectedPetId === opt.id ? 'bg-sky-50' : ''}`}
+                          onClick={() => {
+                            setSelectedPetId(opt.id);
+                            setIsPetDropdownOpen(false);
+                            setPetSearchQuery('');
+                          }}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <div className="font-bold text-slate-800">{opt.petName} <span className="text-[10px] text-slate-400 font-normal">({opt.petType})</span></div>
+                              <div className="text-[10px] text-slate-500">Owner: {opt.ownerName} <span className="font-mono">[{opt.ownerPhone}]</span></div>
+                            </div>
+                            {opt.isActive && (
+                              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold uppercase rounded-md flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Active
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-4 text-center text-slate-500 text-xs italic">
+                        No matching historical profiles found.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Cart Contents list */}
