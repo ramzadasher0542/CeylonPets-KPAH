@@ -7,7 +7,8 @@ import {
   ClientNotification,
   User,
   SystemAlert,
-  Shift
+  Shift,
+  Client
 } from '../types';
 
 // Global in-memory cache fallback to prevent synchronous layout blocks during high-frequency writes
@@ -431,3 +432,42 @@ export async function addRevenueToActiveShift(method: 'cash' | 'card' | 'bank_tr
     safeWrite('ceylon_shifts_v2', shifts);
   }
 }
+
+// CLIENTS
+export async function fetchClients(): Promise<Client[]> {
+  const fallback: Client[] = [{
+    client_id: 'walk_in_retail',
+    full_name: 'Walk-In / Retail Customer',
+    primary_phone: '0000000000',
+    client_status: 'active',
+    alternate_phone: '',
+    email_address: 'none@ceylonpets.lk',
+    physical_address: 'Counter Sale',
+    communication_preference: 'none',
+    account_balance: 0,
+    lifetime_value: 0,
+    administrative_notes: 'Permanent default account for anonymous over-the-counter retail sales.'
+  }];
+  
+  const clients = safeCache<Client>('ceylon_clients_v1', fallback);
+  // Guarantee the immutable fallback account exists
+  if (!clients.some(c => c.client_id === 'walk_in_retail')) {
+    clients.unshift(fallback[0]);
+    safeWrite('ceylon_clients_v1', clients);
+  }
+  return clients;
+}
+
+export async function upsertClient(client: Client): Promise<void> {
+  if (!client || !client.client_id) return;
+  const clients = await fetchClients();
+  const idx = clients.findIndex(c => c.client_id === client.client_id);
+  
+  if (idx >= 0) {
+    clients[idx] = { ...client };
+  } else {
+    clients.push({ ...client });
+  }
+  safeWrite('ceylon_clients_v1', clients);
+}
+
