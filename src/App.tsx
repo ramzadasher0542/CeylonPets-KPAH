@@ -879,7 +879,7 @@ function App() {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, isLive: false },
     { id: 'appointments', label: 'Appointments', icon: Calendar, isLive: true },
     { id: 'pets', label: 'Pets', icon: PawPrint, isLive: false },
-    { id: 'customers', label: 'Customers', icon: Users, isLive: false },
+    { id: 'customers', label: 'Customers', icon: Users, isLive: true },
     { id: 'vaccinations', label: 'Vaccinations', icon: Syringe, isLive: false },
     { id: 'examinations', label: 'Examinations', icon: Stethoscope, isLive: false },
     { id: 'laboratory', label: 'Laboratory', icon: TestTube, isLive: false },
