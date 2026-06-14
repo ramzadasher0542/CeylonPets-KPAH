@@ -198,3 +198,18 @@ export const CATEGORY_DISPLAY_MAP: Record<string, string> = {
   'Taxes & Adjustments': 'Taxes & Adjustments',
   'other': 'Other / Uncategorized'
 };
+
+export interface Client {
+  client_id: string;
+  primary_phone: string;
+  alternate_phone?: string;
+  full_name: string;
+  email_address: string;
+  physical_address: string;
+  communication_preference: 'sms' | 'email' | 'both' | 'none';
+  account_balance: number; // Integer math only (stored in cents)
+  lifetime_value: number; // Integer math only (stored in cents)
+  client_status: 'active' | 'inactive' | 'flagged_bad_debt';
+  administrative_notes: string;
+}
+
