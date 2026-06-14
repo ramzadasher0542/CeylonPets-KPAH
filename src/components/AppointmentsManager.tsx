@@ -385,6 +385,9 @@ export default function AppointmentsManager({
                   className="bg-white p-2 min-h-[100px] h-full hover:bg-slate-50 transition-colors cursor-pointer flex flex-col relative"
                   onClick={() => { setCurrentDate(d); setTimeframe('day'); }}
                 >
+                  {apts.length === 0 && (
+                    <div className="absolute inset-0 opacity-[0.05] bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,#000_10px,#000_20px)] pointer-events-none"></div>
+                  )}
                   <div className={`text-xs font-bold mb-1.5 z-10 ${d.toDateString() === new Date().toDateString() ? 'text-indigo-600 bg-indigo-50 w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-600'}`}>{d.getDate()}</div>
                   <div className="space-y-1 flex-1 z-10 overflow-hidden">
                     {apts.length === 0 ? (
